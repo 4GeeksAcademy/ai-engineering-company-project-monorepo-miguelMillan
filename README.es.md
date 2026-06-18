@@ -64,6 +64,23 @@ ai-engineering-company-project-monorepo/
 
 ---
 
+## Ejecutar la landing en local (Codespaces)
+
+Para este hito web (HTML + Tailwind CDN + JS), puedes levantar un servidor estático con:
+
+```bash
+npx serve . -l 4173
+```
+
+Luego abre:
+
+- `http://127.0.0.1:4173/index.html`
+- `http://127.0.0.1:4173/application.html`
+
+Este comando es compatible con Codespaces y no requiere configuración adicional.
+
+---
+
 ## Hitos (referencia)
 
 | Hito | Enfoque       | Entregables típicos                              |

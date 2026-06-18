@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solicitud de Información | TrackFlow</title>
+    <meta
+      name="description"
+      content="Formulario de solicitud de información de TrackFlow para empresas e-commerce que buscan externalizar su logística."
+    />
+    <link rel="canonical" href="https://trackflow.com/application" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Public Sans", "sans-serif"],
+              display: ["Sora", "sans-serif"]
+            }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-cyan-300 focus:px-4 focus:py-2 focus:text-slate-950"
+      >Saltar al formulario</a
+    >
+
+    <header class="border-b border-slate-800 bg-slate-950/90 backdrop-blur" role="banner">
+      <div class="mx-auto flex w-full max-w-4xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+        <a href="index.html" class="flex items-center gap-3" aria-label="Ir al inicio de TrackFlow">
+          <span class="grid h-10 w-10 place-content-center rounded-xl bg-gradient-to-br from-cyan-300 to-blue-500 text-lg font-bold text-slate-950"
+            >TF</span
+          >
+          <div>
+            <p class="font-display text-lg font-bold tracking-tight text-white">TrackFlow</p>
+            <p class="text-xs text-slate-400">Solicitud comercial</p>
+          </div>
+        </a>
+        <a
+          href="index.html"
+          class="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
+          >Volver al inicio</a
+        >
+      </div>
+    </header>
+
+    <main id="main-content" class="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 lg:px-8" role="main">
+      <section aria-labelledby="application-title" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 sm:p-8">
+        <h1 id="application-title" class="font-display text-3xl font-bold text-white">Solicitud de información</h1>
+        <p class="mt-3 text-sm text-slate-300 sm:text-base">
+          Completa este formulario para que nuestro equipo comercial evalúe tu operación y te contacte en 24-48 horas.
+        </p>
+
+        <div
+          id="successMessage"
+          class="mt-6 hidden rounded-xl border border-emerald-400/40 bg-emerald-500/10 p-4 text-emerald-100"
+          role="status"
+          aria-live="polite"
+        ></div>
+
+        <div
+          id="volumeWarning"
+          class="mt-6 hidden rounded-xl border border-amber-400/40 bg-amber-500/10 p-4 text-sm text-amber-100"
+          role="status"
+          aria-live="polite"
+        >
+          Para volúmenes menores a 100 envíos mensuales, nuestros servicios podrían no ser la solución más eficiente. ¿Seguro que quieres continuar?
+        </div>
+
+        <form id="applicationForm" class="mt-6 space-y-8" novalidate aria-label="Formulario de solicitud de información TrackFlow">
+          <fieldset class="space-y-5">
+            <legend class="font-display text-xl font-semibold text-cyan-200">Datos de la empresa</legend>
+
+            <div>
+              <label for="companyName" class="mb-2 block text-sm font-medium text-slate-200">Nombre de la empresa *</label>
+              <input
+                id="companyName"
+                name="companyName"
+                type="text"
+                required
+                minlength="2"
+                class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder-slate-500 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                aria-describedby="companyNameError"
+              />
+              <p id="companyNameError" class="mt-1 hidden text-sm text-rose-300" role="alert"></p>
+            </div>
+
+            <div>
+              <label for="website" class="mb-2 block text-sm font-medium text-slate-200">Sitio web de la empresa</label>
+              <input
+                id="website"
+                name="website"
+                type="url"
+                placeholder="https://tuempresa.com"
+                class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder-slate-500 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                aria-describedby="websiteError"
+              />
+              <p id="websiteError" class="mt-1 hidden text-sm text-rose-300" role="alert"></p>
+            </div>
+
+            <div class="grid gap-5 md:grid-cols-2">
+              <div>
+                <label for="country" class="mb-2 block text-sm font-medium text-slate-200">País de operación principal *</label>
+                <select
+                  id="country"
+                  name="country"
+                  required
+                  class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                  aria-describedby="countryError"
+                >
+                  <option value="">Selecciona una opción</option>
+                  <option value="Estados Unidos">Estados Unidos</option>
+                  <option value="España">España</option>
+                  <option value="Ambos">Ambos</option>
+                  <option value="Otro">Otro</option>
+                </select>
+                <p id="countryError" class="mt-1 hidden text-sm text-rose-300" role="alert"></p>
+              </div>
+              <div>
+                <label for="productType" class="mb-2 block text-sm font-medium text-slate-200">Tipo de producto *</label>
+                <select
+                  id="productType"
+                  name="productType"
+                  required
+                  class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                  aria-describedby="productTypeError"
+                >
+                  <option value="">Selecciona una opción</option>
+                  <option value="Moda">Moda</option>
+                  <option value="Electrónica">Electrónica</option>
+                  <option value="Cosmética">Cosmética</option>
+                  <option value="Alimentación">Alimentación</option>
+                  <option value="Otro">Otro</option>
+                </select>
+                <p id="productTypeError" class="mt-1 hidden text-sm text-rose-300" role="alert"></p>
+              </div>
+            </div>
+
+            <div>
+              <label for="monthlyVolume" class="mb-2 block text-sm font-medium text-slate-200"
+                >Volumen mensual estimado de envíos *</label
+              >
+              <select
+                id="monthlyVolume"
+                name="monthlyVolume"
+                required
+                class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                aria-describedby="monthlyVolumeError"
+              >
+                <option value="">Selecciona una opción</option>
+                <option value="0-100">0-100</option>
+                <option value="101-500">101-500</option>
+                <option value="501-2000">501-2000</option>
+                <option value="2000+">2000+</option>
+                <option value="No estoy seguro">No estoy seguro</option>
+              </select>
+              <p id="monthlyVolumeError" class="mt-1 hidden text-sm text-rose-300" role="alert"></p>
+            </div>
+          </fieldset>
+
+          <fieldset class="space-y-5">
+            <legend class="font-display text-xl font-semibold text-cyan-200">Persona de contacto</legend>
+            <div class="grid gap-5 md:grid-cols-2">
+              <div>
+                <label for="contactPerson" class="mb-2 block text-sm font-medium text-slate-200">Persona de contacto *</label>
+                <input
+                  id="contactPerson"
+                  name="contactPerson"
+                  type="text"
+                  required
+                  class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder-slate-500 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                  aria-describedby="contactPersonError"
+                />
+                <p id="contactPersonError" class="mt-1 hidden text-sm text-rose-300" role="alert"></p>
+              </div>
+
+              <div>
+                <label for="corporateEmail" class="mb-2 block text-sm font-medium text-slate-200">Email corporativo *</label>
+                <input
+                  id="corporateEmail"
+                  name="corporateEmail"
+                  type="email"
+                  required
+                  placeholder="nombre@empresa.com"
+                  class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder-slate-500 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                  aria-describedby="corporateEmailError"
+                />
+                <p id="corporateEmailError" class="mt-1 hidden text-sm text-rose-300" role="alert"></p>
+              </div>
+            </div>
+
+            <div>
+              <label for="phone" class="mb-2 block text-sm font-medium text-slate-200">Teléfono *</label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                required
+                placeholder="+1 213 555 0147"
+                class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder-slate-500 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                aria-describedby="phoneError"
+              />
+              <p id="phoneError" class="mt-1 hidden text-sm text-rose-300" role="alert"></p>
+            </div>
+          </fieldset>
+
+          <fieldset class="space-y-4">
+            <legend class="font-display text-xl font-semibold text-cyan-200">Servicios de interés *</legend>
+            <p class="text-sm text-slate-400">Selecciona al menos un servicio</p>
+            <div class="grid gap-3 sm:grid-cols-3" role="group" aria-describedby="servicesError">
+              <label class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 p-3">
+                <input type="checkbox" name="services" value="Almacenaje" class="h-4 w-4 accent-cyan-300" /> Almacenaje
+              </label>
+              <label class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 p-3">
+                <input type="checkbox" name="services" value="Última milla" class="h-4 w-4 accent-cyan-300" /> Última milla
+              </label>
+              <label class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 p-3">
+                <input type="checkbox" name="services" value="Logística inversa" class="h-4 w-4 accent-cyan-300" /> Logística inversa
+              </label>
+            </div>
+            <p id="servicesError" class="hidden text-sm text-rose-300" role="alert"></p>
+          </fieldset>
+
+          <fieldset class="space-y-4">
+            <legend class="font-display text-xl font-semibold text-cyan-200">¿Actualmente trabajas con otro 3PL? *</legend>
+            <div class="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-describedby="current3plError">
+              <label class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 p-3">
+                <input type="radio" name="current3pl" value="Sí" class="h-4 w-4 accent-cyan-300" /> Sí
+              </label>
+              <label class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 p-3">
+                <input type="radio" name="current3pl" value="No" class="h-4 w-4 accent-cyan-300" /> No
+              </label>
+              <label class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 p-3">
+                <input type="radio" name="current3pl" value="Estoy evaluando opciones" class="h-4 w-4 accent-cyan-300" /> Estoy evaluando opciones
+              </label>
+            </div>
+            <p id="current3plError" class="hidden text-sm text-rose-300" role="alert"></p>
+          </fieldset>
+
+          <fieldset class="space-y-3">
+            <legend class="font-display text-xl font-semibold text-cyan-200">Comentarios o necesidades específicas</legend>
+            <label for="comments" class="block text-sm text-slate-300">Comparte detalles adicionales (máximo 500 caracteres)</label>
+            <textarea
+              id="comments"
+              name="comments"
+              rows="5"
+              maxlength="500"
+              class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder-slate-500 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+              aria-describedby="commentsCounter commentsError"
+            ></textarea>
+            <p id="commentsCounter" class="text-xs text-slate-400" aria-live="polite">500 caracteres disponibles</p>
+            <p id="commentsError" class="hidden text-sm text-rose-300" role="alert"></p>
+          </fieldset>
+
+          <div>
+            <label class="flex items-start gap-3 text-sm text-slate-200">
+              <input
+                id="privacyPolicy"
+                name="privacyPolicy"
+                type="checkbox"
+                required
+                class="mt-0.5 h-4 w-4 accent-cyan-300"
+                aria-describedby="privacyPolicyError"
+              />
+              Acepto política de privacidad *
+            </label>
+            <p id="privacyPolicyError" class="mt-1 hidden text-sm text-rose-300" role="alert"></p>
+          </div>
+
+          <div class="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="submit"
+              class="rounded-lg bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
+            >
+              Enviar solicitud
+            </button>
+            <button
+              type="reset"
+              class="rounded-lg border border-slate-700 px-5 py-3 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
+            >
+              Limpiar formulario
+            </button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script src="validation.js"></script>
+  </body>
+</html>

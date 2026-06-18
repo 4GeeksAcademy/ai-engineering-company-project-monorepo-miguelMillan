@@ -64,6 +64,23 @@ ai-engineering-company-project-monorepo/
 
 ---
 
+## Run the landing locally (Codespaces)
+
+For this web milestone (HTML + Tailwind CDN + JS), run a static server with:
+
+```bash
+npx serve . -l 4173
+```
+
+Then open:
+
+- `http://127.0.0.1:4173/index.html`
+- `http://127.0.0.1:4173/application.html`
+
+This command is Codespaces-compatible and needs no extra setup.
+
+---
+
 ## Milestones (reference)
 
 | Milestone | Focus        | Typical deliverables                        |
