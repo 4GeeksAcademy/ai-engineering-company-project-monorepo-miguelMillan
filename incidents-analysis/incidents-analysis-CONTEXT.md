@@ -35,9 +35,9 @@ El volumen de incidencias es alto: el 80% de las consultas podría automatizarse
 | `description`        | string  | ✅        | Texto libre, mínimo 5 caracteres                    |
 | `status`             | string  | ✅        | `OPEN`, `CLOSED`, `DISCARDED`                       |
 | `customer_email`     | string  | ✅        | Email válido del cliente que reporta (**sensible**) |
-| `satisfaction_score` | integer | ❌\*      | Entero 1–5. **Requerido si** `status = CLOSED`      |
+| `satisfaction_score` | integer | ❌*      | Entero 1–5. **Requerido si** `status = CLOSED`      |
 
-\*`satisfaction_score` es opcional en la estructura, pero un registro `CLOSED` sin este valor se considera **incompleto**.
+*`satisfaction_score` es opcional en la estructura, pero un registro `CLOSED` sin este valor se considera **incompleto**.
 
 > ⚠️ El campo `customer_email` contiene correos reales y por eso este archivo no puede compartirse con herramientas de IA externas. Tu script nunca debe imprimir, registrar ni exportar correos individuales en ninguna salida.
 
@@ -83,7 +83,7 @@ Tu script debe reportar cuántos registros caen en cada tipo de regla.
 
 ## Distribución de datos (archivo de prueba provisto)
 
-El archivo `incidents-trackflow.csv` se envió como adjunto (ver ficheros `incidents-trackflow.csv`). Los siguientes valores describen su contenido y son los que tu script debe producir exactamente.
+**Nombre de archivo:** `incidents-trackflow.csv`. Los siguientes valores describen su contenido y son los que tu script debe producir exactamente.
 
 **Total de filas:** 100
 
@@ -134,7 +134,7 @@ Promedio: **3.06**
 
 Cuando el estudiante ejecute `python analyze.py incidents-trackflow.csv` con el archivo provisto, la salida en consola debe mostrar los valores siguientes en todas las secciones **obligatorias** (totales, desglose de inválidos, categoría, estado y satisfacción). El bloque `BREAKDOWN BY COUNTRY` es **recomendado** para TrackFlow — contexto útil para stakeholders, pero no obligatorio para aprobar.
 
-```
+```text
 ============================================================
   TRACKFLOW — INCIDENT REPORT ANALYSIS
   Source file: incidents-trackflow.csv
@@ -187,7 +187,7 @@ Export results to CSV? [y / n]:
 ## Nota de stakeholders
 
 > **De Valentina Cruz (CX Manager):**
-> _"Los puntajes de satisfacción en logística suelen ser más bajos que el promedio, eso es normal en nuestro sector. Lo que necesito entender es si el problema es más grave en EE. UU. o en España, y si está concentrado en categorías como_ `DELAYED_DELIVERY` _o_ `LOST_PARCEL`_. Un desglose por país en consola me ayudaría — inclúyelo si puedes. La exportación CSV debe tener una fila por métrica; la usaré en el reporte para clientes. Y como siempre: ningún correo de cliente en la salida, nunca."_
+> _"Los puntajes de satisfacción en logística suelen ser más bajos que el promedio, eso es normal en nuestro sector. Lo que necesito entender es si el problema es más grave en EE. UU. o en España, y si está concentrado en categorías como_ `DELAYED_DELIVERY` _o_ `LOST_PARCEL`_. Un desglose por país en consola me ayudaría — inclúyelo si puedes. La exportación CSV debe tener una fila por métrica; la usaré en el reporte para clientes. Y como siempre: ningún correo de cliente en la salida, nunca."
 
 ---
 
