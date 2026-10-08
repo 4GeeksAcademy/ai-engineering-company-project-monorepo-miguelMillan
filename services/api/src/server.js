@@ -114,10 +114,33 @@ const server = http.createServer((req, res) => {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'access-control-allow-origin': '*',
-      'access-control-allow-methods': 'GET, POST, OPTIONS',
+      'access-control-allow-methods': 'GET, POST, PATCH, DELETE, OPTIONS',
       'access-control-allow-headers': 'content-type',
     })
     res.end()
+    return
+  }
+
+  if (/^\/suppliers(?:\/|\?|$)/.test(req.url)) {
+    const upstream = http.request({
+      hostname: '127.0.0.1',
+      port: Number(process.env.SUPPLIERS_PORT ?? 8081),
+      path: req.url,
+      method: req.method,
+      headers: req.headers,
+    }, (response) => {
+      res.writeHead(response.statusCode, {
+        ...response.headers,
+        'access-control-allow-origin': '*',
+      })
+      response.pipe(res)
+    })
+    upstream.on('error', () => {
+      if (!res.headersSent) sendJson(res, 503, { error: 'El directorio de proveedores no está disponible.' })
+      else res.destroy()
+    })
+    req.on('aborted', () => upstream.destroy())
+    req.pipe(upstream)
     return
   }
 

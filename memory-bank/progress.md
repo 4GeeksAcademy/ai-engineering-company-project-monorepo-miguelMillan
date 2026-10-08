@@ -1,18 +1,29 @@
 # Progress Log — TrackFlow
 
 ## Estado general
-- Fases 1 y 2 del analizador de incidencias completadas y verificadas con `scripts/incidents-trackflow.csv`.
-- Contexto de negocio consolidado desde `CONTEXT.md` y `CONTEXT-trackflow-briefing.md`.
-- El contexto anterior del Hito 2 esta archivado en `memory-bank/history/HITO02-CONTEXT.md`. La tarea activa es el analisis de incidencias definido en el `CONTEXT.md` actual.
-- Actualizacion 2026-10-08: iniciada esta tarea tras revisar `CONTEXT.md`, `projectbrief.md`, `techContext.md`, este archivo y los contextos historicos.
-- El contexto completado se archivo como `memory-bank/history/INCIDENTS-ANALYSIS-CONTEXT.md`.
+- Actualizacion 2026-10-08: implementado el Hito 09, directorio de proveedores de TrackFlow, conforme al `CONTEXT.md` activo y la rubrica de entrega.
+- Backend y frontend funcionales; backend, persistencia real, integracion HTTP, build y lint verificados. Verificacion visual de navegador pendiente por bibliotecas del contenedor.
+- Contexto del Hito 09 archivado integro en `memory-bank/history/HITO09-CONTEXT.md`; el original de raiz se conserva.
+- Se mantiene el analizador de incidencias anterior, cuyo contexto esta archivado en `memory-bank/history/INCIDENTS-ANALYSIS-CONTEXT.md`.
+- Regla permanente de archivo y progreso incorporada en `AGENTS.md`, independiente de commits, con autorizacion del desarrollador para estas actualizaciones.
 
 ## Protocolo para nuevas funciones
 - Antes de implementar o anadir cualquier funcion, leer este `progress.md` y revisar los contextos de `memory-bank/history/` para conocer el estado, las decisiones y las funciones existentes.
 - Contrastar esos antecedentes con el `CONTEXT.md` activo; no inventar requisitos ni duplicar implementaciones existentes.
-- Al completar un contexto, archivarlo en `memory-bank/history/` y actualizar este archivo.
+- Al cerrar cada hito, archivar una copia integra del contexto en `memory-bank/history/` y actualizar este archivo, incluso sin commit. Preservar historicos existentes y registrar expresamente pruebas pendientes o bloqueadas.
 
 ## Completado
+- Hito 09 - directorio de proveedores:
+  - Estructura de entrega: `services/api/main.py`, `models.py`, `database.py`, `routes/suppliers.py` y `seed.py`.
+  - Modelos Pydantic separados de entrada/respuesta con los campos exactos, categorias del contexto, estados `active`/`suspended`, tarifa positiva y finita, moneda por pais y `updated_at` UTC generado por el sistema.
+  - CRUD `/suppliers`, filtros combinados por pais/categoria, actualizacion de tarifa con timestamp y errores 404/422. ID generado por TinyDB.
+  - Seeder ejecutable con `uv run seed`: 15 proveedores exactos, comprobacion previa por nombre/pais, sin duplicados ni sobrescritura de tarifas modificadas; informa del numero de inserciones.
+  - Persistencia TinyDB compartida por API y seeder; bloqueo dentro del proceso, una instancia/worker y seeder con API detenida.
+  - API Node existente conserva incidencias y redirige `/suppliers` a FastAPI; arranque conjunto con `npm run dev`.
+  - Pagina en `uis/backoffice/src/app/suppliers/SupplierDirectory.tsx`, accesible desde el menu: listado API, filtros sin recarga, formulario completo con errores, tarifas editables y controles de suspension/reactivacion con estados diferenciados.
+  - Se mantiene `uis/backoffice` como aplicacion interna React/Vite; no se duplica en `uis/application` ni se migra a Next.js.
+  - Comandos de instalacion, seeder, ejecucion y pruebas documentados en los README de API y backoffice.
+  - Contexto archivado y regla permanente actualizada por peticion explicita del desarrollador.
 - Fase 1 - analisis CSV local:
   - Creada la CLI `scripts/analyze.py` y el modulo reutilizable `scripts/incidents_analysis.py` con validacion del esquema, clasificacion de errores, metricas, CSAT y exportacion a `results.csv`.
   - El archivo de referencia `incidents-trackflow.csv` se compara con los resultados declarados en `CONTEXT.md`; las discrepancias detienen el proceso.
@@ -47,9 +58,14 @@
 - Creacion de `services/api` con endpoint `GET /health` y README operativo.
 
 ## En progreso
-- Ninguna tarea pendiente para este contexto.
+- Hito 09: pendiente completar la verificacion visual/funcional en Chromium (desktop y movil) tras instalar las dependencias de sistema del navegador.
 
 ## Validaciones ejecutadas
+- Hito 09: `cd services/api && uv run pytest -q --tb=short`: 29 pruebas correctas; incluye comparacion literal de seeder/categorias/estados con `CONTEXT.md` y reinicio de un proceso Uvicorn real con recuperacion de los datos.
+- Hito 09: `uv run seed` dos veces sobre base temporal nueva: `Proveedores insertados: 15` y `Proveedores insertados: 0`. Base existente: 0 y 0.
+- Hito 09: `cd uis/backoffice && npm run test:e2e -- --grep 'API integrada'`: 1 prueba correcta a traves de Vite/Node/FastAPI, con validaciones, CRUD y conservacion del endpoint de incidencias.
+- Hito 09: `npm run build` y `npm run lint` en `uis/backoffice`: correctos despues de reorganizar la pagina.
+- Hito 09: prueba visual Playwright preparada (filtros, alta, validacion cliente, errores API, tarifas, estados, desktop/movil); no se considera aprobada porque Chromium no inicia sin `libatk-1.0.so.0`.
 - `npm run typecheck` en raiz: OK (tras instalar dependencias raiz con `npm install`).
 - `npm run build` en `uis/website`: OK.
 - `npm run build` en `uis/backoffice`: OK.
@@ -61,8 +77,11 @@
 - `npm --prefix uis/backoffice run build`: OK.
 
 ## Proximos pasos
-- Sin pasos pendientes para el contexto de analisis de incidencias.
+- Instalar bibliotecas Linux de Chromium con `npx playwright install-deps chromium` desde una terminal con permisos adecuados y ejecutar `npm run test:e2e` en el backoffice con ambos servicios activos.
+- Revisar por separado la vulnerabilidad alta preexistente de `source-map-js@1.2.1`, detectada por npm audit; no se ha aplicado una actualizacion ajena al alcance.
 
 ## Riesgos / bloqueos conocidos
 - Aun no existe pipeline CI del monorepo para validar todos los subproyectos de forma unificada.
 - Captura automatica con Playwright bloqueada en este entorno por dependencia de sistema faltante (`libatk-1.0.so.0`).
+- TinyDB requiere una unica instancia/worker; no admite escrituras multiproceso seguras ni seeder concurrente con la API.
+- Dependencia preexistente `source-map-js@1.2.1` con aviso de seguridad alto. Starlette TestClient muestra una advertencia de deprecacion de httpx, sin fallos de pruebas.
