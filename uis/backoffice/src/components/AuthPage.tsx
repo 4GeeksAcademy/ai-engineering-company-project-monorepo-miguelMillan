@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ArrowLeft, KeyRound, LogIn, Mail } from 'lucide-react'
-import { authRequest, getSessionToken, saveSession } from '../utils/auth'
+import { apiRequest, AuthRequestError, authRequest, getSessionToken, saveSession } from '../utils/auth'
 
-type AuthPath = '/login' | '/forgot-password' | '/reset-password' | '/account/change-password'
+type AuthPath = '/login' | '/register' | '/forgot-password' | '/reset-password' | '/account/change-password'
 
 const titles: Record<AuthPath, string> = {
   '/login': 'Iniciar sesión',
+  '/register': 'Crear cuenta',
   '/forgot-password': 'Recuperar contraseña',
   '/reset-password': 'Restablecer contraseña',
   '/account/change-password': 'Cambiar contraseña',
@@ -17,6 +18,7 @@ const linkClass = 'inline-flex items-center gap-2 rounded-sm text-sm font-semibo
 
 export function AuthPage({ path }: { path: AuthPath }) {
   const isLogin = path === '/login'
+  const isRegister = path === '/register'
   const isForgot = path === '/forgot-password'
   const isReset = path === '/reset-password'
   const isChange = path === '/account/change-password'
@@ -25,6 +27,7 @@ export function AuthPage({ path }: { path: AuthPath }) {
   const [complete, setComplete] = useState(false)
   const [checking, setChecking] = useState(isChange)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     if (isLogin && params.get('password_reset') === 'success') return 'Contraseña restablecida. Ya puedes iniciar sesión con tu nueva contraseña.'
@@ -56,6 +59,7 @@ export function AuthPage({ path }: { path: AuthPath }) {
     const newPassword = String(data.get('new_password') ?? '')
     setError('')
     setNotice('')
+    setFieldErrors({})
     if (!isLogin && !isForgot) {
       if (newPassword !== data.get('confirm_password')) {
         setError('La nueva contraseña y su confirmación no coinciden.')
@@ -69,7 +73,25 @@ export function AuthPage({ path }: { path: AuthPath }) {
     submitting.current = true
     setPending(true)
     try {
-      if (isLogin) {
+      if (isRegister) {
+        const values = Object.fromEntries(new FormData(event.currentTarget).entries())
+        const registration = Object.fromEntries(
+          ['name', 'phone', 'address'].reduce<[string, FormDataEntryValue][]>((fields, field) => {
+            const value = values[field]
+            if (typeof value === 'string' && value.trim()) fields.push([field, value.trim()])
+            return fields
+          }, []),
+        )
+        await apiRequest('/users', {
+          method: 'POST',
+          body: JSON.stringify({ email: values.email, password: values.password, ...registration }),
+        })
+        const result = await authRequest<{ access_token: string }>('/login', {
+          method: 'POST', body: JSON.stringify({ email: values.email, password: values.password }),
+        })
+        saveSession(result.access_token)
+        window.location.assign('/')
+      } else if (isLogin) {
         const result = await authRequest<{ access_token: string }>('/login', {
           method: 'POST', body: JSON.stringify({ email: data.get('email'), password: data.get('password') }),
         })
@@ -93,6 +115,7 @@ export function AuthPage({ path }: { path: AuthPath }) {
       }
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : 'No se pudo conectar con el servidor. Inténtalo de nuevo.')
+      if (cause instanceof AuthRequestError) setFieldErrors(cause.fields)
     } finally {
       submitting.current = false
       setPending(false)
@@ -115,14 +138,21 @@ export function AuthPage({ path }: { path: AuthPath }) {
         <form onSubmit={submit} className="mt-6" aria-busy={pending} aria-describedby={error || missingToken ? 'auth-error' : undefined}>
           <fieldset disabled={pending || complete || checking || missingToken} className="min-w-0 space-y-5 disabled:opacity-70">
             <legend className="sr-only">{titles[path]}</legend>
-            {(isLogin || isForgot) && <div>
+            {(isLogin || isRegister || isForgot) && <div>
               <label htmlFor="auth-email" className="text-sm font-semibold">Email</label>
-              <input id="auth-email" name="email" type="email" autoComplete="email" required className={inputClass} />
+              <input id="auth-email" name="email" type="email" autoComplete="email" required aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? 'auth-email-error' : undefined} className={inputClass} />
+              {fieldErrors.email && <p id="auth-email-error" className="mt-1 text-sm text-red-800">{fieldErrors.email}</p>}
             </div>}
-            {isLogin && <div>
+            {(isLogin || isRegister) && <div>
               <label htmlFor="auth-password" className="text-sm font-semibold">Contraseña</label>
-              <input id="auth-password" name="password" type="password" autoComplete="current-password" required className={inputClass} />
+              <input id="auth-password" name="password" type="password" autoComplete={isRegister ? 'new-password' : 'current-password'} minLength={isRegister ? 8 : undefined} required aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? 'auth-password-error' : undefined} className={inputClass} />
+              {fieldErrors.password && <p id="auth-password-error" className="mt-1 text-sm text-red-800">{fieldErrors.password}</p>}
             </div>}
+            {isRegister && <>
+              <div><label htmlFor="register-name" className="text-sm font-semibold">Nombre <span className="font-normal text-slate-500">(opcional)</span></label><input id="register-name" name="name" autoComplete="name" aria-invalid={Boolean(fieldErrors.name)} aria-describedby={fieldErrors.name ? 'register-name-error' : undefined} className={inputClass} />{fieldErrors.name && <p id="register-name-error" className="mt-1 text-sm text-red-800">{fieldErrors.name}</p>}</div>
+              <div><label htmlFor="register-phone" className="text-sm font-semibold">Teléfono <span className="font-normal text-slate-500">(opcional)</span></label><input id="register-phone" name="phone" type="tel" autoComplete="tel" className={inputClass} /></div>
+              <div><label htmlFor="register-address" className="text-sm font-semibold">Dirección <span className="font-normal text-slate-500">(opcional)</span></label><input id="register-address" name="address" autoComplete="street-address" className={inputClass} /></div>
+            </>}
             {isChange && <div>
               <label htmlFor="current-password" className="text-sm font-semibold">Contraseña actual</label>
               <input id="current-password" name="current_password" type="password" autoComplete="current-password" required className={inputClass} />
@@ -144,6 +174,7 @@ export function AuthPage({ path }: { path: AuthPath }) {
         </form>
         <nav aria-label="Acceso y recuperación" className="mt-6 flex flex-col items-start gap-4">
           {isLogin && <a href="/forgot-password" className={linkClass}>¿Olvidaste tu contraseña?</a>}
+          {isLogin && <a href="/register" className={linkClass}>Crear una cuenta</a>}
           {isReset && (error || missingToken) && <a href="/forgot-password" className={linkClass}>Solicitar un nuevo enlace</a>}
           {!isLogin && <a href={isChange ? '/' : '/login'} className={linkClass}><ArrowLeft size={16} aria-hidden="true" />{isChange ? 'Volver al backoffice' : 'Volver a iniciar sesión'}</a>}
         </nav>

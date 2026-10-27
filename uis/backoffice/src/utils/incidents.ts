@@ -1,4 +1,4 @@
-import { clearSession, getSessionToken } from './auth'
+import { apiFetch, AuthRequestError } from './auth'
 
 export const statusLabels = { open: 'Abierta', in_progress: 'En curso', resolved: 'Resuelta', discarded: 'Descartada' }
 export const originLabels = { customer: 'Cliente', branch: 'Sede', internal: 'Interno' }
@@ -51,24 +51,15 @@ export function incidentError(cause: unknown): string {
   return cause instanceof IncidentApiError ? cause.message : 'No se pudo completar la operación. Inténtalo de nuevo.'
 }
 export async function incidentRequest<Result>(path = '', options: RequestInit = {}): Promise<Result> {
-  const token = getSessionToken()
-  if (!token) throw new IncidentApiError('Inicia sesión para gestionar las incidencias.')
-  const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
-  const headers = new Headers(options.headers)
-  headers.set('Content-Type', 'application/json')
-  headers.set('Authorization', `Bearer ${token}`)
   let response: Response
   try {
-    response = await fetch(`${base}/api/incidents${path}`, { ...options, headers })
-  } catch {
+    response = await apiFetch(`/api/incidents${path}`, options)
+  } catch (cause: unknown) {
+    if (cause instanceof AuthRequestError) throw new IncidentApiError(cause.message)
     throw new IncidentApiError('No se pudo conectar con el servidor. Comprueba la conexión y vuelve a intentarlo.')
   }
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
-    if (response.status === 401) {
-      clearSession()
-      throw new IncidentApiError('Tu sesión ha caducado. Inicia sesión de nuevo.')
-    }
     if (response.status === 400) {
       const fields: Record<string, string> = {}
       const items = Array.isArray(payload?.errors) ? payload.errors : [payload?.detail]

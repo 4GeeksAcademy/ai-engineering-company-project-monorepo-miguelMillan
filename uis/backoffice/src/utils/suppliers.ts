@@ -1,4 +1,4 @@
-import { getSessionToken } from './auth'
+import { apiFetch } from './auth'
 
 export const categories = [
   'carrier_last_mile', 'carrier_international', 'warehouse_supplies',
@@ -45,11 +45,7 @@ const fieldLabels: Record<string, string> = {
 }
 
 export async function supplierRequest<Result>(path = '', options: RequestInit = {}): Promise<Result> {
-  const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
-  const response = await fetch(`${base}/suppliers${path}`, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...(getSessionToken() ? { Authorization: `Bearer ${getSessionToken()}` } : {}), ...options.headers },
-  })
+  const response = await apiFetch(`/suppliers${path}`, options)
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
     const details = payload?.detail
