@@ -1,6 +1,8 @@
 import { MetricCard } from './components/MetricCard'
 import { IncidentAnalysis } from './components/IncidentAnalysis'
 import { SupplierDirectory } from './app/suppliers/SupplierDirectory'
+import { IncidentRegistration } from './app/incidents/IncidentRegistration'
+import { IncidentDirectory } from './app/incidents/IncidentDirectory'
 import { AuthPage } from './components/AuthPage'
 import { clearSession, getSessionToken } from './utils/auth'
 import { LogOut } from 'lucide-react'
@@ -25,7 +27,7 @@ const alerts = [
 ]
 
 function App() {
-  const [activeView, setActiveView] = useState<'overview' | 'incidents' | 'suppliers'>('overview')
+  const [activeView, setActiveView] = useState<'overview' | 'incidents' | 'suppliers' | 'incident-registration' | 'incident-directory'>('overview')
   const path = window.location.pathname.replace(/\/$/, '') || '/'
 
   if (path === '/login' || path === '/forgot-password' || path === '/reset-password' || path === '/account/change-password') {
@@ -41,6 +43,8 @@ function App() {
             <p className="mt-1 text-sm font-medium text-slate-600">Dashboard de operaciones internas</p>
           </div>
           <nav aria-label="Navegación principal" className="flex flex-wrap gap-2">
+            <button type="button" aria-current={activeView === 'incident-directory' ? 'page' : undefined} onClick={() => setActiveView('incident-directory')} className={`rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${activeView === 'incident-directory' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>Incidencias</button>
+            <button type="button" aria-current={activeView === 'incident-registration' ? 'page' : undefined} onClick={() => setActiveView('incident-registration')} className={`rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${activeView === 'incident-registration' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>Registrar incidencia</button>
             <a href={getSessionToken() ? '/account/change-password' : '/login'} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">{getSessionToken() ? 'Cambiar contraseña' : 'Iniciar sesión'}</a>
             {getSessionToken() && <button type="button" title="Cerrar sesión" aria-label="Cerrar sesión" onClick={() => { clearSession(); window.location.assign('/login') }} className="flex h-10 w-10 items-center justify-center rounded-md text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"><LogOut size={18} aria-hidden="true" /></button>}
             <button
@@ -71,7 +75,11 @@ function App() {
         </div>
       </header>
 
-      {activeView === 'suppliers' ? (
+      {activeView === 'incident-directory' ? (
+        <main className="mx-auto w-full max-w-6xl px-6 py-8"><IncidentDirectory /></main>
+      ) : activeView === 'incident-registration' ? (
+        <main className="mx-auto w-full max-w-4xl px-6 py-8"><IncidentRegistration /></main>
+      ) : activeView === 'suppliers' ? (
         <main className="mx-auto w-full max-w-6xl px-6 py-8">
           <SupplierDirectory />
         </main>
