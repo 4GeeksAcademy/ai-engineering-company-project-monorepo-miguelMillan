@@ -1,5 +1,15 @@
 # Progress Log — TrackFlow
 
+## AUTH-02 — autenticación frontend — 2026-10-27
+- Integrados en `uis/backoffice` el registro (`POST /users` con campos opcionales de perfil, luego login automático), persistencia JWT en `localStorage`, vista de perfil (`GET /auth/me`, `PUT /profiles/me`) y guard de sesión para todas las vistas internas. Login, registro, recuperación y restablecimiento siguen siendo públicos; el website no fue modificado.
+- Centralizado el uso Bearer y el manejo de 401 en las llamadas de autenticación, incidencias, proveedores y análisis/exportación CSV. El cierre de sesión elimina el token y redirige a `/login`; Vite reenvía `/users` y `/profiles` a FastAPI.
+- Validaciones: `npm --prefix uis/backoffice run build` y `npm --prefix uis/backoffice run lint` correctos; diagnósticos del editor sin errores. No se ejecutó prueba de navegador.
+- El contexto se archivó íntegro en `memory-bank/history/AUTH02-CONTEXT.md`. Este checkout tiene un backoffice React/Vite; no hay fuentes ni paquete Next.js en `uis/talent-pipeline-tracker`, por lo que la integración se hizo en el frontend interno existente, sin crear otra aplicación.
+
+## Históricos — consolidación del contexto de incidencias — 2026-10-27
+- Eliminados los históricos duplicados `INCIDENTS-BACKEND-CONTEXT.md` y `INCIDENTS-SEED-CONTEXT.md`; ambos eran idénticos byte a byte a `INCIDENTS-FRONTEND-CONTEXT.md`, que se conserva como copia única del briefing. `INCIDENTS-MANAGER-MODEL-CONTEXT.md` se conserva porque su contenido es distinto.
+- Verificación previa: SHA-256 idéntico en los tres duplicados; estado Git previo mostraba `CONTEXT.md` modificado por el usuario. No se modificó ese archivo.
+
 ## Gestor de incidencias — carga real del historico — 2026-10-22
 - Ante el panel con metricas en cero, confirmada la base activa de FastAPI mediante sus archivos abiertos: `services/api/data/suppliers.json`. La tabla incidents estaba vacia; las cargas anteriores solo se habian realizado en bases temporales.
 - Detenido el supervisor Node y confirmada la salida de sus procesos antes de escribir en TinyDB. Ejecutado el seed existente sobre la base real con ruta --db explicita: 100 filas leidas, 95 incidencias insertadas, 0 duplicados y 5 filas invalidas descartadas (4, 26, 43, 69 y 98). No se mostraron datos personales.

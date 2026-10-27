@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { apiFetch } from '../utils/auth'
 
 interface AnalysisReport {
   totals: {
@@ -19,7 +20,6 @@ interface AnalysisReport {
   invalid_records: Array<{ row: number; issues: string[] }>
 }
 
-const apiUrl = import.meta.env.VITE_API_URL ?? ''
 const issueLabels: Record<string, string> = {
   incident_id: 'ID de incidencia ausente o inválido',
   date: 'Fecha ausente o inválida',
@@ -93,7 +93,7 @@ export function IncidentAnalysis() {
     formData.append('file', file)
 
     try {
-      const response = await fetch(`${apiUrl}/api/incidents/analyze`, {
+      const response = await apiFetch('/api/incidents/analyze', {
         method: 'POST',
         body: formData,
       })
@@ -106,6 +106,25 @@ export function IncidentAnalysis() {
       setError(caught instanceof Error ? caught.message : 'No se pudo conectar con la API.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function downloadResults() {
+    setError('')
+    try {
+      const response = await apiFetch('/api/incidents/results/export')
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        throw new Error(payload?.error ?? 'No se pudieron descargar los resultados.')
+      }
+      const url = URL.createObjectURL(await response.blob())
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'results.csv'
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'No se pudieron descargar los resultados.')
     }
   }
 
@@ -160,12 +179,9 @@ export function IncidentAnalysis() {
             {loading ? 'Analizando…' : 'Seleccionar CSV'}
           </button>
           {report && (
-            <a
-              href={`${apiUrl}/api/incidents/results/export`}
-              className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
-            >
+            <button type="button" onClick={downloadResults} className="min-h-11 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">
               Descargar resultados CSV
-            </a>
+            </button>
           )}
         </div>
         <p className="mt-3 min-h-5 text-sm text-red-800" role="status" aria-live="polite">
