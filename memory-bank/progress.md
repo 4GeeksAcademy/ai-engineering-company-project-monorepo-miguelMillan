@@ -1,5 +1,9 @@
 # Progress Log — TrackFlow
 
+## Skill — auditoría de gestión de errores — 2026-10-27
+- Creada la skill invocable `.agents/skills/error-handling-audit/SKILL.md`, adaptada a la estructura actual del monorepo: TypeScript/React/Vite, FastAPI/Python, gateway Node.js y scripts Python. Define revisión de solo lectura, ocho categorías de hallazgo, criterios por tecnología, severidades y formato de informe; no ejecuta remediaciones.
+- Validación: inspección del frontmatter `name`/`description`, ubicación y contenido de la skill. No se modificó código de aplicaciones ni se ejecutaron auditorías o pruebas.
+
 ## AUTH-02 — autenticación frontend — 2026-10-27
 - Integrados en `uis/backoffice` el registro (`POST /users` con campos opcionales de perfil, luego login automático), persistencia JWT en `localStorage`, vista de perfil (`GET /auth/me`, `PUT /profiles/me`) y guard de sesión para todas las vistas internas. Login, registro, recuperación y restablecimiento siguen siendo públicos; el website no fue modificado.
 - Centralizado el uso Bearer y el manejo de 401 en las llamadas de autenticación, incidencias, proveedores y análisis/exportación CSV. El cierre de sesión elimina el token y redirige a `/login`; Vite reenvía `/users` y `/profiles` a FastAPI.
