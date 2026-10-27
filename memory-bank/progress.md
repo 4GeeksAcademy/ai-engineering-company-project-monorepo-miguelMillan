@@ -1,5 +1,12 @@
 # Progress Log — TrackFlow
 
+## HITO05 — inventario backoffice — 2026-10-27
+- Añadida la capa de llamadas a `/inventory` con autenticación existente y vistas de productos, entradas, salidas e historial; protegidas por el guard global del backoffice.
+- Conservado `memory-bank/history/HITO05-CONTEXT.md` sin sobrescribirlo. Archivada la versión vigente usada en `memory-bank/history/HITO05-INVENTORY-UI-CONTEXT-2026-10-27.md`; `cmp` confirma que coincide byte a byte con `CONTEXT.md`.
+- Validaciones: `npm --prefix uis/backoffice run build` y `npm --prefix uis/backoffice run lint`, correctos.
+- Ajustado `inventoryRequest` para mostrar el cuerpo de error tanto en JSON como en texto plano; build y lint repetidos correctamente.
+- Bloqueo: `services/api` no expone las rutas `/inventory`; la integración HTTP requiere un backend compatible disponible en la URL configurada. No se verificaron llamadas reales ni flujos en navegador.
+
 ## API-042 / FE-019 — cobertura backoffice y utilidades — 2026-10-27
 - Actualizado `TESTING.md` con el plan, grupos `/suppliers` y `/api/incidents`, casos de éxito/límite/fallo y ejecución independiente de Jest. Añadidos `test_incidents.py` y fixture autenticado; la suite existente de proveedores se utiliza como segundo grupo.
 - Documentado en `TESTING.md` un caso concreto identificado con apoyo de IA: rechazar tokens de recuperación como sesión y enlaces de reset reutilizados; ambos están cubiertos por pruebas existentes.
