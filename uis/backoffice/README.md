@@ -53,6 +53,28 @@ npm run dev -- --host 0.0.0.0 --port 5174
 
 Verificacion AUTH-03: build y lint correctos. La prueba de interacciones y capturas con Chromium esta pendiente: el contenedor no dispone de `libatk-1.0.so.0`. Instala las dependencias con `npx playwright install-deps chromium` desde una terminal con permisos adecuados antes de verificar en navegador. El envio real requiere credenciales y remitente Resend validos. No se ha medido PageSpeed por no disponer de una URL publica de entrega.
 
+## Gestor centralizado de incidencias
+
+El menu ofrece **Registrar incidencia** e **Incidencias**, sin sustituir la vista anterior de analisis de CSV. Las paginas estan en `src/app/incidents`; los tipos, catalogos y peticiones estan en `src/utils/incidents.ts`.
+
+- Registro: titulo, descripcion, categoria, estado, origen y sede; ID y fechas aparecen como datos automaticos de solo lectura y no se envian. La sede es siempre visible y obligatoria e incluye Central, Los Angeles (almacen/oficina) y Zaragoza (almacen/oficina), con las etiquetas exactas del briefing. Seleccionar origen Sede resalta el campo sin ocultarlo para otros origenes.
+- Envios: bloqueo de duplicados con referencia sincrona, indicador de carga, controles deshabilitados, errores accesibles junto al campo, limpieza tras exito, confirmacion y boton Limpiar. Los errores tecnicos del servidor no se muestran literalmente: se traducen a mensajes locales seguros.
+- Listado: filtros combinados por estado, origen y sede; carga, error con reintento, vacio inicial y sin coincidencias. Cada fila permite desplegar descripcion, UUID y fechas UTC. El selector solo ofrece las transiciones validas; estados finales deshabilitados. La actualizacion es optimista y restaura la fila anterior si falla, con un aviso en la misma fila. Tras el exito se actualizan las metricas y se retiran filas que ya no coincidan con el filtro de estado.
+- Resumen: consulta independiente a `/api/incidents/summary`, con total y todos los conteos por estado, categoria, origen y sede. Tiene carga/error/reintento propios y no bloquea el listado. Los filtros afectan al listado, no al resumen global.
+
+Las peticiones incorporan la sesion Bearer de la pestana. Sin sesion se muestra un mensaje para iniciar sesion desde el menu; una respuesta 401 elimina la sesion caducada. La API/gateway debe estar iniciado: `/api` conserva el destino `API_PROXY_TARGET` (por defecto Node en 8080, que reenvia el gestor a FastAPI en 8081). No es necesario cambiar el proxy para este bloque.
+
+Desde la raiz, con el backend configurado e iniciado:
+
+```bash
+npm --prefix uis/backoffice install
+npm --prefix uis/backoffice run dev -- --host 0.0.0.0 --port 5174 --strictPort
+```
+
+Verificaciones ejecutadas: build y lint correctos sin advertencias; diagnosticos del editor sin errores; comprobacion del codigo compilado en memoria y renderizado servidor de campos, cinco sedes, metadatos de solo lectura, cargas iniciales independientes, catalogos/transiciones, Bearer y errores seguros 400/500/red/401. No se crearon archivos de pruebas.
+
+Pendiente de navegador: envios, errores por campo interactivos, rollback, filtros y responsive visual. Chromium no arranca por falta de `libatk-1.0.so.0`; instala las dependencias con `npx playwright install-deps chromium` desde una terminal con permisos adecuados. La comprobacion en memoria no sustituye estos flujos. PageSpeed no medido sin URL publica de entrega.
+
 ## Build
 ```bash
 npm run build

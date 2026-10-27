@@ -3,53 +3,24 @@ import io
 import json
 import sys
 from collections import Counter
-from datetime import date
 from pathlib import Path
-import re
 
 
-COUNTRIES = {"US", "ES"}
-CUSTOMER_TYPES = {"B2B", "B2C"}
-CARRIERS_BY_COUNTRY = {
-    "US": {"UPS", "FEDEX", "DHL_US"},
-    "ES": {"MRW", "SEUR", "DHL_ES", "LOCAL_ES"},
-}
-CATEGORIES = (
-    "LOST_PARCEL",
-    "DELAYED_DELIVERY",
-    "WRONG_ADDRESS",
-    "RETURN_REQUEST",
-    "DAMAGE",
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from packages.shared.incident_validation import (
+    CARRIERS_BY_COUNTRY,
+    CATEGORIES,
+    COUNTRIES,
+    CSVFormatError,
+    CUSTOMER_TYPES,
+    REQUIRED_FIELDS,
+    RULE_LABELS,
+    STATUSES,
+    csv_value as _value,
+    record_issues as _record_issues,
+    validated_csv_rows,
 )
-STATUSES = ("OPEN", "CLOSED", "DISCARDED")
-REQUIRED_FIELDS = (
-    "incident_id",
-    "date",
-    "country",
-    "customer_type",
-    "tracking_number",
-    "carrier",
-    "category",
-    "description",
-    "status",
-    "customer_email",
-)
-
-RULE_LABELS = {
-    "incident_id": "Invalid or missing incident ID",
-    "date": "Invalid or missing date",
-    "country": "Invalid or missing country",
-    "customer_type": "Invalid or missing customer type",
-    "tracking_number": "Invalid tracking number",
-    "carrier_country": "Carrier/country mismatch",
-    "category": "Invalid or missing category",
-    "description": "Invalid or missing description",
-    "status": "Invalid or missing status",
-    "customer_email": "Invalid or missing email",
-    "closed_without_score": "Closed incident, no score",
-    "score_out_of_range": "Satisfaction score outside 1-5",
-    "duplicate_incident_id": "Duplicate incident ID",
-}
 
 REFERENCE = {
     "total_records": 100,
@@ -76,123 +47,31 @@ REFERENCE = {
 }
 
 
-class CSVFormatError(ValueError):
-    pass
-
-
-def _value(row, field):
-    value = row.get(field)
-    return value.strip() if isinstance(value, str) else ""
-
-
-def _record_issues(row, seen_ids):
-    issues = []
-    values = {field: _value(row, field) for field in REQUIRED_FIELDS}
-
-    incident_id = values["incident_id"]
-    if not re.fullmatch(r"TRF-\d{6}", incident_id):
-        issues.append("incident_id")
-    elif incident_id in seen_ids:
-        issues.append("duplicate_incident_id")
-    else:
-        seen_ids.add(incident_id)
-
-    incident_date = values["date"]
-    try:
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", incident_date):
-            raise ValueError
-        date.fromisoformat(incident_date)
-    except ValueError:
-        issues.append("date")
-
-    country = values["country"]
-    if country not in COUNTRIES:
-        issues.append("country")
-
-    if values["customer_type"] not in CUSTOMER_TYPES:
-        issues.append("customer_type")
-
-    if len(values["tracking_number"]) < 8:
-        issues.append("tracking_number")
-
-    carrier = values["carrier"]
-    if country not in CARRIERS_BY_COUNTRY or carrier not in CARRIERS_BY_COUNTRY[country]:
-        issues.append("carrier_country")
-
-    if values["category"] not in CATEGORIES:
-        issues.append("category")
-
-    if len(values["description"]) < 5:
-        issues.append("description")
-
-    status = values["status"]
-    if status not in STATUSES:
-        issues.append("status")
-
-    if "@" not in values["customer_email"]:
-        issues.append("customer_email")
-
-    score_text = _value(row, "satisfaction_score")
-    score = None
-    if score_text:
-        try:
-            score = int(score_text)
-        except ValueError:
-            issues.append("score_out_of_range")
-        else:
-            if score < 1 or score > 5:
-                issues.append("score_out_of_range")
-
-    if status == "CLOSED" and score is None and "score_out_of_range" not in issues:
-        issues.append("closed_without_score")
-
-    return issues, score
-
-
 def analyze_csv_text(csv_text):
-    if not csv_text or not csv_text.strip():
-        raise CSVFormatError("El archivo CSV está vacío.")
+    category_counts = Counter()
+    status_counts = Counter()
+    country_counts = Counter()
+    score_counts = Counter()
+    invalid_counts = Counter({rule: 0 for rule in RULE_LABELS})
+    invalid_records = []
+    total_records = 0
+    valid_records = 0
+    closed_records = 0
 
-    try:
-        reader = csv.DictReader(io.StringIO(csv_text, newline=""))
-        headers = reader.fieldnames or []
-        missing_headers = [field for field in REQUIRED_FIELDS if field not in headers]
-        if missing_headers:
-            raise CSVFormatError(
-                "Faltan encabezados obligatorios: " + ", ".join(missing_headers)
-            )
+    for row_number, row, issues, score in validated_csv_rows(csv_text):
+        total_records += 1
+        if issues:
+            invalid_counts.update(issues)
+            invalid_records.append({"row": row_number, "issues": issues})
+            continue
 
-        category_counts = Counter()
-        status_counts = Counter()
-        country_counts = Counter()
-        score_counts = Counter()
-        invalid_counts = Counter({rule: 0 for rule in RULE_LABELS})
-        invalid_records = []
-        seen_ids = set()
-        total_records = 0
-        valid_records = 0
-        closed_records = 0
-
-        for row_number, row in enumerate(reader, start=2):
-            if row is None:
-                continue
-            total_records += 1
-            issues, score = _record_issues(row, seen_ids)
-            if issues:
-                invalid_counts.update(issues)
-                invalid_records.append({"row": row_number, "issues": issues})
-                continue
-
-            valid_records += 1
-            category_counts[_value(row, "category")] += 1
-            status_counts[_value(row, "status")] += 1
-            country_counts[_value(row, "country")] += 1
-            if _value(row, "status") == "CLOSED":
-                closed_records += 1
-                score_counts[score] += 1
-
-    except csv.Error as error:
-        raise CSVFormatError(f"No se pudo interpretar el CSV: {error}") from error
+        valid_records += 1
+        category_counts[_value(row, "category")] += 1
+        status_counts[_value(row, "status")] += 1
+        country_counts[_value(row, "country")] += 1
+        if _value(row, "status") == "CLOSED":
+            closed_records += 1
+            score_counts[score] += 1
 
     scored_records = sum(score_counts.values())
     score_total = sum(score * count for score, count in score_counts.items())
