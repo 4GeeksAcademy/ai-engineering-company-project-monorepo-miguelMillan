@@ -1,16 +1,5 @@
-const sessionKey = 'trackflow.accessToken'
-
-export function getSessionToken(): string | null {
-  return localStorage.getItem(sessionKey)
-}
-
-export function saveSession(token: string): void {
-  localStorage.setItem(sessionKey, token)
-}
-
-export function clearSession(): void {
-  localStorage.removeItem(sessionKey)
-}
+import { clearSession, getSessionToken } from './session'
+export { clearSession, getSessionToken, saveSession } from './session'
 
 export class AuthRequestError extends Error {
   fields: Record<string, string>

@@ -17,7 +17,11 @@ seed = "seed:main"
 serve = "main:main"
 
 [dependency-groups]
-dev = ["pytest>=8,<9", "httpx>=0.28,<1"]
+dev = [
+    "pytest>=8,<9",
+    "httpx>=0.28,<1",
+    "pytest-cov>=7.1.0",
+]
 
 [build-system]
 requires = ["setuptools>=75"]

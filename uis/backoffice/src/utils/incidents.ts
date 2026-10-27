@@ -1,4 +1,6 @@
 import { apiFetch, AuthRequestError } from './auth'
+import { IncidentApiError } from './incidentErrors'
+export { IncidentApiError, incidentError } from './incidentErrors'
 
 export const statusLabels = { open: 'Abierta', in_progress: 'En curso', resolved: 'Resuelta', discarded: 'Descartada' }
 export const originLabels = { customer: 'Cliente', branch: 'Sede', internal: 'Interno' }
@@ -42,13 +44,6 @@ export const fieldMessages: Record<string, string> = {
   title: 'Introduce un título que no esté vacío.', description: 'Introduce una descripción que no esté vacía.',
   category: 'Selecciona una categoría de la lista.', status: 'Selecciona un estado permitido.',
   origin: 'Selecciona un origen de la lista.', branch: 'Selecciona una sede de la lista.',
-}
-export class IncidentApiError extends Error {
-  fields: Record<string, string>
-  constructor(message: string, fields: Record<string, string> = {}) { super(message); this.fields = fields }
-}
-export function incidentError(cause: unknown): string {
-  return cause instanceof IncidentApiError ? cause.message : 'No se pudo completar la operación. Inténtalo de nuevo.'
 }
 export async function incidentRequest<Result>(path = '', options: RequestInit = {}): Promise<Result> {
   let response: Response
