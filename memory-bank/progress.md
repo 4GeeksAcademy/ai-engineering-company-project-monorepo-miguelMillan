@@ -1,5 +1,19 @@
 # Progress Log — TrackFlow
 
+## API-042 / FE-019 — cobertura backoffice y utilidades — 2026-10-27
+- Actualizado `TESTING.md` con el plan, grupos `/suppliers` y `/api/incidents`, casos de éxito/límite/fallo y ejecución independiente de Jest. Añadidos `test_incidents.py` y fixture autenticado; la suite existente de proveedores se utiliza como segundo grupo.
+- Documentado en `TESTING.md` un caso concreto identificado con apoyo de IA: rechazar tokens de recuperación como sesión y enlaces de reset reutilizados; ambos están cubiertos por pruebas existentes.
+- Añadidos tests bajo `uis/backoffice/src/__tests__/` para sesión, `positiveRate`, `errorMessage` e `incidentError`. Extraídos los helpers puros a módulos pequeños y conservados sus exports desde las utilidades existentes. Excluidos los tests del tsconfig de producción y conservado su tsconfig Jest.
+- Cobertura: `routes/suppliers.py` 100% (29 tests), `routes/incidents.py` 100% (4 tests), Jest 100% en `session.ts`, `supplierUtils.ts` e `incidentErrors.ts` (14 tests). Suite FastAPI completa: 66 tests correctos. Build y lint de backoffice correctos.
+- Advertencia no bloqueante de deprecación Starlette/httpx. Archivos de cobertura excluidos e ignorados. Contexto archivado íntegro en `memory-bank/history/API-042-FE-019-CONTEXT.md`.
+
+## AUTH-088 — pruebas de autenticación — 2026-10-27
+- Añadido `TESTING.md` antes de escribir los tests con casos previstos de éxito, límites y fallos para registro, login, `/auth/me`, recuperación, reset, cambio y validación de tokens, además de comandos y justificación.
+- Añadidos módulos pytest por endpoint bajo `services/api/tests/`, fixtures con TestClient y TinyDB temporal, y `pytest-cov` en el grupo dev del proyecto API. Eliminadas comprobaciones de OpenAPI/serialización del test de login anterior.
+- Configurado Jest en `uis/backoffice`; aislados y probados los helpers de localStorage en `src/utils/session.ts`, manteniendo sus exports previos desde `auth.ts`.
+- Validaciones: `uv run --directory services/api pytest --cov=routes.auth --cov-report=term-missing --cov-fail-under=70`: 62 correctas, 98,11% en `routes/auth.py`; `npm --prefix uis/backoffice test -- --coverage --runInBand`: 4 correctas, 100% en `session.ts`; build y lint de backoffice correctos. Una advertencia no bloqueante de deprecación Starlette/httpx.
+- Contexto archivado íntegro en `memory-bank/history/AUTH-088-CONTEXT.md`. Sin cambios en lógica de autenticación de producción; el refactor separa únicamente helpers de sesión para probarlos con Jest.
+
 ## Skill — auditoría de gestión de errores — 2026-10-27
 - Creada la skill invocable `.agents/skills/error-handling-audit/SKILL.md`, adaptada a la estructura actual del monorepo: TypeScript/React/Vite, FastAPI/Python, gateway Node.js y scripts Python. Define revisión de solo lectura, ocho categorías de hallazgo, criterios por tecnología, severidades y formato de informe; no ejecuta remediaciones.
 - Validación: inspección del frontmatter `name`/`description`, ubicación y contenido de la skill. No se modificó código de aplicaciones ni se ejecutaron auditorías o pruebas.

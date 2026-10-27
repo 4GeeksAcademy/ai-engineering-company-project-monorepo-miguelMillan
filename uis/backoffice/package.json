@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "jest",
     "test:e2e": "playwright test tests/suppliers.spec.ts --workers=1",
     "preview": "vite preview"
   },
@@ -19,11 +20,15 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
+    "jest": "^30.5.2",
+    "jest-environment-jsdom": "^30.5.2",
     "oxlint": "^1.79.0",
+    "ts-jest": "^29.4.15",
     "typescript": "~6.0.2",
     "vite": "^8.2.2"
   }
