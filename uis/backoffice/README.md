@@ -17,6 +17,12 @@ La app queda disponible por defecto en `http://0.0.0.0:5174` para compatibilidad
 
 La vista **Análisis de incidencias** usa el proxy `/api` de Vite, dirigido por defecto a `http://localhost:8080`. Configura `API_PROXY_TARGET` si el backend local usa otra URL. Para desplegar el frontend por separado, configura `VITE_API_URL` con la URL pública de la API.
 
+## Inventario
+
+El menú **Inventario** contiene las vistas de productos/SKU, entrada de stock, salida de stock e historial de órdenes. Todas consumen `/inventory` mediante `src/utils/inventory.ts`, que reutiliza la sesión Bearer actual; si no hay sesión, el guard del backoffice redirige al login. El stock se consulta a la API y está separado por SKU y almacén. Las salidas muestran la disponibilidad antes del envío y la API vuelve a validar el stock para impedir cantidades negativas.
+
+Para disponer de datos de ejemplo, ejecuta `uv run seed` desde `services/api` con la API detenida. El comando inserta seis SKU, cuatro entradas y tres salidas sin duplicar registros ya existentes. Después inicia el backend con `npm run dev` desde `services/api` y el frontend con el comando de Codespaces indicado abajo. Vite envía `/inventory` a Node en `8080`, que reenvía el Bearer a FastAPI en `8081`.
+
 ## Directorio de proveedores
 La pagina esta organizada en `src/app/suppliers/SupplierDirectory.tsx`. Se mantiene la aplicacion existente en `uis/backoffice` segun el alcance y la rubrica: React/Vite, sin crear una segunda aplicacion en `uis/application`. El formulario y las filas reutilizables se encuentran en `src/components`.
 

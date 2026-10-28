@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from database import database_lifespan
 from routes.auth import router as auth_router
 from routes.incidents import router as incidents_router
+from routes.inventory import router as inventory_router
 from routes.profiles import router as profiles_router
 from routes.suppliers import router
 from routes.users import router as users_router
@@ -60,6 +61,7 @@ def create_app(path: Path | None = None) -> FastAPI:
     application.include_router(profiles_router)
     application.include_router(auth_router)
     application.include_router(incidents_router)
+    application.include_router(inventory_router)
     return application
 
 
