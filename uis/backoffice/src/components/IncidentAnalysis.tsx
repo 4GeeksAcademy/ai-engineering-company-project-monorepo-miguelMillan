@@ -76,6 +76,8 @@ export function IncidentAnalysis() {
   const [fileName, setFileName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [notice, setNotice] = useState('')
   const [dragging, setDragging] = useState(false)
 
   async function analyzeFile(file?: File) {
@@ -111,6 +113,8 @@ export function IncidentAnalysis() {
 
   async function downloadResults() {
     setError('')
+    setNotice('')
+    setDownloading(true)
     try {
       const response = await apiFetch('/api/incidents/results/export')
       if (!response.ok) {
@@ -123,8 +127,11 @@ export function IncidentAnalysis() {
       link.download = 'results.csv'
       link.click()
       URL.revokeObjectURL(url)
+      setNotice('Resultados CSV descargados correctamente.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudieron descargar los resultados.')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -179,14 +186,15 @@ export function IncidentAnalysis() {
             {loading ? 'Analizando…' : 'Seleccionar CSV'}
           </button>
           {report && (
-            <button type="button" onClick={downloadResults} className="min-h-11 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">
-              Descargar resultados CSV
+            <button type="button" onClick={downloadResults} disabled={downloading} className="min-h-11 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-wait disabled:opacity-60">
+              {downloading ? 'Descargando…' : error ? 'Reintentar descarga CSV' : 'Descargar resultados CSV'}
             </button>
           )}
         </div>
         <p className="mt-3 min-h-5 text-sm text-red-800" role="status" aria-live="polite">
           {error}
         </p>
+        {notice && <p className="mt-2 text-sm text-emerald-800" role="status">{notice}</p>}
       </div>
 
       {report && (

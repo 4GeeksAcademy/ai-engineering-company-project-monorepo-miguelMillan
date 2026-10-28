@@ -26,6 +26,7 @@ export function AuthPage({ path }: { path: AuthPath }) {
   const [pending, setPending] = useState(false)
   const [complete, setComplete] = useState(false)
   const [checking, setChecking] = useState(isChange)
+  const [sessionReady, setSessionReady] = useState(!isChange)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState(() => {
@@ -45,10 +46,11 @@ export function AuthPage({ path }: { path: AuthPath }) {
     }
     const controller = new AbortController()
     authRequest('/me', { headers: { Authorization: `Bearer ${session}` }, signal: controller.signal })
-      .then(() => { if (!controller.signal.aborted) setChecking(false) })
+      .then(() => { if (!controller.signal.aborted) setSessionReady(true) })
       .catch((cause: unknown) => {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'No se pudo verificar la sesión. Recarga la página.')
+        if (!controller.signal.aborted) setError(cause instanceof AuthRequestError ? cause.message : 'No se pudo verificar la sesión. Comprueba la conexión e inténtalo de nuevo.')
       })
+      .finally(() => { if (!controller.signal.aborted) setChecking(false) })
     return () => controller.abort()
   }, [isChange])
 
@@ -135,8 +137,9 @@ export function AuthPage({ path }: { path: AuthPath }) {
         {checking && !error && <p role="status" className="mt-4 text-sm">Verificando sesión...</p>}
         {notice && <p role="status" className="mt-5 border-l-4 border-emerald-700 bg-emerald-50 p-4 text-sm text-emerald-950">{notice}</p>}
         {(error || missingToken) && <p id="auth-error" role="alert" className="mt-5 border-l-4 border-red-700 bg-red-50 p-4 text-sm text-red-900">{missingToken ? 'El enlace no contiene un token válido. Solicita un nuevo enlace de recuperación.' : error}</p>}
+        {isChange && error && !sessionReady && <a href="/login" className={`${linkClass} mt-3`}>Inicia sesión para continuar</a>}
         <form onSubmit={submit} className="mt-6" aria-busy={pending} aria-describedby={error || missingToken ? 'auth-error' : undefined}>
-          <fieldset disabled={pending || complete || checking || missingToken} className="min-w-0 space-y-5 disabled:opacity-70">
+          <fieldset disabled={pending || complete || checking || missingToken || !sessionReady} className="min-w-0 space-y-5 disabled:opacity-70">
             <legend className="sr-only">{titles[path]}</legend>
             {(isLogin || isRegister || isForgot) && <div>
               <label htmlFor="auth-email" className="text-sm font-semibold">Email</label>

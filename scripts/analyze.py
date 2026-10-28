@@ -43,7 +43,11 @@ def main():
         answer = "n"
     if answer in {"s", "S"}:
         destination = Path("results.csv")
-        write_results_csv(report, destination)
+        try:
+            write_results_csv(report, destination)
+        except OSError:
+            print("Error: no se pudo escribir results.csv. Comprueba los permisos y el espacio disponible.", file=sys.stderr)
+            return 2
         print(f"Resultados exportados a {destination.resolve()}")
     return 0
 

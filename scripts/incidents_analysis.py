@@ -248,5 +248,5 @@ if __name__ == "__main__" and "--json-stdin" in sys.argv:
     try:
         _worker()
     except (CSVFormatError, KeyError, json.JSONDecodeError) as error:
-        print(str(error), file=sys.stderr)
+        json.dump({"error": str(error)}, sys.stdout)
         raise SystemExit(2) from error

@@ -45,22 +45,31 @@ function analyzeCsv(csvText) {
     const python = process.env.PYTHON ?? 'python3'
     const worker = spawn(python, [processorPath, '--json-stdin'])
     let stdout = ''
-    let stderr = ''
 
     worker.stdout.setEncoding('utf8').on('data', (chunk) => { stdout += chunk })
-    worker.stderr.setEncoding('utf8').on('data', (chunk) => { stderr += chunk })
+    worker.stderr.resume()
     worker.on('error', reject)
+    worker.stdin.on('error', (error) => {
+      if (error.code !== 'EPIPE') reject(error)
+    })
     worker.on('close', (code) => {
-      if (code !== 0) {
-        reject(Object.assign(new Error(stderr.trim() || 'No se pudo procesar el CSV.'), { statusCode: 422 }))
+      let result
+      try {
+        result = JSON.parse(stdout)
+      } catch {
+        reject(new Error('El procesador devolvió una respuesta no válida.'))
         return
       }
 
-      try {
-        resolve(JSON.parse(stdout))
-      } catch {
-        reject(new Error('El procesador devolvió una respuesta no válida.'))
+      if (code !== 0) {
+        if (code === 2 && typeof result.error === 'string') {
+          reject(Object.assign(new Error(result.error), { statusCode: 422 }))
+        } else {
+          reject(new Error('No se pudo procesar el CSV.'))
+        }
+        return
       }
+      resolve(result)
     })
     worker.stdin.end(JSON.stringify({ csv: csvText }))
   })
@@ -158,7 +167,7 @@ const server = http.createServer((req, res) => {
   if (req.url === '/api/incidents/analyze' && req.method === 'POST') {
     handleIncidentAnalysis(req, res).catch((error) => {
       sendJson(res, 500, { error: 'Error inesperado al analizar el archivo.' })
-      console.error(error)
+      console.error('Fallo interno en POST /api/incidents/analyze.')
     })
     return
   }
