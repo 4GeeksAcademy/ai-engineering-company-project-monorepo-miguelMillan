@@ -31,18 +31,12 @@ export interface StockExitInput {
 export interface InventoryOrder {
   id: number
   sku_id: number
+  sku_name: string
   quantity: number
   warehouse: Warehouse
   created_at: string
   user_uuid: string
-  type?: string
-  order_type?: string
-  movement_type?: string
-  kind?: string
-  sku?: string | Pick<SKU, 'name'>
-  product?: Pick<SKU, 'name'>
-  sku_name?: string
-  name?: string
+  type: 'inbound' | 'outbound'
   reference?: string
   exit_type?: StockExitType
   tracking_number?: string | null

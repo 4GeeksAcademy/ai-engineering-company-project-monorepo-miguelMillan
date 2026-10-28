@@ -132,7 +132,8 @@ const server = http.createServer((req, res) => {
 
   const incidentManagement = /^\/api\/incidents(?:\/|\?|$)/.test(req.url)
     && !/^\/api\/incidents\/(?:analyze|results\/export)(?:\?|$)/.test(req.url)
-  if (/^\/suppliers(?:\/|\?|$)/.test(req.url) || incidentManagement) {
+  const inventoryManagement = /^\/inventory(?:\/|\?|$)/.test(req.url)
+  if (/^\/suppliers(?:\/|\?|$)/.test(req.url) || incidentManagement || inventoryManagement) {
     const upstream = http.request({
       hostname: '127.0.0.1',
       port: Number(process.env.SUPPLIERS_PORT ?? 8081),
@@ -147,7 +148,8 @@ const server = http.createServer((req, res) => {
       response.pipe(res)
     })
     upstream.on('error', () => {
-      if (!res.headersSent) sendJson(res, 503, { error: incidentManagement ? 'El gestor de incidencias no está disponible.' : 'El directorio de proveedores no está disponible.' })
+      const service = incidentManagement ? 'El gestor de incidencias' : inventoryManagement ? 'El inventario' : 'El directorio de proveedores'
+      if (!res.headersSent) sendJson(res, 503, { error: `${service} no está disponible.` })
       else res.destroy()
     })
     req.on('aborted', () => upstream.destroy())

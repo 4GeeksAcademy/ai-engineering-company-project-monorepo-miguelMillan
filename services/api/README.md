@@ -14,7 +14,8 @@ services/api/
 	routes/profiles.py   # perfil del usuario autenticado
 	routes/auth.py       # login JWT y datos del usuario actual
 	routes/suppliers.py  # endpoints del directorio
-	seed.py              # proveedores exactos del contexto
+	routes/inventory.py # SKU y movimientos de stock
+	seed.py              # proveedores e inventario de desarrollo
 ```
 
 `src/server.js` conserva la API Node de incidencias y el proxy del directorio; `src/start.js` arranca ambos servicios. El directorio tambien funciona directamente como aplicacion FastAPI con `uv run uvicorn main:app --host 0.0.0.0 --port 8081`.
@@ -32,6 +33,11 @@ services/api/
 - `PATCH /suppliers/{id}/rate` -> cuerpo `{"rate_per_shipment": 8.25}`; actualiza automaticamente `updated_at`.
 - `PATCH /suppliers/{id}/status` -> cuerpo `{"status": "active"}` o `{"status": "suspended"}`.
 - `DELETE /suppliers/{id}` -> elimina (204), o 404. En operaciones se recomienda suspender en lugar de eliminar.
+- `GET /inventory/products` y `GET /inventory/products/{id}` -> SKU con stock actual calculado por SKU y almacén.
+- `POST /inventory/products` -> registra un SKU; rechaza duplicados por codigo y almacen.
+- `POST /inventory/orders/inbound` -> registra una entrada con referencia, almacen y usuario autenticado.
+- `POST /inventory/orders/outbound` -> registra un despacho o perdida; exige tracking para `dispatch` y evita stock negativo con HTTP 400.
+- `GET /inventory/orders` -> historial unificado con tipo, SKU, cantidad, almacen, fecha y `user_uuid`.
 - `POST /api/incidents/analyze` -> recibe `multipart/form-data` con un archivo `.csv` en el campo `file`; responde con totales, desglose por categoria, estado y pais, CSAT e incidencias de validacion.
 - `GET /api/incidents/results/export` -> descarga como `results.csv` el ultimo analisis completado en esta instancia.
 
@@ -50,9 +56,9 @@ npm run dev
 
 La clave JWT se carga exclusivamente desde `services/api/.env`; el archivo está excluido de Git. No reutilices la clave de desarrollo en producción. Para probar el flujo en `/docs`, registra en `POST /users`, inicia sesión en `POST /auth/login` y autoriza las rutas con el token Bearer devuelto. La caducidad se controla con `ACCESS_TOKEN_EXPIRE_MINUTES`.
 
-`uv run seed` inserta los 15 proveedores exactos de `CONTEXT.md`, imprime el numero de inserciones y no duplica registros existentes con el mismo nombre y pais ni sobrescribe sus cambios. Ejecutarlo con el servicio detenido.
+`uv run seed` inserta los 15 proveedores y, de forma idempotente, seis SKU, cuatro entradas y tres salidas de ejemplo. Ejecutarlo con el servicio detenido. Las filas de movimientos iniciales llevan `user_uuid="seed"`; en nuevos movimientos se guarda como texto el ID TinyDB del usuario autenticado, ya que el modelo de autenticacion actual usa IDs enteros.
 
-`npm run dev` inicia la API Node en `0.0.0.0:8080` y FastAPI en `0.0.0.0:8081`. Node conserva incidencias y redirige `/suppliers` a FastAPI. Para ejecutar solo el directorio: `uv run serve`. Documentacion interactiva: `http://localhost:8081/docs`.
+`npm run dev` inicia la API Node en `0.0.0.0:8080` y FastAPI en `0.0.0.0:8081`. Node conserva incidencias y redirige `/suppliers` e `/inventory` a FastAPI, reenviando `Authorization`. Vite dirige `/inventory` a Node mediante `API_PROXY_TARGET` (por defecto `http://localhost:8080`). Para ejecutar solo FastAPI: `uv run serve`. Documentacion interactiva: `http://localhost:8081/docs`.
 
 La persistencia por defecto es `services/api/data/suppliers.json` (excluida de Git). `SUPPLIERS_DB_PATH` cambia la ubicacion tanto para API como para seeder; `SUPPLIERS_PORT` cambia el puerto Python y su proxy Node; `PORT` cambia el puerto Node. `CORS_ORIGINS` admite una lista separada por comas de origenes autorizados para acceso directo a FastAPI.
 
@@ -61,6 +67,8 @@ Pydantic rechaza entradas invalidas con 422 antes de persistir: tarifa no positi
 Users y Profiles se guardan exclusivamente en tablas TinyDB (`users` y `profiles`), nunca en SQL/Supabase. Todas las rutas de proveedores requieren JWT. Son públicos el registro `POST /users`, el login y la recuperación/restablecimiento de contraseña; el cambio de contraseña exige sesión.
 
 TinyDB usa un bloqueo para lecturas/escrituras dentro del proceso. Ejecutar **una sola instancia/worker** y no ejecutar el seeder mientras la API esta activa; TinyDB no es adecuado para escrituras multiproceso. `updated_at` registra la ultima tarifa, no un historial completo de tarifas o suspensiones.
+
+El inventario se almacena en tablas TinyDB `inventory_products`, `inventory_stock_entries` e `inventory_stock_exits`. `current_stock` se calcula al leer sumando entradas y restando salidas del mismo SKU y almacen; nunca se persiste. Todas las rutas de inventario requieren Bearer. Una salida que excede el stock devuelve 400 con SKU, disponible y solicitado; las entradas/salidas validan que el almacen corresponda al SKU.
 
 ## AUTH-03: recuperacion y cambio de contrasena
 

@@ -85,6 +85,28 @@ SUPPLIERS_SEED = [
     },
 ]
 
+INVENTORY_PRODUCTS_SEED = [
+    {"name": "Zapatilla blanca clásica - Talla 42", "sku": "CLT-SNK-W-42", "client_name": "PureStep Footwear", "category": "fashion", "warehouse": "LA"},
+    {"name": "Zapatilla blanca clásica - Talla 42", "sku": "CLT-SNK-W-42-Z", "client_name": "PureStep Footwear", "category": "fashion", "warehouse": "ZGZ"},
+    {"name": "Auriculares inalámbricos Pro", "sku": "TEC-EAR-001", "client_name": "SoundWave Electronics", "category": "electronics", "warehouse": "LA"},
+    {"name": "Sérum facial hidratante 30ml", "sku": "CSM-SRM-030", "client_name": "GlowLab Cosmetics", "category": "cosmetics", "warehouse": "ZGZ"},
+    {"name": "Chino slim fit - marino 32/32", "sku": "CLT-CHN-N-32", "client_name": "UrbanThread", "category": "fashion", "warehouse": "LA"},
+    {"name": "Cargador rápido USB-C 65W", "sku": "TEC-CHG-065", "client_name": "SoundWave Electronics", "category": "electronics", "warehouse": "ZGZ"},
+]
+
+INVENTORY_ENTRIES_SEED = [
+    {"sku": "CLT-SNK-W-42", "warehouse": "LA", "quantity": 80, "reference": "PO-2024-0098"},
+    {"sku": "CLT-SNK-W-42", "warehouse": "LA", "quantity": 35, "reference": "GR-LA-0234"},
+    {"sku": "CLT-SNK-W-42-Z", "warehouse": "ZGZ", "quantity": 50, "reference": "PO-2024-0102"},
+    {"sku": "CSM-SRM-030", "warehouse": "ZGZ", "quantity": 24, "reference": "GR-ZGZ-0117"},
+]
+
+INVENTORY_EXITS_SEED = [
+    {"sku": "CLT-SNK-W-42", "warehouse": "LA", "quantity": 10, "exit_type": "dispatch", "tracking_number": "1Z999AA10123456784"},
+    {"sku": "CLT-SNK-W-42", "warehouse": "LA", "quantity": 2, "exit_type": "loss", "tracking_number": None},
+    {"sku": "CLT-SNK-W-42-Z", "warehouse": "ZGZ", "quantity": 8, "exit_type": "dispatch", "tracking_number": "MRW-2024-009812"},
+]
+
 
 def seed_database(path: Path) -> int:
     suppliers = [SupplierCreate.model_validate(record) for record in SUPPLIERS_SEED]
@@ -100,5 +122,60 @@ def seed_database(path: Path) -> int:
     return inserted
 
 
+def seed_inventory_database(path: Path) -> dict[str, int]:
+    inserted = {"products": 0, "entries": 0, "exits": 0}
+    with open_database(path) as database:
+        products = database.table("inventory_products")
+        product_ids = {}
+        query = Query()
+        for record in INVENTORY_PRODUCTS_SEED:
+            existing = products.get((query.sku == record["sku"]) & (query.warehouse == record["warehouse"]))
+            if existing is not None:
+                product_ids[(record["sku"], record["warehouse"])] = existing.doc_id
+                continue
+            product_id = products.insert(record)
+            product_ids[(record["sku"], record["warehouse"])] = product_id
+            inserted["products"] += 1
+
+        entries = database.table("inventory_stock_entries")
+        for record in INVENTORY_ENTRIES_SEED:
+            sku_id = product_ids[(record["sku"], record["warehouse"])]
+            if entries.contains((query.sku_id == sku_id) & (query.reference == record["reference"])):
+                continue
+            entries.insert({
+                "sku_id": sku_id,
+                "quantity": record["quantity"],
+                "reference": record["reference"],
+                "warehouse": record["warehouse"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "user_uuid": "seed",
+            })
+            inserted["entries"] += 1
+
+        exits = database.table("inventory_stock_exits")
+        for record in INVENTORY_EXITS_SEED:
+            sku_id = product_ids[(record["sku"], record["warehouse"])]
+            duplicate = (query.sku_id == sku_id) & (query.warehouse == record["warehouse"])
+            duplicate &= query.tracking_number == record["tracking_number"] if record["tracking_number"] else query.exit_type == "loss"
+            if exits.contains(duplicate):
+                continue
+            exits.insert({
+                "sku_id": sku_id,
+                "quantity": record["quantity"],
+                "exit_type": record["exit_type"],
+                "tracking_number": record["tracking_number"],
+                "warehouse": record["warehouse"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "user_uuid": "seed",
+            })
+            inserted["exits"] += 1
+    return inserted
+
+
 def main():
     print(f"Proveedores insertados: {seed_database(database_path())}")
+    inventory = seed_inventory_database(database_path())
+    print(
+        "Inventario insertado: "
+        f"{inventory['products']} SKU, {inventory['entries']} entradas, {inventory['exits']} salidas"
+    )

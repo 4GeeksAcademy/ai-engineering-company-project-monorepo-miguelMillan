@@ -20,6 +20,7 @@ function useProducts() {
   const [products, setProducts] = useState<SKU[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [revision, setRevision] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -28,17 +29,24 @@ function useProducts() {
       .catch((cause: unknown) => { if (!controller.signal.aborted) setError(messageFrom(cause)) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [])
+  }, [revision])
 
-  return { products, loading, error }
+  function retry() {
+    setError('')
+    setLoading(true)
+    setRevision((value) => value + 1)
+  }
+
+  return { products, loading, error, retry }
 }
 
-function ProductPicker({ products, loading, error, value, onChange }: {
+function ProductPicker({ products, loading, error, value, onChange, onRetry }: {
   products: SKU[]
   loading: boolean
   error: string
   value: string
   onChange: (value: string) => void
+  onRetry: () => void
 }) {
   return (
     <div>
@@ -47,7 +55,7 @@ function ProductPicker({ products, loading, error, value, onChange }: {
         <option value="">{loading ? 'Cargando productos...' : 'Selecciona un producto'}</option>
         {products.map((product) => <option key={product.id} value={product.id}>{product.name} · {product.sku} · {warehouseLabels[product.warehouse]}</option>)}
       </select>
-      {error && <p role="alert" className="mt-2 text-sm text-red-800">{error}</p>}
+      {error && <div className="mt-2 space-y-2"><p role="alert" className="text-sm text-red-800">{error}</p><button type="button" onClick={onRetry} className="text-sm font-semibold text-emerald-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">Reintentar carga de SKU</button></div>}
       {!loading && !error && products.length === 0 && <p className="mt-2 text-sm text-slate-600">No hay SKU disponibles.</p>}
     </div>
   )
@@ -73,13 +81,13 @@ function PageHeader({ title, description }: { title: string; description: string
 }
 
 function ProductsPage() {
-  const { products, loading, error } = useProducts()
+  const { products, loading, error, retry } = useProducts()
 
   return (
     <section aria-labelledby="inventory-products-title" className="space-y-5">
       <PageHeader title="Productos (SKU)" description="Stock actual por SKU y almacén." />
       {loading && <p role="status" className="text-sm text-slate-600">Cargando productos...</p>}
-      {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
+      {error && <div className="space-y-2"><p role="alert" className="text-sm text-red-800">{error}</p><button type="button" onClick={retry} className="text-sm font-semibold text-emerald-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">Reintentar carga de productos</button></div>}
       {!loading && !error && (products.length ? (
         <div role="region" aria-label="Productos de inventario" tabIndex={0} className="overflow-x-auto border-y border-slate-200 focus-visible:outline-2 focus-visible:outline-emerald-800">
           <table className="w-full min-w-[900px] border-collapse text-left">
@@ -110,7 +118,7 @@ function ProductsPage() {
 }
 
 function InboundOrderPage() {
-  const { products, loading, error: productsError } = useProducts()
+  const { products, loading, error: productsError, retry: retryProducts } = useProducts()
   const [skuId, setSkuId] = useState(() => new URLSearchParams(window.location.search).get('sku_id') ?? '')
   const [quantity, setQuantity] = useState('')
   const [reference, setReference] = useState('')
@@ -128,6 +136,7 @@ function InboundOrderPage() {
     const body: StockEntryInput = { sku_id: selectedProduct.id, quantity: Number(quantity), reference: reference.trim(), warehouse: selectedProduct.warehouse }
     try {
       await inventoryRequest('/orders/inbound', { method: 'POST', body: JSON.stringify(body) })
+      retryProducts()
       setSkuId('')
       setQuantity('')
       setReference('')
@@ -145,7 +154,7 @@ function InboundOrderPage() {
       {notice && <p role="status" className="border-l-4 border-emerald-700 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">{notice}</p>}
       {error && <p role="alert" className="border-l-4 border-red-700 bg-red-50 px-4 py-3 text-sm text-red-950">{error}</p>}
       <form onSubmit={submit} className="max-w-2xl space-y-5 rounded-md border border-slate-200 bg-white p-5">
-        <ProductPicker products={products} loading={loading} error={productsError} value={skuId} onChange={(value) => { setSkuId(value); setError(''); setNotice('') }} />
+        <ProductPicker products={products} loading={loading} error={productsError} value={skuId} onChange={(value) => { setSkuId(value); setError(''); setNotice('') }} onRetry={retryProducts} />
         {selectedProduct && <p className="text-sm text-slate-600">Almacén receptor: <span className="font-semibold text-slate-900">{warehouseLabels[selectedProduct.warehouse]}</span></p>}
         <div><label htmlFor="inbound-quantity" className="mb-1 block text-sm font-semibold">Cantidad recibida</label><input id="inbound-quantity" type="number" min="1" step="1" required value={quantity} onChange={(event) => setQuantity(event.target.value)} className={controlClass} /></div>
         <div><label htmlFor="inbound-reference" className="mb-1 block text-sm font-semibold">Referencia</label><input id="inbound-reference" type="text" required value={reference} onChange={(event) => setReference(event.target.value)} placeholder="PO-2024-0098" className={controlClass} /></div>
@@ -156,7 +165,7 @@ function InboundOrderPage() {
 }
 
 function OutboundOrderPage() {
-  const { products, loading, error: productsError } = useProducts()
+  const { products, loading, error: productsError, retry: retryProducts } = useProducts()
   const [skuId, setSkuId] = useState(() => new URLSearchParams(window.location.search).get('sku_id') ?? '')
   const [quantity, setQuantity] = useState('')
   const [exitType, setExitType] = useState<StockExitType>('dispatch')
@@ -182,6 +191,7 @@ function OutboundOrderPage() {
     }
     try {
       await inventoryRequest('/orders/outbound', { method: 'POST', body: JSON.stringify(body) })
+      retryProducts()
       setSkuId('')
       setQuantity('')
       setExitType('dispatch')
@@ -199,7 +209,7 @@ function OutboundOrderPage() {
       <PageHeader title="Registrar salida de stock" description="Registra un despacho o una pérdida confirmada del almacén asociado al SKU." />
       {notice && <p role="status" className="border-l-4 border-emerald-700 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">{notice}</p>}
       <form onSubmit={submit} className="max-w-2xl space-y-5 rounded-md border border-slate-200 bg-white p-5">
-        <ProductPicker products={products} loading={loading} error={productsError} value={skuId} onChange={(value) => { setSkuId(value); setError(''); setNotice(''); setQuantity('') }} />
+        <ProductPicker products={products} loading={loading} error={productsError} value={skuId} onChange={(value) => { setSkuId(value); setError(''); setNotice(''); setQuantity('') }} onRetry={retryProducts} />
         {selectedProduct && <p role="status" className="border-l-4 border-slate-400 bg-slate-50 px-4 py-3 text-sm">Stock actual en {warehouseLabels[selectedProduct.warehouse]}: <strong>{selectedProduct.current_stock} unidades</strong></p>}
         <div>
           <label htmlFor="outbound-quantity" className="mb-1 block text-sm font-semibold">Cantidad de salida</label>
@@ -214,18 +224,6 @@ function OutboundOrderPage() {
       </form>
     </section>
   )
-}
-
-function orderDirection(order: InventoryOrder): 'inbound' | 'outbound' {
-  const movement = `${order.type ?? ''} ${order.order_type ?? ''} ${order.movement_type ?? ''} ${order.kind ?? ''}`.toLowerCase()
-  if (movement.includes('inbound') || movement.includes('entry') || movement.includes('entrada')) return 'inbound'
-  if (movement.includes('outbound') || movement.includes('exit') || movement.includes('salida')) return 'outbound'
-  return order.exit_type || !order.reference ? 'outbound' : 'inbound'
-}
-
-function orderProductName(order: InventoryOrder): string {
-  if (typeof order.sku === 'string') return order.sku
-  return order.sku?.name ?? order.product?.name ?? order.sku_name ?? order.name ?? `SKU #${order.sku_id}`
 }
 
 function OrderHistoryPage() {
@@ -253,12 +251,11 @@ function OrderHistoryPage() {
           <caption className="sr-only">Historial de entradas y salidas con producto, cantidad, fecha y usuario</caption>
           <thead className="bg-slate-200/70 text-xs uppercase text-slate-700"><tr>{['Producto', 'Cantidad', 'Tipo de orden', 'Almacén', 'Fecha de creación', 'user_uuid'].map((heading) => <th scope="col" key={heading} className="px-4 py-3 font-semibold">{heading}</th>)}</tr></thead>
           <tbody className="divide-y divide-slate-200 bg-white">{orders.map((order) => {
-            const direction = orderDirection(order)
             const date = new Date(order.created_at)
-            return <tr key={`${direction}-${order.id}`}>
-              <th scope="row" className="px-4 py-4 font-medium">{orderProductName(order)}<span className="mt-1 block text-xs text-slate-600">SKU #{order.sku_id}</span></th>
+            return <tr key={`${order.type}-${order.id}`}>
+              <th scope="row" className="px-4 py-4 font-medium">{order.sku_name}<span className="mt-1 block text-xs text-slate-600">SKU #{order.sku_id}</span></th>
               <td className="px-4 py-4 text-sm">{order.quantity}</td>
-              <td className="px-4 py-4"><span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ${direction === 'inbound' ? 'bg-emerald-100 text-emerald-950' : 'bg-amber-100 text-amber-950'}`}>{direction === 'inbound' ? 'Entrada de stock' : `Salida de stock${order.exit_type ? ` · ${order.exit_type === 'dispatch' ? 'despacho' : 'pérdida'}` : ''}`}</span></td>
+              <td className="px-4 py-4"><span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ${order.type === 'inbound' ? 'bg-emerald-100 text-emerald-950' : 'bg-amber-100 text-amber-950'}`}>{order.type === 'inbound' ? 'Entrada de stock' : `Salida de stock${order.exit_type ? ` · ${order.exit_type === 'dispatch' ? 'despacho' : 'pérdida'}` : ''}`}</span></td>
               <td className="px-4 py-4 text-sm">{warehouseLabels[order.warehouse]}</td>
               <td className="px-4 py-4 text-sm">{Number.isNaN(date.getTime()) ? order.created_at : date.toLocaleString('es-ES')}</td>
               <td className="px-4 py-4 font-mono text-xs">{order.user_uuid}</td>

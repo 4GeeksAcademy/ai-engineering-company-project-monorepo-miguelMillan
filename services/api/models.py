@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, PositiveInt, field_validator, model_validator
 
 
 class IncidentStatus(str, Enum):
@@ -32,6 +32,78 @@ IncidentBranch = Literal[
     "zaragoza_warehouse",
     "zaragoza_office",
 ]
+
+InventoryWarehouse = Literal["LA", "ZGZ"]
+InventoryCategory = Literal["fashion", "electronics", "cosmetics"]
+StockExitType = Literal["dispatch", "loss"]
+
+
+class SKUCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: str = Field(min_length=1)
+    sku: str = Field(min_length=1)
+    client_name: str = Field(min_length=1)
+    category: InventoryCategory
+    warehouse: InventoryWarehouse
+
+
+class SKU(SKUCreate):
+    id: int
+    current_stock: int
+
+
+class StockEntryCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    sku_id: PositiveInt
+    quantity: PositiveInt
+    reference: str = Field(min_length=1)
+    warehouse: InventoryWarehouse
+
+
+class StockEntry(StockEntryCreate):
+    id: int
+    created_at: datetime
+    user_uuid: str
+
+
+class StockExitCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    sku_id: PositiveInt
+    quantity: PositiveInt
+    exit_type: StockExitType
+    tracking_number: str | None = None
+    warehouse: InventoryWarehouse
+
+    @model_validator(mode="after")
+    def validate_tracking_number(self) -> "StockExitCreate":
+        if self.exit_type == "dispatch" and not (self.tracking_number or "").strip():
+            raise ValueError("El número de seguimiento es obligatorio para un despacho.")
+        if self.exit_type == "loss" and self.tracking_number is not None:
+            raise ValueError("El número de seguimiento debe ser nulo para una pérdida.")
+        return self
+
+
+class StockExit(StockExitCreate):
+    id: int
+    created_at: datetime
+    user_uuid: str
+
+
+class InventoryOrderResponse(BaseModel):
+    id: int
+    sku_id: int
+    sku_name: str
+    quantity: PositiveInt
+    warehouse: InventoryWarehouse
+    created_at: datetime
+    user_uuid: str
+    type: Literal["inbound", "outbound"]
+    reference: str | None = None
+    exit_type: StockExitType | None = None
+    tracking_number: str | None = None
 
 
 class IncidentCreate(BaseModel):
