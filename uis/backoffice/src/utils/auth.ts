@@ -27,7 +27,13 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
     headers.set('Content-Type', 'application/json')
   }
 
-  const response = await fetch(`${base}${path}`, { ...options, headers })
+  let response: Response
+  try {
+    response = await fetch(`${base}${path}`, { ...options, headers })
+  } catch (cause) {
+    if (options.signal?.aborted) throw cause
+    throw new AuthRequestError('No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.')
+  }
   if (response.status === 401 && !isPublicRequest) {
     clearSession()
     window.location.replace('/login?session=expired')

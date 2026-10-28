@@ -26,12 +26,16 @@ export function AccountProfile() {
   const [email, setEmail] = useState('')
   const [values, setValues] = useState<ProfileValues>({ name: '', phone: '', address: '' })
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
+    setLoading(true)
+    setLoadError('')
     authRequest<AuthProfileResponse>('/me', { signal: controller.signal })
       .then((result) => {
         if (controller.signal.aborted) return
@@ -43,11 +47,11 @@ export function AccountProfile() {
         })
       })
       .catch((cause: unknown) => {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'No se pudo cargar el perfil.')
+        if (!controller.signal.aborted) setLoadError(cause instanceof Error ? cause.message : 'No se pudo cargar el perfil. Inténtalo de nuevo.')
       })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [])
+  }, [loadAttempt])
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -75,7 +79,10 @@ export function AccountProfile() {
         <p className="text-sm font-semibold text-emerald-800">Cuenta</p>
         <h2 id="profile-title" className="mt-1 font-display text-2xl font-bold text-slate-950">Perfil personal</h2>
       </header>
-      {loading ? <p role="status">Cargando perfil...</p> : <>
+      {loading ? <p role="status">Cargando perfil...</p> : loadError ? <div role="alert" className="space-y-3 border-l-4 border-red-700 bg-red-50 p-4 text-sm text-red-900">
+        <p>{loadError}</p>
+        <button type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)} className="font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">Reintentar carga del perfil</button>
+      </div> : <>
         <dl className="border-y border-slate-200 py-4">
           <dt className="text-sm font-semibold text-slate-600">Email</dt>
           <dd className="mt-1 text-slate-950">{email}</dd>
