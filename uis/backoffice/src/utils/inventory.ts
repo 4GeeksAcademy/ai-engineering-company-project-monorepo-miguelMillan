@@ -49,6 +49,7 @@ export interface InventoryOrder {
 }
 
 function errorMessage(payload: unknown, status: number): string {
+  if (status >= 500) return 'El servicio de inventario no está disponible temporalmente. Inténtalo de nuevo más tarde.'
   if (typeof payload === 'string' && payload.trim()) return payload.trim()
   if (payload && typeof payload === 'object') {
     const body = payload as Record<string, unknown>
@@ -67,7 +68,7 @@ function errorMessage(payload: unknown, status: number): string {
       if (typeof message === 'string' && message.trim()) return message
     }
   }
-  return `La API de inventario respondió con el estado ${status}.`
+  return 'No se pudo completar la operación de inventario. Inténtalo de nuevo.'
 }
 
 export async function inventoryRequest<Result>(path: string, options: RequestInit = {}): Promise<Result> {
