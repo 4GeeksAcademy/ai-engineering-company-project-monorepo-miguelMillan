@@ -1,5 +1,12 @@
 # Progress Log — TrackFlow
 
+## ERROR-HANDLING — proveedores e inventario — 2026-11-03
+- Sustituidos los mensajes de respaldo con códigos HTTP por texto legible en `suppliers.ts` e `inventory.ts`. Los errores de servidor usan mensajes seguros sin reenviar su cuerpo; se conservan los mensajes de validación.
+- Añadido botón Reintentar junto a errores de carga del directorio de proveedores, productos, selectores de productos en entradas/salidas e historial. Reutiliza consultas y filtros; limpia el error, restaura carga y no envía formularios. Eliminado el mensaje duplicado de carga en salidas.
+- Validaciones: `npm --prefix uis/backoffice run build` correcto; diagnósticos del editor sin errores en los cuatro archivos. Comprobación en memoria con respuestas HTTP simuladas: 500/503/404 sin códigos visibles y validación 422 conservada en ambos wrappers. React/jsdom: las cinco vistas recuperan la carga al pulsar Reintentar, repiten la misma consulta sin POST y eliminan el error. El primer intento del script de comprobación falló al resolver una importación TypeScript; se corrigió el script, sin cambios adicionales en producción.
+- Contexto raíz vacío conservado intacto y archivado íntegro en `memory-bank/history/ERROR-HANDLING-RETRY-CONTEXT-2026-11-03.md`. Antecedentes contrastados con el registro de auditoría de 2026-10-28. Sin cambios en reglas de negocio, backend, secretos ni históricos previos.
+- Límite: no se ejecutó suite completa ni verificación visual en navegador; las interacciones se comprobaron con DOM y peticiones simuladas. Siguiente paso: revisión manual con backend disponible.
+
 ## HITO05 — inventario backoffice — 2026-10-27
 - Añadida la capa de llamadas a `/inventory` con autenticación existente y vistas de productos, entradas, salidas e historial; protegidas por el guard global del backoffice.
 - Conservado `memory-bank/history/HITO05-CONTEXT.md` sin sobrescribirlo. Archivada la versión vigente usada en `memory-bank/history/HITO05-INVENTORY-UI-CONTEXT-2026-10-27.md`; `cmp` confirma que coincide byte a byte con `CONTEXT.md`.
