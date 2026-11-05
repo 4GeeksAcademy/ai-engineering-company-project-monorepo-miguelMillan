@@ -56,6 +56,8 @@ La clave JWT se carga exclusivamente desde `services/api/.env`; el archivo está
 
 La persistencia por defecto es `services/api/data/suppliers.json` (excluida de Git). `SUPPLIERS_DB_PATH` cambia la ubicacion tanto para API como para seeder; `SUPPLIERS_PORT` cambia el puerto Python y su proxy Node; `PORT` cambia el puerto Node. `CORS_ORIGINS` admite una lista separada por comas de origenes autorizados para acceso directo a FastAPI.
 
+La API requiere `DATABASE_URL` en `services/api/.env` para iniciar el motor SQLModel y crear las tablas de inventario en PostgreSQL. Configura la URL de conexión de Supabase localmente y no la incluyas en el repositorio. El motor y `SQLModel.metadata.create_all` se inicializan en el lifespan de FastAPI; `get_db` proporciona una sesion independiente por petición.
+
 Pydantic rechaza entradas invalidas con 422 antes de persistir: tarifa no positiva o no finita, nombre vacio, categorias vacias/desconocidas, estados distintos de `active`/`suspended`, y combinaciones distintas de USA/USD o Spain/EUR. Campos opcionales: `service_zone`, `contact_email` (email valido), `notes`. El cliente no puede enviar `id` ni `updated_at`.
 
 Users y Profiles se guardan exclusivamente en tablas TinyDB (`users` y `profiles`), nunca en SQL/Supabase. Todas las rutas de proveedores requieren JWT. Son públicos el registro `POST /users`, el login y la recuperación/restablecimiento de contraseña; el cambio de contraseña exige sesión.
@@ -96,6 +98,12 @@ uv run uvicorn main:app --host 0.0.0.0 --port 8081
 ```
 
 La comprobacion local de AUTH-03 usa una base temporal y un transporte simulado: no acredita entrega real de correos. Para la aceptacion final, registra una cuenta con un email permitido en Resend, solicita el enlace desde el frontend, abre el correo, cambia la contrasena e intenta reutilizar el mismo enlace (debe fallar).
+
+## Inventario
+
+`GET /inventory/products`, `GET /inventory/products/{id}` y `GET /inventory/orders` son publicos. Crear SKUs y registrar entradas/salidas requiere una sesion TinyDB. El usuario autenticado recibe un `user_uuid` UUID persistido en TinyDB; los usuarios anteriores reciben uno estable al primer acceso. El stock se calcula por SKU y almacen a partir de entradas menos salidas.
+
+Antes de la demo, con `DATABASE_URL` apuntando a la base de desarrollo, ejecuta `uv run seed-inventory`. El seed es idempotente: inserta los SKUs y movimientos que falten sin reemplazar registros existentes. No lo ejecutes contra una base con datos de produccion.
 
 ## Gestion de incidencias
 

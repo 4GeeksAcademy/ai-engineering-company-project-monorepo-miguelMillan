@@ -1,11 +1,15 @@
 import os
+from collections.abc import Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from threading import RLock
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from sqlalchemy.engine import Engine, make_url
+from sqlmodel import Session, SQLModel, create_engine
 from tinydb import TinyDB
 
+from models import SKU, StockEntry, StockExit
 from security import auth_settings
 
 
@@ -19,15 +23,40 @@ def open_database(path: Path | None = None) -> TinyDB:
     return TinyDB(location)
 
 
+def create_sql_engine() -> Engine:
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("Configura DATABASE_URL en services/api/.env.")
+    url = make_url(database_url)
+    if url.drivername in {"postgres", "postgresql"}:
+        url = url.set(drivername="postgresql+psycopg2")
+    return create_engine(url, pool_pre_ping=True)
+
+
+def initialize_sql_database(engine: Engine) -> None:
+    SQLModel.metadata.create_all(engine)
+
+
 def database_lifespan(path: Path | None = None):
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         auth_settings()
         application.state.db = open_database(path)
         application.state.lock = RLock()
+        engine = None
         try:
+            engine = create_sql_engine()
+            application.state.engine = engine
+            initialize_sql_database(engine)
             yield
         finally:
+            if engine is not None:
+                engine.dispose()
             application.state.db.close()
 
     return lifespan
+
+
+def get_db(request: Request) -> Iterator[Session]:
+    with Session(request.app.state.engine) as session:
+        yield session

@@ -1,5 +1,16 @@
 # Progress Log — TrackFlow
 
+## HITO05 — preparación de persistencia PostgreSQL — 2026-11-05
+- Confirmado que `services/api` ya contiene FastAPI y autenticación TinyDB. Añadidas las dependencias `sqlmodel` y `psycopg2-binary` mediante `uv add`; imports verificados correctamente.
+- Tras el bloqueo de edición de Copilot, el usuario añadió `DATABASE_URL` manualmente en `services/api/.env`; se verificó solo la presencia de la clave, sin leer el valor.
+- `services/api/database.py` conserva TinyDB y crea un motor SQLModel por aplicación en el lifespan, llama a `SQLModel.metadata.create_all(engine)` y expone `get_db` con una sesión por petición. No hay sesión global.
+- Añadidos y registrados los endpoints `/inventory`: GET públicos para productos/detalle/órdenes; POST protegidos para SKU y movimientos. El stock se calcula por SKU y almacén; las salidas insuficientes se rechazan con 400 antes de insertar.
+- Añadidos los modelos ORM `SKU`, `StockEntry` y `StockExit` y schemas independientes. `current_stock` solo aparece en `SKUResponse`; `user_uuid` no tiene FK ni tabla SQL de usuarios; los schemas validan almacenes y tracking.
+- Los usuarios nuevos de TinyDB tienen UUID persistente; los registros antiguos reciben uno estable al primer acceso. El UUID se deriva de la identidad TinyDB, se guarda en TinyDB y no se expone en respuestas de auth.
+- Añadido `uv run seed-inventory`, idempotente. Ejecutado contra Supabase: 6 SKUs, 5 entradas y 3 salidas; segunda ejecución: 0 duplicados. Saldos comprobados: `CLT-SNK-W-42` LA=63, `CLT-SNK-W-42-Z` ZGZ=40, `TEC-EAR-001` LA=80 y `CSM-SRM-030` ZGZ=93; otros SKUs en cero.
+- El contexto HITO05 de esta tarea ya existe como `memory-bank/history/HITO05-CONTEXT.md`; se conservó sin crear un histórico duplicado. `CONTEXT.md` de raíz está vacío.
+- Validaciones: pruebas focalizadas de auth (19 correctas); smoke HTTP del router, validación de reglas, seed SQLite idempotente/neto y migración de UUID legacy correctos; diagnósticos del editor y `git diff --check` limpios. La conexión PostgreSQL se verificó con la ejecución del seed; advertencia no bloqueante Starlette/httpx.
+- Revisión del checklist: rutas/modelos/stock/configuración/seed remoto verificados. Gap pendiente: `inventory_seed.py` usa un UUID fijo para las órdenes sembradas, que no coincide con ningún usuario de TinyDB local; los POST de la API sí guardan el UUID autenticado.
 ## ERROR-HANDLING — proveedores e inventario — 2026-11-03
 - Sustituidos los mensajes de respaldo con códigos HTTP por texto legible en `suppliers.ts` e `inventory.ts`. Los errores de servidor usan mensajes seguros sin reenviar su cuerpo; se conservan los mensajes de validación.
 - Añadido botón Reintentar junto a errores de carga del directorio de proveedores, productos, selectores de productos en entradas/salidas e historial. Reutiliza consultas y filtros; limpia el error, restaura carga y no envía formularios. Eliminado el mensaje duplicado de carga en salidas.
