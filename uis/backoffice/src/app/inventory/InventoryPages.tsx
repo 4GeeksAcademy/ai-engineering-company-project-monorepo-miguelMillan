@@ -20,6 +20,7 @@ function useProducts() {
   const [products, setProducts] = useState<SKU[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [revision, setRevision] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -28,17 +29,28 @@ function useProducts() {
       .catch((cause: unknown) => { if (!controller.signal.aborted) setError(messageFrom(cause)) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [])
+  }, [revision])
 
-  return { products, loading, error }
+  function retry() {
+    setError('')
+    setLoading(true)
+    setRevision((value) => value + 1)
+  }
+
+  return { products, loading, error, retry }
 }
 
-function ProductPicker({ products, loading, error, value, onChange }: {
+function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return <div className="space-y-2"><p role="alert" className="text-sm text-red-800">{message}</p><button type="button" onClick={onRetry} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"><RefreshCw size={16} aria-hidden="true" />Reintentar</button></div>
+}
+
+function ProductPicker({ products, loading, error, value, onChange, onRetry }: {
   products: SKU[]
   loading: boolean
   error: string
   value: string
   onChange: (value: string) => void
+  onRetry: () => void
 }) {
   return (
     <div>
@@ -47,7 +59,7 @@ function ProductPicker({ products, loading, error, value, onChange }: {
         <option value="">{loading ? 'Cargando productos...' : 'Selecciona un producto'}</option>
         {products.map((product) => <option key={product.id} value={product.id}>{product.name} · {product.sku} · {warehouseLabels[product.warehouse]}</option>)}
       </select>
-      {error && <p role="alert" className="mt-2 text-sm text-red-800">{error}</p>}
+      {error && <LoadError message={error} onRetry={onRetry} />}
       {!loading && !error && products.length === 0 && <p className="mt-2 text-sm text-slate-600">No hay SKU disponibles.</p>}
     </div>
   )
@@ -73,13 +85,13 @@ function PageHeader({ title, description }: { title: string; description: string
 }
 
 function ProductsPage() {
-  const { products, loading, error } = useProducts()
+  const { products, loading, error, retry } = useProducts()
 
   return (
     <section aria-labelledby="inventory-products-title" className="space-y-5">
       <PageHeader title="Productos (SKU)" description="Stock actual por SKU y almacén." />
       {loading && <p role="status" className="text-sm text-slate-600">Cargando productos...</p>}
-      {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
+      {error && <LoadError message={error} onRetry={retry} />}
       {!loading && !error && (products.length ? (
         <div role="region" aria-label="Productos de inventario" tabIndex={0} className="overflow-x-auto border-y border-slate-200 focus-visible:outline-2 focus-visible:outline-emerald-800">
           <table className="w-full min-w-[900px] border-collapse text-left">
@@ -110,7 +122,7 @@ function ProductsPage() {
 }
 
 function InboundOrderPage() {
-  const { products, loading, error: productsError } = useProducts()
+  const { products, loading, error: productsError, retry } = useProducts()
   const [skuId, setSkuId] = useState(() => new URLSearchParams(window.location.search).get('sku_id') ?? '')
   const [quantity, setQuantity] = useState('')
   const [reference, setReference] = useState('')
@@ -145,7 +157,7 @@ function InboundOrderPage() {
       {notice && <p role="status" className="border-l-4 border-emerald-700 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">{notice}</p>}
       {error && <p role="alert" className="border-l-4 border-red-700 bg-red-50 px-4 py-3 text-sm text-red-950">{error}</p>}
       <form onSubmit={submit} className="max-w-2xl space-y-5 rounded-md border border-slate-200 bg-white p-5">
-        <ProductPicker products={products} loading={loading} error={productsError} value={skuId} onChange={(value) => { setSkuId(value); setError(''); setNotice('') }} />
+        <ProductPicker products={products} loading={loading} error={productsError} onRetry={retry} value={skuId} onChange={(value) => { setSkuId(value); setError(''); setNotice('') }} />
         {selectedProduct && <p className="text-sm text-slate-600">Almacén receptor: <span className="font-semibold text-slate-900">{warehouseLabels[selectedProduct.warehouse]}</span></p>}
         <div><label htmlFor="inbound-quantity" className="mb-1 block text-sm font-semibold">Cantidad recibida</label><input id="inbound-quantity" type="number" min="1" step="1" required value={quantity} onChange={(event) => setQuantity(event.target.value)} className={controlClass} /></div>
         <div><label htmlFor="inbound-reference" className="mb-1 block text-sm font-semibold">Referencia</label><input id="inbound-reference" type="text" required value={reference} onChange={(event) => setReference(event.target.value)} placeholder="PO-2024-0098" className={controlClass} /></div>
@@ -156,7 +168,7 @@ function InboundOrderPage() {
 }
 
 function OutboundOrderPage() {
-  const { products, loading, error: productsError } = useProducts()
+  const { products, loading, error: productsError, retry } = useProducts()
   const [skuId, setSkuId] = useState(() => new URLSearchParams(window.location.search).get('sku_id') ?? '')
   const [quantity, setQuantity] = useState('')
   const [exitType, setExitType] = useState<StockExitType>('dispatch')
@@ -199,7 +211,7 @@ function OutboundOrderPage() {
       <PageHeader title="Registrar salida de stock" description="Registra un despacho o una pérdida confirmada del almacén asociado al SKU." />
       {notice && <p role="status" className="border-l-4 border-emerald-700 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">{notice}</p>}
       <form onSubmit={submit} className="max-w-2xl space-y-5 rounded-md border border-slate-200 bg-white p-5">
-        <ProductPicker products={products} loading={loading} error={productsError} value={skuId} onChange={(value) => { setSkuId(value); setError(''); setNotice(''); setQuantity('') }} />
+        <ProductPicker products={products} loading={loading} error={productsError} onRetry={retry} value={skuId} onChange={(value) => { setSkuId(value); setError(''); setNotice(''); setQuantity('') }} />
         {selectedProduct && <p role="status" className="border-l-4 border-slate-400 bg-slate-50 px-4 py-3 text-sm">Stock actual en {warehouseLabels[selectedProduct.warehouse]}: <strong>{selectedProduct.current_stock} unidades</strong></p>}
         <div>
           <label htmlFor="outbound-quantity" className="mb-1 block text-sm font-semibold">Cantidad de salida</label>
@@ -209,7 +221,6 @@ function OutboundOrderPage() {
         </div>
         <div><label htmlFor="exit-type" className="mb-1 block text-sm font-semibold">Tipo de salida</label><select id="exit-type" value={exitType} onChange={(event) => { const next = event.target.value as StockExitType; setExitType(next); if (next === 'loss') setTrackingNumber(''); setError('') }} className={controlClass}><option value="dispatch">Despacho</option><option value="loss">Pérdida</option></select></div>
         {exitType === 'dispatch' && <div><label htmlFor="tracking-number" className="mb-1 block text-sm font-semibold">Número de seguimiento</label><input id="tracking-number" type="text" required value={trackingNumber} onChange={(event) => setTrackingNumber(event.target.value)} className={controlClass} /></div>}
-        {productsError && <p role="alert" className="text-sm text-red-800">{productsError}</p>}
         <button type="submit" disabled={submitting || loading || Boolean(productsError) || !products.length} className="min-h-11 rounded-md bg-emerald-800 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">{submitting ? 'Registrando...' : 'Registrar salida'}</button>
       </form>
     </section>
@@ -243,11 +254,17 @@ function OrderHistoryPage() {
     return () => controller.abort()
   }, [revision])
 
+  function refresh() {
+    setError('')
+    setLoading(true)
+    setRevision((value) => value + 1)
+  }
+
   return (
     <section aria-labelledby="inventory-orders-title" className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3"><PageHeader title="Historial de órdenes" description="Movimientos de stock de entrada y salida. Consulta de solo lectura." /><button type="button" title="Actualizar historial" aria-label="Actualizar historial" disabled={loading} onClick={() => { setError(''); setLoading(true); setRevision((value) => value + 1) }} className="flex h-11 w-11 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-50"><RefreshCw size={17} aria-hidden="true" /></button></header>
+      <header className="flex flex-wrap items-end justify-between gap-3"><PageHeader title="Historial de órdenes" description="Movimientos de stock de entrada y salida. Consulta de solo lectura." /><button type="button" title="Actualizar historial" aria-label="Actualizar historial" disabled={loading} onClick={refresh} className="flex h-11 w-11 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-50"><RefreshCw size={17} aria-hidden="true" /></button></header>
       {loading && <p role="status" className="text-sm text-slate-600">Cargando órdenes...</p>}
-      {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
+      {error && <LoadError message={error} onRetry={refresh} />}
       {!loading && !error && (orders.length ? <div role="region" aria-label="Historial de órdenes de inventario" tabIndex={0} className="overflow-x-auto border-y border-slate-200 focus-visible:outline-2 focus-visible:outline-emerald-800">
         <table className="w-full min-w-[850px] border-collapse text-left">
           <caption className="sr-only">Historial de entradas y salidas con producto, cantidad, fecha y usuario</caption>

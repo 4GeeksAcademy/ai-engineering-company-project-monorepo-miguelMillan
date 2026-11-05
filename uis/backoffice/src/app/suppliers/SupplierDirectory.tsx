@@ -64,7 +64,7 @@ export function SupplierDirectory() {
         <button type="button" title="Actualizar directorio" aria-label="Actualizar directorio" disabled={loading} onClick={refresh} className={`${controlClass} flex h-10 w-10 items-center justify-center p-0 disabled:opacity-50`}><RefreshCw size={16} aria-hidden="true" /></button>
       </form>
       <div role="status" className="text-sm text-slate-600">{loading ? 'Cargando proveedores...' : !error && `${suppliers.length} proveedores`}</div>
-      {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
+      {error && <div className="space-y-2"><p role="alert" className="text-sm text-red-800">{error}</p><button type="button" disabled={loading} onClick={refresh} className={`${controlClass} inline-flex min-h-11 items-center gap-2 font-semibold hover:bg-slate-100 disabled:opacity-50`}><RefreshCw size={16} aria-hidden="true" />Reintentar</button></div>}
       {!loading && !error && (suppliers.length ? (
         <div role="region" aria-label="Listado de proveedores" tabIndex={0} className="overflow-x-auto border-y border-slate-200 focus-visible:outline-2 focus-visible:outline-emerald-800">
           <table className="w-full min-w-[860px] border-collapse text-left">

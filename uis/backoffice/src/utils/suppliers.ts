@@ -49,10 +49,11 @@ export async function supplierRequest<Result>(path = '', options: RequestInit = 
   const response = await apiFetch(`/suppliers${path}`, options)
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
+    if (response.status >= 500) throw new Error('El servicio de proveedores no está disponible temporalmente. Inténtalo de nuevo más tarde.')
     const details = payload?.detail
     const message = Array.isArray(details)
       ? details.map((item: { loc: string[]; msg: string }) => `${fieldLabels[item.loc[1]] ?? item.loc[1] ?? 'Solicitud'}: ${item.msg}`).join('. ')
-      : typeof details === 'string' ? details : payload?.error ?? `No se pudo completar la operación (${response.status}).`
+      : typeof details === 'string' ? details : payload?.error ?? 'No se pudo completar la operación de proveedores. Inténtalo de nuevo.'
     throw new Error(message)
   }
   return payload as Result
