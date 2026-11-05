@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from threading import RLock
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from passlib.hash import bcrypt
 from tinydb import TinyDB
@@ -7,19 +8,28 @@ from tinydb import TinyDB
 from models import Profile, User, UserRole
 
 
+def _user_from_document(database: TinyDB, document) -> User:
+    user_uuid = document.get("user_uuid")
+    if not user_uuid:
+        user_uuid = str(uuid5(NAMESPACE_URL, f"trackflow-tinydb-user:{document.doc_id}"))
+        database.table("users").update({"user_uuid": user_uuid}, doc_ids=[document.doc_id])
+        document = {**document, "user_uuid": user_uuid}
+    return User.model_validate(document)
+
+
 def get_user_by_id(database: TinyDB, user_id: int) -> User | None:
     document = database.table("users").get(doc_id=user_id)
-    return User.model_validate(document) if document is not None else None
+    return _user_from_document(database, document) if document is not None else None
 
 
 def get_user_by_email(database: TinyDB, email: str) -> User | None:
     normalized_email = email.strip().lower()
     document = database.table("users").get(lambda item: item["email"] == normalized_email)
-    return User.model_validate(document) if document is not None else None
+    return _user_from_document(database, document) if document is not None else None
 
 
 def list_users(database: TinyDB) -> list[User]:
-    return [User.model_validate(document) for document in database.table("users").all()]
+    return [_user_from_document(database, document) for document in database.table("users").all()]
 
 
 def create_user(
@@ -37,6 +47,7 @@ def create_user(
             raise ValueError("email_exists")
         user_id = users.insert({
             "email": normalized_email,
+            "user_uuid": str(uuid4()),
             "hashed_password": bcrypt.hash(password),
             "is_active": True,
             "role": UserRole.user.value,

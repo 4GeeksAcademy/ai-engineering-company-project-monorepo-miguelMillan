@@ -4,6 +4,50 @@ from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from sqlalchemy import DateTime
+from sqlmodel import Field as SQLField, SQLModel
+
+
+class SKU(SQLModel, table=True):
+    __tablename__ = "sku"
+
+    id: int | None = SQLField(default=None, primary_key=True)
+    name: str = SQLField(max_length=255)
+    sku: str = SQLField(max_length=100, unique=True, index=True)
+    client_name: str = SQLField(max_length=255)
+    category: str = SQLField(max_length=32)
+    warehouse: str = SQLField(max_length=3, index=True)
+
+
+class StockEntry(SQLModel, table=True):
+    __tablename__ = "stock_entry"
+
+    id: int | None = SQLField(default=None, primary_key=True)
+    sku_id: int = SQLField(foreign_key="sku.id", index=True)
+    quantity: int = SQLField(gt=0)
+    reference: str = SQLField(max_length=100)
+    warehouse: str = SQLField(max_length=3, index=True)
+    created_at: datetime = SQLField(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTime(timezone=True),
+    )
+    user_uuid: str = SQLField(max_length=36)
+
+
+class StockExit(SQLModel, table=True):
+    __tablename__ = "stock_exit"
+
+    id: int | None = SQLField(default=None, primary_key=True)
+    sku_id: int = SQLField(foreign_key="sku.id", index=True)
+    quantity: int = SQLField(gt=0)
+    exit_type: str = SQLField(max_length=16)
+    tracking_number: str | None = SQLField(default=None, max_length=100)
+    warehouse: str = SQLField(max_length=3, index=True)
+    created_at: datetime = SQLField(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTime(timezone=True),
+    )
+    user_uuid: str = SQLField(max_length=36)
 
 
 class IncidentStatus(str, Enum):
@@ -189,6 +233,7 @@ class UserUpdate(BaseModel):
 
 class User(BaseModel):
     id: int
+    user_uuid: UUID = Field(default_factory=uuid4)
     email: EmailStr
     hashed_password: str
     is_active: bool = True
