@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { LoaderCircle, RefreshCw } from 'lucide-react'
-import { branchLabels, categoryLabels, incidentButton, incidentError, incidentRequest, originLabels, statusLabels } from '../../utils/incidents'
+import { LoaderCircle } from 'lucide-react'
+import { AsyncErrorState } from '../../components/AsyncErrorState'
+import { branchLabels, categoryLabels, incidentError, incidentRequest, originLabels, statusLabels } from '../../utils/incidents'
 import type { IncidentSummary } from '../../utils/incidents'
 
 export function IncidentSummaryPanel({ revision }: { revision: number }) {
@@ -21,7 +22,7 @@ export function IncidentSummaryPanel({ revision }: { revision: number }) {
   return (
     <section aria-labelledby="incident-summary-title" aria-busy={loading} className="space-y-4 border-y border-slate-200 py-6">
       <header className="flex flex-wrap items-center justify-between gap-3"><h3 id="incident-summary-title" className="font-display text-xl font-semibold">Resumen de incidencias</h3>{!loading && !error && summary && <p className="text-sm font-semibold">Total registrado: {summary.total}</p>}</header>
-      {loading ? <p role="status" className="flex items-center gap-2 text-sm text-slate-600"><LoaderCircle size={18} className="animate-spin" aria-hidden="true" />Cargando resumen...</p> : error ? <div className="space-y-3"><p role="alert" className="text-sm text-red-800">{error}</p><button type="button" onClick={() => setRetry((value) => value + 1)} className={`${incidentButton} border border-slate-300 bg-white`}><RefreshCw size={16} aria-hidden="true" />Reintentar resumen</button></div> : summary && <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      {loading ? <p role="status" className="flex items-center gap-2 text-sm text-slate-600"><LoaderCircle size={18} className="animate-spin" aria-hidden="true" />Cargando resumen...</p> : error ? <AsyncErrorState message={error} onRetry={() => setRetry((value) => value + 1)} retryLabel="Reintentar resumen" className="space-y-3" buttonClassName="inline-flex min-h-11 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800" /> : summary && <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
         {([
           ['Por estado', statusLabels, summary.by_status], ['Por categoría', categoryLabels, summary.by_category],
           ['Por origen', originLabels, summary.by_origin], ['Por sede', branchLabels, summary.by_branch],
