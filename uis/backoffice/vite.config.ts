@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         },
         '/inventory': {
-          target: env.NEXT_PUBLIC_INVENTORY_API_URL ?? 'http://localhost:8000',
+          target: process.env.NEXT_PUBLIC_INVENTORY_API_URL ?? env.NEXT_PUBLIC_INVENTORY_API_URL ?? 'http://localhost:8000',
           changeOrigin: true,
         },
       },

@@ -64,6 +64,57 @@ ai-engineering-company-project-monorepo/
 
 ---
 
+## Docker Development (TrackFlow)
+
+Requires Docker Engine and Docker Compose 2.17+ (BuildKit additional contexts).
+The existing interfaces are React/Vite, not Next.js. Both run in one Node Alpine
+container through `uis/start.sh`, on ports 3000 and 3001. The Python container
+keeps the existing Node CSV gateway (8080) and starts Uvicorn with `--reload`
+(8081). Python dependencies are installed with `uv pip install --system -r
+requirements.txt`; the requirements are exported from the existing `uv.lock`.
+
+Obtain the root `.env` through the team's secure channel before the first run.
+It is ignored by Git; do not commit it or share `docker compose config` output,
+which contains resolved secrets. No Node or Python installation is needed on
+the host. From the repository root, install/build and start with:
+
+```bash
+docker compose up --build
+```
+
+Subsequent starts: `docker compose up`. For background mode and health checks:
+`docker compose up -d --wait`. Open `http://localhost:3000` (website),
+`http://localhost:3001` (backoffice), and `http://localhost:8081/docs` (API).
+Both UI servers bind to `0.0.0.0` inside Docker, so Codespaces port forwarding
+works. Host publication defaults to loopback through `BIND_ADDRESS` in `.env`.
+
+All application settings come from the root `.env`. Backend credentials include
+`SECRET_KEY`, `DATABASE_URL`, and optional `RESEND_API_KEY`/`RESEND_FROM_EMAIL`.
+The browser uses relative API paths. Container proxies use
+`API_PROXY_TARGET=http://backend:8080`,
+`AUTH_PROXY_TARGET=http://backend:8081`, and
+`NEXT_PUBLIC_INVENTORY_API_URL=http://backend:8081`, never host loopback.
+`SUPPLIERS_HOST=backend` also routes the internal gateway through Docker DNS.
+`DOCKER_NETWORK_NAME` explicitly names the shared bridge network.
+
+Source bind mounts enable Vite hot reload and Uvicorn reload; dependency and
+TinyDB volumes persist independently. `DATABASE_URL` retains the configured
+PostgreSQL database, which must be reachable from Docker. Stop without deleting
+data with `docker compose down`; do not use `down -v` unless data loss is intended.
+After changing frontend dependencies, run `docker compose exec interfaces npm
+--prefix /app/uis/website ci` (or `/app/uis/backoffice`) to refresh its volume.
+Regenerate Python requirements with `uv export --project services/api --no-dev
+--no-emit-project --no-hashes --no-header --format requirements-txt
+--output-file services/requirements.txt`, then rebuild the backend.
+
+Validation on 2026-11-05: both images build, Compose validates, and both UI pages
+return HTTP 200. Full startup is blocked by DNS resolution of the configured
+Supabase database inside Docker; interface-to-backend TCP also times out despite
+correct Docker service hostnames. VPS deployment has not been performed: no VPS
+address, SSH configuration, or authentication agent is available. Production
+needs its own private `.env`, confirmed SSH access, TLS, and production servers
+instead of Vite/Uvicorn reload. This development stack is not a production sign-off.
+
 ## Run the landing locally (Codespaces)
 
 For this web milestone (HTML + Tailwind CDN + JS), run a static server with:
