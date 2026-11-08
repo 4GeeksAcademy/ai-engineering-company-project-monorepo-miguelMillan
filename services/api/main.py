@@ -20,6 +20,10 @@ from routes.users import router as users_router
 def create_app(path: Path | None = None) -> FastAPI:
     application = FastAPI(title="TrackFlow Supplier Directory", lifespan=database_lifespan(path))
 
+    @application.get("/health")
+    async def health():
+        return {"status": "ok", "service": "trackflow-suppliers"}
+
     @application.exception_handler(RequestValidationError)
     async def validation_error(request: Request, error: RequestValidationError):
         if request.url.path != "/api/incidents" and not request.url.path.startswith("/api/incidents/"):

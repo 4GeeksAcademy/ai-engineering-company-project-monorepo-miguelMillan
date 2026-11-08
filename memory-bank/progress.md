@@ -5,7 +5,8 @@
 - Configuración estática: mounts de código para `uis/website`, `uis/backoffice` y `services/api`; `uis/start.sh` lanza ambos Vite en 3000/3001. Los destinos efectivos observados solo por host/puerto son `backend:8080` y `backend:8081`; gateway usa `SUPPLIERS_HOST=backend`. No se verificó hot reload en navegador porque interfaces no está ejecutándose.
 - Secretos: búsqueda acotada sin coincidencias en `docker-compose.yml` y ambos Dockerfiles. `.env` está ignorado y no está en el índice ni en el historial consultado. Hay `.dockerignore` en `uis/` y `services/`. No existe `.env.example`; un clon limpio requiere preparar `.env`, por lo que `docker compose up` sin configuración no está demostrado.
 - Producción: evidencia todavía pendiente. El terminal disponible está en Codespaces; `bc-vps-280` no resuelve desde allí. No se ejecutó ni se declara un despliegue. Solicitar salida de `docker compose ps -a` tomada en la consola del VPS.
-- No se modificó código ni configuración. Contexto activo archivado íntegro en `memory-bank/history/INFRA-40-VPS-EVIDENCE-CONTEXT-2026-11-08.md`; pendiente validar identidad byte a byte.
+- Corregido el healthcheck de FastAPI añadiendo `GET /health` en `services/api/main.py`; `TestClient` con SQLite temporal devuelve HTTP 200 y payload de estado. `get_errors` sin errores. El VPS sigue pendiente de actualizar con este cambio.
+- La copia `memory-bank/history/INFRA-40-VPS-EVIDENCE-CONTEXT-2026-11-08.md` conserva el mismo texto que `CONTEXT.md`, pero `cmp` detecta únicamente que el contexto raíz no tiene salto de línea final y el histórico sí; no se declara idéntica byte a byte.
 
 ## INFRA-40 — Docker de desarrollo — 2026-11-05
 - Confirmado con el usuario mantener React/Vite, no migrar a Next.js. `uis/Dockerfile` usa Node 22 Alpine, instala cada app con `npm ci` y ejecuta `start.sh`: website 3000, backoffice 3001, hot reload y cierre coordinado. `.dockerignore` excluye dependencias, .next, dist, entornos, logs e informes.
