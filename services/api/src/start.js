@@ -2,7 +2,11 @@ import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const cwd = fileURLToPath(new URL('..', import.meta.url))
-const suppliers = spawn('uv', ['run', 'serve'], { cwd, stdio: 'inherit', env: process.env })
+const suppliersCommand = process.env.FASTAPI_RELOAD === '1' ? 'uvicorn' : 'uv'
+const suppliersArgs = process.env.FASTAPI_RELOAD === '1'
+  ? ['main:app', '--host', '0.0.0.0', '--port', process.env.SUPPLIERS_PORT ?? '8081', '--reload']
+  : ['run', 'serve']
+const suppliers = spawn(suppliersCommand, suppliersArgs, { cwd, stdio: 'inherit', env: process.env })
 const api = spawn(process.execPath, ['src/server.js'], { cwd, stdio: 'inherit', env: process.env })
 let stopping = false
 

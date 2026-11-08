@@ -134,7 +134,7 @@ const server = http.createServer((req, res) => {
     && !/^\/api\/incidents\/(?:analyze|results\/export)(?:\?|$)/.test(req.url)
   if (/^\/suppliers(?:\/|\?|$)/.test(req.url) || incidentManagement) {
     const upstream = http.request({
-      hostname: '127.0.0.1',
+      hostname: process.env.SUPPLIERS_HOST ?? '127.0.0.1',
       port: Number(process.env.SUPPLIERS_PORT ?? 8081),
       path: req.url,
       method: req.method,

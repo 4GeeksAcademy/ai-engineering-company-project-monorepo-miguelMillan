@@ -1,0 +1,15 @@
+**/.venv
+**/node_modules
+**/__pycache__
+**/___pycache___
+**/*.pyc
+**/*.egg-info
+**/.env
+**/.env.*
+**/.env*
+**/*.log
+**/.pytest_cache
+**/.coverage*
+**/htmlcov
+**/data
+**/tests

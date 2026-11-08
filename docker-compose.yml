@@ -1,0 +1,71 @@
+services:
+  interfaces:
+    build: ./uis
+    init: true
+    environment:
+      UI_HOST: ${UI_HOST:?Configura UI_HOST en .env}
+      WEBSITE_PORT: ${WEBSITE_PORT:?Configura WEBSITE_PORT en .env}
+      BACKOFFICE_PORT: ${BACKOFFICE_PORT:?Configura BACKOFFICE_PORT en .env}
+      API_PROXY_TARGET: ${API_PROXY_TARGET:?Configura API_PROXY_TARGET en .env}
+      AUTH_PROXY_TARGET: ${AUTH_PROXY_TARGET:?Configura AUTH_PROXY_TARGET en .env}
+      NEXT_PUBLIC_INVENTORY_API_URL: ${NEXT_PUBLIC_INVENTORY_API_URL:?Configura NEXT_PUBLIC_INVENTORY_API_URL en .env}
+      VITE_API_URL: ${VITE_API_URL-}
+      VITE_INVENTORY_API_URL: ${VITE_INVENTORY_API_URL-}
+      __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: ${__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS:?Configura el host permitido en .env}
+      WEBSITE_HEALTH_URL: ${WEBSITE_HEALTH_URL:?Configura WEBSITE_HEALTH_URL en .env}
+      BACKOFFICE_HEALTH_URL: ${BACKOFFICE_HEALTH_URL:?Configura BACKOFFICE_HEALTH_URL en .env}
+    ports:
+      - "${BIND_ADDRESS:?Configura BIND_ADDRESS en .env}:${WEBSITE_PORT}:3000"
+      - "${BIND_ADDRESS}:${BACKOFFICE_PORT}:3001"
+    volumes:
+      - ./uis/website:/app/uis/website
+      - ./uis/backoffice:/app/uis/backoffice
+      - website_dependencies:/app/uis/website/node_modules
+      - backoffice_dependencies:/app/uis/backoffice/node_modules
+    networks:
+      - trackflow
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "--input-type=module", "-e", "for (const url of [process.env.WEBSITE_HEALTH_URL, process.env.BACKOFFICE_HEALTH_URL]) { const response = await fetch(url, { signal: AbortSignal.timeout(4000) }); if (!response.ok) process.exit(1) }"]
+      interval: 10s
+      timeout: 10s
+      start_period: 30s
+      retries: 6
+
+  backend:
+    build:
+      context: ./services
+      additional_contexts:
+        scripts: ./scripts
+        shared: ./packages/shared
+    init: true
+    env_file:
+      - .env
+    ports:
+      - "${BIND_ADDRESS}:${API_PORT:?Configura API_PORT en .env}:8080"
+      - "${BIND_ADDRESS}:${AUTH_PORT:?Configura AUTH_PORT en .env}:8081"
+    volumes:
+      - ./services/api:/app/services/api
+      - ./scripts:/app/scripts:ro
+      - ./packages/shared:/app/packages/shared:ro
+      - backend_data:/var/lib/trackflow
+    networks:
+      - trackflow
+    healthcheck:
+      test: ["CMD", "node", "--input-type=module", "-e", "for (const url of [process.env.GATEWAY_HEALTH_URL, process.env.API_HEALTH_URL]) { const response = await fetch(url, { signal: AbortSignal.timeout(4000) }); if (!response.ok) process.exit(1) }"]
+      interval: 10s
+      timeout: 10s
+      start_period: 30s
+      retries: 6
+
+networks:
+  trackflow:
+    name: ${DOCKER_NETWORK_NAME:?Configura DOCKER_NETWORK_NAME en .env}
+    driver: bridge
+
+volumes:
+  backend_data:
+  website_dependencies:
+  backoffice_dependencies:
