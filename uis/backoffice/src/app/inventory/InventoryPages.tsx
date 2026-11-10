@@ -225,15 +225,11 @@ function OutboundOrderPage() {
 }
 
 function orderDirection(order: InventoryOrder): 'inbound' | 'outbound' {
-  const movement = `${order.type ?? ''} ${order.order_type ?? ''} ${order.movement_type ?? ''} ${order.kind ?? ''}`.toLowerCase()
-  if (movement.includes('inbound') || movement.includes('entry') || movement.includes('entrada')) return 'inbound'
-  if (movement.includes('outbound') || movement.includes('exit') || movement.includes('salida')) return 'outbound'
-  return order.exit_type || !order.reference ? 'outbound' : 'inbound'
+  return order.order_type
 }
 
 function orderProductName(order: InventoryOrder): string {
-  if (typeof order.sku === 'string') return order.sku
-  return order.sku?.name ?? order.product?.name ?? order.sku_name ?? order.name ?? `SKU #${order.sku_id}`
+  return order.product_name
 }
 
 function OrderHistoryPage() {

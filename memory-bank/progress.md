@@ -1,5 +1,36 @@
 # Progress Log — TrackFlow
 
+## Serialization audit — verificación Fase 3 — 2026-11-10
+- Reejecutada la suite backend completa tras los cambios de schema: 66 tests correctos; una advertencia conocida de deprecación Starlette/httpx.
+- FastAPI temporal abrió `/docs` y `/openapi.json` con HTTP 200. No hay navegador local ni herramienta para accionar Swagger UI; se abrió la página con el launcher del host, pero `Try it out` manual no pudo ejecutarse. No se declara cumplido ese subcriterio.
+- Como alternativa, se enviaron solicitudes HTTP a la instancia aislada y se compararon las claves exactas con los componentes OpenAPI: `GET /health`, `POST /users`, `POST /auth/login`, `GET /auth/me`, alta/listado/detalle de `/api/incidents`. Todas coincidieron, incluyendo la proyección sin `description` en listado y con `description` en detalle.
+- `docs/serialization-audit.md` marca ✅ las 30 operaciones y documenta el método y la limitación del navegador. La instancia temporal se detuvo; `git diff --check` limpio. Contexto sin cambios; se conserva el histórico archivado en Fase 1.
+- Estado: verificación automatizada y de payloads completada; falta interacción manual en Swagger UI por limitación del entorno. Sin commit; preservar cambios ajenos.
+
+## Serialization audit — implementación Fase 2 — 2026-11-10
+- Añadidos `HealthResponse`, `MessageResponse`, `UserRegistrationResponse`, `UserListItemResponse`, `ProfileResponse` y schemas específicos de incidencias; inventario ahora usa un acuse de creación con solo `id` y un `StockOrderListItemResponse` plano con `product_name`.
+- Todas las rutas de FastAPI con cuerpo documentan `response_model`; los DELETE declaran `response_model=None` y responden 204. Ninguna ruta devuelve modelos SQLModel/ORM en crudo.
+- Auth: respuestas de registro, forgot/reset/change no incluyen email ni credenciales; login mantiene token/expiración y `/auth/me` conserva email del llamante, con perfil anidado proyectado sin IDs. `NewPasswordRequest` ya tenía `extra="forbid"`; no requirió cambio.
+- Seguridad/proyecciones: GET `/users` solo para admin y sin email; todas las rutas de inventario requieren sesión. La creación de incidencia fija `open`; el listado omite descripción y el backoffice obtiene detalle al expandir. El historial de inventario sustituye SKU anidado por nombre, conserva `sku_id` y `user_uuid` porque ambos se muestran.
+- Documentación: `docs/serialization-audit.md` conserva la clasificación original como línea base y agrega el estado, schemas y decisión de relación de cada proyección. `CONTEXT.md` sigue siendo el mismo de Fase 1; cotejar el histórico existente y conservarlo si coincide.
+- Validaciones: `uv run --directory services/api pytest -q`: 66 correctas, advertencia conocida de deprecación Starlette/httpx; build de backoffice correcto; OpenAPI confirma 30 operaciones con schema de éxito o 204 sin cuerpo; smoke SQLite temporal valida registro sin email, acceso protegido y movimiento aplanado; `get_errors` sin errores; `git diff --check` limpio; `cmp` confirma que el contexto coincide con el histórico existente.
+- Estado: implementación de Fase 2 completada; sin cambios en reglas de negocio fuera de la forma de entrada/salida y control de acceso indicado. Sin commit; preservar modificaciones previas fuera de alcance.
+
+## Serialization audit — 2026-11-10
+- Fase 1 completada en `docs/serialization-audit.md`: inventariadas las 30 operaciones de FastAPI (29 de negocio y `GET /health`), con método, ruta, propósito, respuesta actual, clasificación y recomendación concreta por endpoint. Las rutas del gateway Node y la documentación automática quedan identificadas fuera del alcance.
+- Clasificación contrastada con el OpenAPI generado: 14 ya serializadas, 11 parcialmente serializadas y 5 sin schema de respuesta explícito. Se confirmó que los DELETE con 204 no requieren cuerpo ni serializer.
+- Revisión de auth: no hay respuestas con `password`/`hashed_password`; login devuelve token y expiración, recuperación usa confirmación genérica y registro repite el email aunque el cliente ignora el cuerpo. Se documentaron proyecciones de perfil y usuarios, la lista de usuarios accesible a cualquier sesión y el exceso de datos en historial de inventario e incidencias.
+- Revisión de escrituras: anotados los campos extra aceptados por `/auth/reset-password` y `/auth/change-password` y que `IncidentCreate` permite definir un estado inicial distinto de `open`.
+- Validación: comprobación ejecutable contra `app.openapi()` confirmó cobertura exacta de las 30 combinaciones método/ruta y recuentos 14/11/5; `cmp -s CONTEXT.md memory-bank/history/SERIALIZATION-AUDIT-CONTEXT-2026-11-10.md` correcto. No se modificó lógica de la API ni se ejecutaron pruebas de aplicación.
+- Estado: fase de auditoría completada; siguiente fase puede añadir schemas faltantes y acordar proyecciones antes de cambiar contratos. Sin bloqueos. El progreso preexistente modificado en esta sesión se conservó y se amplió.
+
+## Lighthouse — corrección de evidencia documental — 2026-11-09
+- Corregidos `AUDIT.md` y `REPORT.md` para reflejar las cuatro capturas reales de `audit/before/` y las cuatro de `audit/after/`, separando móvil/escritorio y website/back office. Se añadieron los puntajes Lighthouse visibles y enlaces a los PNG existentes; se retiraron referencias a capturas e informes HTML/JSON que no están en esas carpetas.
+- Se distinguieron las mediciones de las capturas `*.app.github.dev` de las medianas de tres corridas CLI en previews locales. No se presentan como entornos idénticos ni se atribuyen automáticamente sus diferencias a cambios concretos.
+- Se aclaró que el SEO menor del back office (63 en las capturas posteriores y en la medición local final) es intencional por `Disallow: /` para evitar indexación de una herramienta interna; robots no sustituye autenticación ni control de acceso.
+- Validación: `git diff --check` correcto tras editar cada documento; búsqueda de referencias antiguas a capturas/reportes inexistentes sin resultados; capturas inspeccionadas. Sin cambios de código ni pruebas de frontend/backend. El contexto activo ya coincide byte a byte con `memory-bank/history/LIGHTHOUSE-CONTEXT-2026-11-08.md`, por lo que se conserva ese histórico sin duplicarlo.
+- Estado: documentación actualizada. Sin commit; no quedan bloqueos técnicos.
+
 ## Lighthouse — auditoría y optimizaciones — 2026-11-08
 - Revisadas las skills instaladas `core-web-vitals`, `performance` y `web-perf`. Lighthouse CLI 13.6.0 y Chrome for Testing 156; línea base y resultados finales medidos tres veces en builds locales de producción, perfil móvil y URLs fijas `127.0.0.1:4173/` (website) y `127.0.0.1:4174/login` (backoffice). CrUX/INP no disponibles para estas pruebas locales de navegación.
 - Baseline mediana/rango: website Performance 99 (83–100), Accessibility 100, Best Practices 100, SEO 92; TTFB 12 ms, LCP 1,544 ms, CLS 0,000929. Backoffice Performance 99 (97–99), Accessibility 100, Best Practices 100, SEO 82; TTFB 8 ms, LCP 1,550 ms, CLS 0.

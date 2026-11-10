@@ -24,6 +24,23 @@ Mediana y rango de tres corridas antes de las correcciones:
 
 En la línea base de builds locales, TTFB, LCP y CLS cumplen los umbrales de laboratorio de las skills. La variación de Performance coincide con variación de TBT en corridas aisladas; no había evidencia para una optimización de rendimiento dirigida antes de corregir SEO. No se reclama una mejora de campo.
 
+### Capturas Lighthouse incluidas
+
+Estas ocho capturas son las mediciones visibles que se entregan en `audit/before/` y `audit/after/`. Cada una corresponde a una ejecución y sus puntuaciones no son medianas.
+
+| Etapa | Dispositivo | Aplicación | Performance | Accessibility | Best Practices | SEO | Captura |
+| --- | --- | --- | ---: | ---: | ---: | ---: | --- |
+| Antes | Móvil | Website | 56 | 100 | 100 | 58 | [LighthouseAntes.png](audit/before/LighthouseAntes.png) |
+| Antes | Móvil | Back office | 55 | 100 | 100 | 45 | [LighthouseBOantes.png](audit/before/LighthouseBOantes.png) |
+| Antes | Escritorio | Website | 68 | 100 | 100 | 58 | [LighthouseAntesOrdenador.png](audit/before/LighthouseAntesOrdenador.png) |
+| Antes | Escritorio | Back office | 56 | 100 | 100 | 45 | [LighthouseBOantesordenador.png](audit/before/LighthouseBOantesordenador.png) |
+| Después | Móvil | Website | 99 | 100 | 100 | 66 | [LighthouseDespuesMovil.png](audit/after/LighthouseDespuesMovil.png) |
+| Después | Móvil | Back office | 55 | 100 | 100 | 63 | [LighthouseDespuesBOmovil.png](audit/after/LighthouseDespuesBOmovil.png) |
+| Después | Escritorio | Website | 100 | 100 | 100 | 66 | [LighthouseDespuesOrdenador.png](audit/after/LighthouseDespuesOrdenador.png) |
+| Después | Escritorio | Back office | 56 | 100 | 100 | 63 | [LighthouseDespuesBOOrdenador.png](audit/after/LighthouseDespuesBOOrdenador.png) |
+
+Las capturas se tomaron mediante URLs reenviadas `*.app.github.dev`; la comparación controlada de la tabla anterior usa previews locales `127.0.0.1` y tres corridas por URL. Se documentan por separado: las capturas acreditan sus puntuaciones visibles, pero no se deben mezclar con las medianas locales ni interpretar como una comparación idéntica de entorno.
+
 ## Hallazgos SEO y causa raíz
 
 ### `robots.txt` devolvía HTML en ambos frontends
@@ -81,7 +98,4 @@ El backoffice es una herramienta interna; `uis/backoffice/public/robots.txt` usa
 
 ## Evidencia
 
-- Informes Lighthouse de línea base: `audit/before/*-prod-run-*.report.{html,json}`.
-- Informes posteriores a cada commit: `audit/after/*-run-*.report.{html,json}`.
-- Capturas comparables de resumen Lighthouse: `audit/before/website-lighthouse-baseline.png`, `audit/before/backoffice-lighthouse-baseline.png`, `audit/after/website-lighthouse-after.png` y `audit/after/backoffice-lighthouse-after.png`.
-- Se conservan además las capturas reenviadas originales, identificadas aparte por sus nombres `Lighthouse*.png`.
+Las cuatro capturas anteriores y las cuatro posteriores están enlazadas en la tabla de arriba. En estas carpetas no se incluyen los informes Lighthouse HTML/JSON; la tabla de línea base y los resultados locales se basan en las mediciones registradas en el historial del proyecto.

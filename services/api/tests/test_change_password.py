@@ -8,6 +8,7 @@ def test_change_password_updates_credentials(api_client, registered_account, acc
     )
 
     assert response.status_code == 200
+    assert set(response.json()) == {"message"}
     assert api_client.post(
         "/auth/login", json={"email": registered_account["email"], "password": "new-password-123"}
     ).status_code == 200

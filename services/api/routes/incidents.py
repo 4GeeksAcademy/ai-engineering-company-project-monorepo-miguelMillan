@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 from tinydb import Query
 
-from models import Incident, IncidentBranch, IncidentCategory, IncidentCreate, IncidentOrigin, IncidentStatus, IncidentStatusUpdate
+from models import Incident, IncidentBranch, IncidentCategory, IncidentCreate, IncidentCreatedResponse, IncidentDetailResponse, IncidentListItemResponse, IncidentOrigin, IncidentStatus, IncidentStatusResponse, IncidentStatusUpdate, IncidentSummaryResponse
 from security import get_current_user
 
 
@@ -25,15 +25,15 @@ def find_incident(request: Request, incident_id: UUID):
     return document
 
 
-@router.post("", response_model=Incident, status_code=201)
+@router.post("", response_model=IncidentCreatedResponse, status_code=201)
 def create_incident(payload: IncidentCreate, request: Request):
     incident = Incident(**payload.model_dump())
     with request.app.state.lock:
         request.app.state.db.table("incidents").insert(incident.model_dump(mode="json"))
-    return incident
+    return IncidentCreatedResponse.model_validate(incident)
 
 
-@router.get("", response_model=list[Incident])
+@router.get("", response_model=list[IncidentListItemResponse])
 def list_incidents(
     request: Request,
     status: IncidentStatus | None = None,
@@ -44,35 +44,37 @@ def list_incidents(
     filters = {"status": status, "origin": origin, "branch": branch, "category": category}
     with request.app.state.lock:
         return [
-            Incident.model_validate(document)
+            IncidentListItemResponse.model_validate(Incident.model_validate(document))
             for document in request.app.state.db.table("incidents").all()
             if all(value is None or document.get(field) == value for field, value in filters.items())
         ]
 
 
-@router.get("/summary")
+@router.get("/summary", response_model=IncidentSummaryResponse)
 def incident_summary(request: Request):
     with request.app.state.lock:
         incidents = [Incident.model_validate(document) for document in request.app.state.db.table("incidents").all()]
-    summary = {"total": len(incidents)}
-    for field, values in (
-        ("status", [status.value for status in IncidentStatus]),
-        ("category", get_args(IncidentCategory)),
-        ("origin", get_args(IncidentOrigin)),
-        ("branch", get_args(IncidentBranch)),
-    ):
-        counts = Counter(getattr(incident, field) for incident in incidents)
-        summary[f"by_{field}"] = {value: counts[value] for value in values}
-    return summary
+    status_counts = Counter(incident.status for incident in incidents)
+    category_counts = Counter(incident.category for incident in incidents)
+    origin_counts = Counter(incident.origin for incident in incidents)
+    branch_counts = Counter(incident.branch for incident in incidents)
+    return IncidentSummaryResponse(
+        total=len(incidents),
+        by_status={value: status_counts[value] for value in IncidentStatus},
+        by_category={value: category_counts[value] for value in get_args(IncidentCategory)},
+        by_origin={value: origin_counts[value] for value in get_args(IncidentOrigin)},
+        by_branch={value: branch_counts[value] for value in get_args(IncidentBranch)},
+    )
 
 
-@router.get("/{incident_id}", response_model=Incident)
+@router.get("/{incident_id}", response_model=IncidentDetailResponse)
 def get_incident(incident_id: UUID, request: Request):
     with request.app.state.lock:
-        return Incident.model_validate(find_incident(request, incident_id))
+        incident = Incident.model_validate(find_incident(request, incident_id))
+    return IncidentDetailResponse.model_validate(incident)
 
 
-@router.patch("/{incident_id}/status", response_model=Incident)
+@router.patch("/{incident_id}/status", response_model=IncidentStatusResponse)
 def update_incident_status(incident_id: UUID, payload: IncidentStatusUpdate, request: Request):
     with request.app.state.lock:
         document = find_incident(request, incident_id)
@@ -86,4 +88,4 @@ def update_incident_status(incident_id: UUID, payload: IncidentStatusUpdate, req
         request.app.state.db.table("incidents").update(
             incident.model_dump(mode="json", include={"status", "updated_at"}), doc_ids=[document.doc_id],
         )
-    return incident
+    return IncidentStatusResponse.model_validate(incident)

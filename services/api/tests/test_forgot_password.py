@@ -6,6 +6,7 @@ def test_forgot_password_schedules_reset_for_existing_user(api_client, register_
     response = api_client.post("/auth/forgot-password", json={"email": "recover@example.com"})
 
     assert response.status_code == 200
+    assert set(response.json()) == {"message"}
     assert sent[0][0] == "recover@example.com"
     assert "token=" in sent[0][1]
 

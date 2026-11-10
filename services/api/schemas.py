@@ -40,16 +40,10 @@ class StockEntryCreate(BaseModel):
     warehouse: Warehouse
 
 
-class StockEntryResponse(BaseModel):
+class StockMovementCreatedResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    sku_id: int
-    quantity: int
-    reference: str
-    warehouse: Warehouse
-    created_at: datetime
-    user_uuid: str
 
 
 class StockExitCreate(BaseModel):
@@ -70,30 +64,15 @@ class StockExitCreate(BaseModel):
         return self
 
 
-class StockExitResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    sku_id: int
-    quantity: int
-    exit_type: ExitType
-    tracking_number: str | None
-    warehouse: Warehouse
-    created_at: datetime
-    user_uuid: str
-
-
-class StockOrderResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class StockOrderListItemResponse(BaseModel):
     id: int
     order_type: Literal["inbound", "outbound"]
     sku_id: int
+    product_name: str
     quantity: int
     warehouse: Warehouse
     created_at: datetime
     user_uuid: str
-    product: SKUResponse
     reference: str | None = None
     exit_type: ExitType | None = None
     tracking_number: str | None = None

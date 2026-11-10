@@ -9,15 +9,14 @@ from schemas import (
     SKUCreate,
     SKUResponse,
     StockEntryCreate,
-    StockEntryResponse,
+    StockMovementCreatedResponse,
     StockExitCreate,
-    StockExitResponse,
-    StockOrderResponse,
+    StockOrderListItemResponse,
 )
 from security import get_current_user
 
 
-router = APIRouter(prefix="/inventory", tags=["inventory"])
+router = APIRouter(prefix="/inventory", tags=["inventory"], dependencies=[Depends(get_current_user)])
 
 
 def current_stock(session: Session, sku_id: int, warehouse: str) -> int:
@@ -58,7 +57,6 @@ def list_products(session: Session = Depends(get_db)):
     "/products",
     response_model=SKUResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(get_current_user)],
 )
 def create_product(payload: SKUCreate, session: Session = Depends(get_db)):
     product = SKU(**payload.model_dump())
@@ -82,7 +80,7 @@ def get_product(product_id: int, session: Session = Depends(get_db)):
 
 @router.post(
     "/orders/inbound",
-    response_model=StockEntryResponse,
+    response_model=StockMovementCreatedResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def register_inbound(
@@ -96,12 +94,12 @@ def register_inbound(
     session.add(entry)
     session.commit()
     session.refresh(entry)
-    return entry
+    return StockMovementCreatedResponse(id=entry.id)
 
 
 @router.post(
     "/orders/outbound",
-    response_model=StockExitResponse,
+    response_model=StockMovementCreatedResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def register_outbound(
@@ -127,10 +125,10 @@ def register_outbound(
     session.add(stock_exit)
     session.commit()
     session.refresh(stock_exit)
-    return stock_exit
+    return StockMovementCreatedResponse(id=stock_exit.id)
 
 
-@router.get("/orders", response_model=list[StockOrderResponse])
+@router.get("/orders", response_model=list[StockOrderListItemResponse])
 def list_orders(session: Session = Depends(get_db)):
     orders = []
     entries = session.exec(select(StockEntry)).all()
@@ -141,15 +139,15 @@ def list_orders(session: Session = Depends(get_db)):
         if product is None:
             continue
         orders.append(
-            StockOrderResponse(
+            StockOrderListItemResponse(
                 id=entry.id,
                 order_type="inbound",
                 sku_id=entry.sku_id,
+                product_name=product.name,
                 quantity=entry.quantity,
                 warehouse=entry.warehouse,
                 created_at=entry.created_at,
                 user_uuid=entry.user_uuid,
-                product=product_response(product, session),
                 reference=entry.reference,
             )
         )
@@ -159,15 +157,15 @@ def list_orders(session: Session = Depends(get_db)):
         if product is None:
             continue
         orders.append(
-            StockOrderResponse(
+            StockOrderListItemResponse(
                 id=stock_exit.id,
                 order_type="outbound",
                 sku_id=stock_exit.sku_id,
+                product_name=product.name,
                 quantity=stock_exit.quantity,
                 warehouse=stock_exit.warehouse,
                 created_at=stock_exit.created_at,
                 user_uuid=stock_exit.user_uuid,
-                product=product_response(product, session),
                 exit_type=stock_exit.exit_type,
                 tracking_number=stock_exit.tracking_number,
             )

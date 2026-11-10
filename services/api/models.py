@@ -84,7 +84,6 @@ class IncidentCreate(BaseModel):
     title: str = Field(min_length=1)
     description: str = Field(min_length=1)
     category: IncidentCategory
-    status: IncidentStatus = IncidentStatus.open
     origin: IncidentOrigin
     branch: IncidentBranch
 
@@ -105,14 +104,57 @@ class IncidentStatusUpdate(BaseModel):
 class Incident(IncidentCreate):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
+    status: IncidentStatus = IncidentStatus.open
     id: UUID = Field(default_factory=uuid4, frozen=True)
     created_at: AwareDatetime = Field(default_factory=lambda: datetime.now(timezone.utc), frozen=True)
     updated_at: AwareDatetime = Field(default_factory=lambda data: data["created_at"])
 
     def __setattr__(self, name: str, value: object) -> None:
         super().__setattr__(name, value)
-        if name in IncidentCreate.model_fields:
+        if name in IncidentCreate.model_fields or name == "status":
             super().__setattr__("updated_at", datetime.now(timezone.utc))
+
+
+class IncidentCreatedResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    status: IncidentStatus
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+
+
+class IncidentListItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    title: str
+    category: IncidentCategory
+    status: IncidentStatus
+    origin: IncidentOrigin
+    branch: IncidentBranch
+
+
+class IncidentDetailResponse(IncidentListItemResponse):
+    description: str
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+
+
+class IncidentStatusResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    status: IncidentStatus
+    updated_at: AwareDatetime
+
+
+class IncidentSummaryResponse(BaseModel):
+    total: int
+    by_status: dict[IncidentStatus, int]
+    by_category: dict[IncidentCategory, int]
+    by_origin: dict[IncidentOrigin, int]
+    by_branch: dict[IncidentBranch, int]
 
 
 class SupplierStatus(str, Enum):
@@ -249,9 +291,29 @@ class UserResponse(BaseModel):
     created_at: datetime
 
 
+class UserRegistrationResponse(BaseModel):
+    id: int
+    is_active: bool
+    role: UserRole
+    created_at: datetime
+
+
+class UserListItemResponse(BaseModel):
+    id: int
+    is_active: bool
+    role: UserRole
+    created_at: datetime
+
+
 class Profile(BaseModel):
     id: int
     user_id: int
+    name: str | None = None
+    phone: str | None = None
+    address: str | None = None
+
+
+class ProfileResponse(BaseModel):
     name: str | None = None
     phone: str | None = None
     address: str | None = None
@@ -271,7 +333,20 @@ class TokenResponse(BaseModel):
     expires_in: int
 
 
+class MessageResponse(BaseModel):
+    message: str
+
+
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+
+
+class AuthMeProfileResponse(ProfileResponse):
+    pass
+
+
 class AuthMeResponse(BaseModel):
     email: EmailStr
     role: UserRole
-    profile: Profile | None
+    profile: AuthMeProfileResponse | None

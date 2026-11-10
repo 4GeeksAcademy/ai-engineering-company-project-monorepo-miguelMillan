@@ -8,6 +8,9 @@ def test_registration_creates_user_profile_and_hashed_password(api_client, regis
     )
 
     assert response.status_code == 201
+    assert "email" not in response.json()
+    assert "password" not in response.json()
+    assert "hashed_password" not in response.json()
     user_id = response.json()["id"]
     stored_user = api_client.app.state.db.table("users").get(doc_id=user_id)
     profile = api_client.app.state.db.table("profiles").get(lambda item: item["user_id"] == user_id)

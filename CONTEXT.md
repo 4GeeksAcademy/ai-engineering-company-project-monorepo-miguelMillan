@@ -1,14 +1,11 @@
-Tu CTO ha dejado la siguiente nota en el gestor de tareas del equipo:
+Tu CTO ha compartido el siguiente briefing:
 
-Auditoría de rendimiento — ambos frontends
-Ejecuta Lighthouse en el sitio corporativo y en el backoffice. Registra las puntuaciones iniciales (Performance, Accessibility, Best Practices, SEO).
-Revisa el codebase. Identifica componentes o bloques de lógica que estén duplicados entre archivos y puedan refactorizarse en un componente compartido o un Custom Hook.
-En caso de necesitarlo, puedes instalar alguna de las siguientes skills de agente para guiar el proceso de corrección:
-core-web-vitals
-performance
-web-perf (Cloudflare)
-Aplica las correcciones que las skills identifiquen como necesarias.
-Entregables:
-Un archivo AUDIT.md con el análisis: puntuaciones iniciales, problemas identificados y causa raíz de cada uno.
-Un archivo REPORT.md con las mejoras aplicadas y su impacto medido sobre las puntuaciones originales.
-Capturas de pantalla de Lighthouse antes y después de los cambios, con commit en el repositorio.
+Qué necesitamos
+Una auditoría escrita que identifique cada endpoint y su estado de serialización actual.
+Una clasificación de cada endpoint: cuáles exponen campos innecesarios, cuáles carecen de un esquema de respuesta definido y cuáles ya están bien definidos.
+Para cada endpoint que requiera trabajo, una nota sobre qué tipo de mejora es necesaria — no solo "necesita serializer", sino por qué y cómo debería ser el payload de salida.
+Entregable mínimo
+Cada endpoint de la API debe tener un serializer de respuesta explícito definido antes de que esta tarea se considere completada. Ningún endpoint debe devolver un objeto ORM en crudo.
+
+Qué significa hacerlo bien
+Más allá del mínimo, espero optimización del payload donde importa: relaciones anidadas aplanadas cuando el cliente no necesita el objeto completo, endpoints de listado que devuelven solo los campos que los consumidores realmente usan, y endpoints de escritura que aceptan únicamente los campos que deben aceptar.

@@ -28,7 +28,7 @@ def register(client, email):
         json={"email": email, "password": "correct-horse-battery", "name": "TrackFlow User", "phone": "+1 555 0100"},
     )
     assert response.status_code == 201
-    return response.json()
+    return {**response.json(), "email": email}
 
 
 def login(client, email, password="correct-horse-battery"):
@@ -48,7 +48,7 @@ def test_register_hashes_password_and_creates_linked_profile(client):
     assert stored_user["hashed_password"] != "correct-horse-battery"
     assert bcrypt.verify("correct-horse-battery", stored_user["hashed_password"])
     assert profile.status_code == 200
-    assert profile.json()["user_id"] == user["id"]
+    assert set(profile.json()) == {"name", "phone", "address"}
     assert profile.json()["name"] == "TrackFlow User"
     assert profile.json()["phone"] == "+1 555 0100"
 
@@ -56,7 +56,7 @@ def test_register_hashes_password_and_creates_linked_profile(client):
     assert me.status_code == 200
     assert me.json()["email"] == user["email"]
     assert me.json()["role"] == "user"
-    assert me.json()["profile"]["user_id"] == user["id"]
+    assert set(me.json()["profile"]) == {"name", "phone", "address"}
 
 
 def test_registration_role_is_fixed_and_invalid_roles_are_rejected(client):
@@ -84,6 +84,7 @@ def test_login_accepts_json_and_oauth_form_credentials(client):
         "/auth/login", data={"username": user["email"], "password": "correct-horse-battery"}
     )
     assert form_login.status_code == 200
+    assert set(form_login.json()) == {"access_token", "token_type", "expires_in"}
     assert client.get("/auth/me", headers={"Authorization": f"Bearer {form_login.json()['access_token']}"}).status_code == 200
 
 
@@ -137,6 +138,7 @@ def test_owner_admin_permissions_profile_update_and_cascade_delete(client):
     owner_token = login(client, owner["email"])
     owner_headers = {"Authorization": f"Bearer {owner_token}"}
 
+    assert client.get("/users", headers=owner_headers).status_code == 403
     assert client.get(f"/users/{other['id']}", headers=owner_headers).status_code == 403
     assert client.put(
         f"/users/{other['id']}", json={"email": "stolen@example.com"}, headers=owner_headers
@@ -168,6 +170,9 @@ def test_owner_admin_permissions_profile_update_and_cascade_delete(client):
     admin_headers = {
         "Authorization": f"Bearer {login(client, 'renamed@example.com', 'new-correct-password')}"
     }
+    users_response = client.get("/users", headers=admin_headers)
+    assert users_response.status_code == 200
+    assert all("email" not in item for item in users_response.json())
     changed_role = client.put(f"/users/{other['id']}", json={"role": "manager"}, headers=admin_headers)
     assert changed_role.status_code == 200
     assert changed_role.json()["role"] == "manager"

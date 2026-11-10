@@ -20,12 +20,25 @@ Los valores son medianas con rango entre tres corridas; las puntuaciones de labo
 
 La diferencia de Performance del backoffice (+1 punto) no se atribuye al refactor: este afecta estados de error de otras vistas, no la ruta `/login`, y las puntuaciones de laboratorio tienen variación. LCP, CLS y TTFB permanecen bajos/estables en ambos frontends. No se encontró una corrección de rendimiento obligatoria respaldada por la línea base local.
 
+## Puntuaciones de las capturas
+
+Estas cifras transcriben las cuatro capturas de `audit/before/` y las cuatro de `audit/after/`. Son ejecuciones individuales tomadas mediante URLs reenviadas `*.app.github.dev`, no las medianas de tres corridas locales de la tabla anterior.
+
+| Aplicación / dispositivo | Performance antes → después | Accessibility | Best Practices | SEO antes → después | Capturas |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Website / móvil | 56 → 99 | 100 → 100 | 100 → 100 | 58 → 66 | [antes](audit/before/LighthouseAntes.png) · [después](audit/after/LighthouseDespuesMovil.png) |
+| Back office / móvil | 55 → 55 | 100 → 100 | 100 → 100 | 45 → 63 | [antes](audit/before/LighthouseBOantes.png) · [después](audit/after/LighthouseDespuesBOmovil.png) |
+| Website / escritorio | 68 → 100 | 100 → 100 | 100 → 100 | 58 → 66 | [antes](audit/before/LighthouseAntesOrdenador.png) · [después](audit/after/LighthouseDespuesOrdenador.png) |
+| Back office / escritorio | 56 → 56 | 100 → 100 | 100 → 100 | 45 → 63 | [antes](audit/before/LighthouseBOantesordenador.png) · [después](audit/after/LighthouseDespuesBOOrdenador.png) |
+
+La tabla de capturas muestra los resultados que se ven en pantalla, pero no es una comparación experimental idéntica: los dominios reenviados y las condiciones de ejecución difieren de los previews locales de la comparación principal. Por ello, no se atribuyen automáticamente sus cambios a un commit ni se mezclan ambos conjuntos de cifras.
+
 ## Cambios por commit
 
 ### `156754d` — servir robots válidos
 
 - Website: añadido `uis/website/public/robots.txt` con `Allow: /`. Se corrigió el fallback que devolvía HTML en `/robots.txt`; Lighthouse confirma `robots-txt` válido. SEO pasó de 92 a 100 (+8 puntos), Performance permaneció en 99 en la comparación final.
-- Backoffice: añadido `uis/backoffice/public/robots.txt` con `Disallow: /` para señalar que la herramienta no debe indexarse. `robots-txt` pasa; Lighthouse informa `is-crawlable` no aprobado. La puntuación SEO pasó de 82 a 54 inmediatamente después de esta política, una caída intencional por privacidad/descubribilidad.
+- Back office: añadido `uis/backoffice/public/robots.txt` con `Disallow: /` para señalar que la herramienta interna no debe indexarse. `robots-txt` pasa; Lighthouse informa `is-crawlable` no aprobado. En la medición local controlada, SEO pasó de 82 a 54 inmediatamente después de esta política, una caída deliberada para reducir la exposición en buscadores por privacidad. Las capturas adjuntas muestran 45 antes y 63 después; no son la misma corrida local.
 
 ### `2a70b79` — añadir meta description del backoffice
 
@@ -39,13 +52,11 @@ La diferencia de Performance del backoffice (+1 punto) no se atribuye al refacto
 
 ## Valoración
 
-La mayor mejora SEO medible fue el `robots.txt` del website (+8 puntos). La descripción añadió otros 9 puntos al login del backoffice, pero la política correcta para una aplicación interna mantiene SEO en 63 en vez de permitir indexación para perseguir 100. Ningún KPI principal evidencia una regresión tras los cambios; las variaciones de milisegundos están dentro de la variabilidad observada.
+La mayor mejora SEO medible en la comparación local fue el `robots.txt` del website (+8 puntos). La descripción añadió otros 9 puntos al login del back office, pero la política de no indexación para una aplicación interna mantiene SEO en 63 en vez de permitir rastreo para perseguir 100. Esa puntuación menor es una decisión de privacidad/seguridad operativa, no un fallo que se deba corregir habilitando indexación. `robots.txt` no protege datos ni sustituye la autenticación; el acceso al back office debe seguir protegido por el login. Ningún KPI principal evidencia una regresión tras los cambios; las variaciones de milisegundos están dentro de la variabilidad observada.
 
 ## Evidencia y validaciones
 
-- Capturas antes: `audit/before/website-lighthouse-baseline.png`, `audit/before/backoffice-lighthouse-baseline.png`.
-- Capturas después: `audit/after/website-lighthouse-after.png`, `audit/after/backoffice-lighthouse-after.png`.
-- Informes JSON/HTML y artefactos asociados están en `audit/before/` y `audit/after/`.
+- Las cuatro capturas anteriores y las cuatro posteriores están enlazadas en la tabla de puntuaciones. No se incluyen informes HTML/JSON en esas carpetas.
 - `npm --prefix uis/website run build`: correcto.
 - `npm --prefix uis/backoffice run build`: correcto tras robots, meta description y refactor.
 - `npm --prefix uis/backoffice run lint`: termina con una advertencia preexistente `react(set-state-in-effect)` en `src/app/account/AccountProfile.tsx`; no afecta los archivos del refactor.

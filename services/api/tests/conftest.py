@@ -30,7 +30,7 @@ def register_account(api_client):
 def registered_account(register_account):
     response = register_account()
     assert response.status_code == 201
-    return response.json()
+    return {**response.json(), "email": "user@example.com"}
 
 
 @pytest.fixture
