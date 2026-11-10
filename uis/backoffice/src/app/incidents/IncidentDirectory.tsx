@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { LoaderCircle, RefreshCw } from 'lucide-react'
 import { IncidentSummaryPanel } from './IncidentSummaryPanel'
 import { branchLabels, categoryLabels, incidentButton, incidentControl, incidentError, incidentRequest, originLabels, statusLabels, transitions } from '../../utils/incidents'
-import type { Incident, IncidentStatus } from '../../utils/incidents'
+import type { Incident, IncidentDetail, IncidentStatus, IncidentStatusResponse } from '../../utils/incidents'
 
 export function IncidentDirectory() {
   const [incidents, setIncidents] = useState<Incident[]>([])
+  const [incidentDetails, setIncidentDetails] = useState<Record<string, IncidentDetail>>({})
+  const [detailLoading, setDetailLoading] = useState<Set<string>>(new Set())
+  const [detailErrors, setDetailErrors] = useState<Record<string, string>>({})
   const [filters, setFilters] = useState({ status: '', origin: '', branch: '' })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -15,6 +18,7 @@ export function IncidentDirectory() {
   const [pending, setPending] = useState<Set<string>>(new Set())
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
   const updating = useRef(new Set<string>())
+  const loadingDetails = useRef(new Set<string>())
 
   useEffect(() => {
     const controller = new AbortController()
@@ -26,6 +30,22 @@ export function IncidentDirectory() {
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
   }, [filters, revision])
+
+  async function loadDetails(incidentId: string) {
+    if (incidentDetails[incidentId] || loadingDetails.current.has(incidentId)) return
+    loadingDetails.current.add(incidentId)
+    setDetailLoading(new Set(loadingDetails.current))
+    setDetailErrors((previous) => ({ ...previous, [incidentId]: '' }))
+    try {
+      const detail = await incidentRequest<IncidentDetail>(`/${incidentId}`)
+      setIncidentDetails((previous) => ({ ...previous, [incidentId]: detail }))
+    } catch (cause) {
+      setDetailErrors((previous) => ({ ...previous, [incidentId]: incidentError(cause) }))
+    } finally {
+      loadingDetails.current.delete(incidentId)
+      setDetailLoading(new Set(loadingDetails.current))
+    }
+  }
 
   function refresh() {
     setLoading(true)
@@ -42,8 +62,11 @@ export function IncidentDirectory() {
     setNotice('')
     setIncidents((previous) => previous.map((item) => item.id === incident.id ? { ...item, status } : item))
     try {
-      const saved = await incidentRequest<Incident>(`/${incident.id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
-      setIncidents((previous) => previous.flatMap((item) => item.id !== saved.id ? [item] : filters.status && saved.status !== filters.status ? [] : [saved]))
+      const saved = await incidentRequest<IncidentStatusResponse>(`/${incident.id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
+      setIncidents((previous) => previous.flatMap((item) => item.id !== saved.id ? [item] : filters.status && saved.status !== filters.status ? [] : [{ ...item, status: saved.status }]))
+      setIncidentDetails((previous) => previous[saved.id]
+        ? { ...previous, [saved.id]: { ...previous[saved.id], status: saved.status, updated_at: saved.updated_at } }
+        : previous)
       setNotice('Estado actualizado correctamente.')
       setSummaryRevision((value) => value + 1)
     } catch (cause) {
@@ -73,10 +96,26 @@ export function IncidentDirectory() {
           <p className="mb-3 text-sm text-slate-600">{incidents.length} incidencias</p>
           <div role="region" aria-label="Tabla de incidencias" tabIndex={0} className="overflow-x-auto border-y border-slate-200 focus-visible:outline-2 focus-visible:outline-emerald-800">
             <table className="w-full min-w-[850px] table-fixed text-left text-sm"><caption className="sr-only">Incidencias de TrackFlow y actualización de su estado</caption><thead className="bg-slate-200/70 text-slate-700"><tr><th scope="col" className="w-[30%] px-4 py-3">Incidencia</th><th scope="col" className="w-[20%] px-4 py-3">Categoría</th><th scope="col" className="w-[12%] px-4 py-3">Origen</th><th scope="col" className="w-[18%] px-4 py-3">Sede</th><th scope="col" className="w-[20%] px-4 py-3">Estado</th></tr></thead><tbody>
-              {incidents.map((incident) => <tr key={incident.id} className="border-t border-slate-200 align-top"><td className="break-words px-4 py-4"><details><summary className="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-emerald-800">{incident.title}</summary><p className="mt-3 whitespace-pre-wrap">{incident.description}</p><dl className="mt-3 space-y-2 text-xs text-slate-600"><div><dt>ID</dt><dd className="break-all">{incident.id}</dd></div><div><dt>Creación (UTC)</dt><dd>{new Date(incident.created_at).toLocaleString('es-ES', { timeZone: 'UTC' })}</dd></div><div><dt>Última modificación (UTC)</dt><dd>{new Date(incident.updated_at).toLocaleString('es-ES', { timeZone: 'UTC' })}</dd></div></dl></details></td><td className="break-words px-4 py-4">{categoryLabels[incident.category]}</td><td className="px-4 py-4">{originLabels[incident.origin]}</td><td className="break-words px-4 py-4">{branchLabels[incident.branch]}</td><td className="px-4 py-4">
+              {incidents.map((incident) => {
+                const detail = incidentDetails[incident.id]
+                return <tr key={incident.id} className="border-t border-slate-200 align-top">
+                  <td className="break-words px-4 py-4">
+                    <details onToggle={(event) => { if (event.currentTarget.open) void loadDetails(incident.id) }}>
+                      <summary className="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-emerald-800">{incident.title}</summary>
+                      {detailLoading.has(incident.id) && <p role="status" className="mt-3 text-sm text-slate-600">Cargando detalle...</p>}
+                      {detailErrors[incident.id] && <p role="alert" className="mt-3 text-sm text-red-800">{detailErrors[incident.id]} <button type="button" onClick={() => void loadDetails(incident.id)} className="font-semibold underline">Reintentar</button></p>}
+                      {detail && <><p className="mt-3 whitespace-pre-wrap">{detail.description}</p><dl className="mt-3 space-y-2 text-xs text-slate-600"><div><dt>ID</dt><dd className="break-all">{detail.id}</dd></div><div><dt>Creación (UTC)</dt><dd>{new Date(detail.created_at).toLocaleString('es-ES', { timeZone: 'UTC' })}</dd></div><div><dt>Última modificación (UTC)</dt><dd>{new Date(detail.updated_at).toLocaleString('es-ES', { timeZone: 'UTC' })}</dd></div></dl></>}
+                    </details>
+                  </td>
+                  <td className="break-words px-4 py-4">{categoryLabels[incident.category]}</td>
+                  <td className="px-4 py-4">{originLabels[incident.origin]}</td>
+                  <td className="break-words px-4 py-4">{branchLabels[incident.branch]}</td>
+                  <td className="px-4 py-4">
                 <label htmlFor={`incident-status-${incident.id}`} className="sr-only">Estado de {incident.title}</label><select id={`incident-status-${incident.id}`} value={incident.status} disabled={pending.has(incident.id) || !transitions[incident.status].length} onChange={(event) => void changeStatus(incident, event.target.value as IncidentStatus)} aria-describedby={rowErrors[incident.id] ? `incident-status-error-${incident.id}` : undefined} className={incidentControl}><option value={incident.status}>{statusLabels[incident.status]}</option>{transitions[incident.status].map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select>
                 {pending.has(incident.id) && <p role="status" className="mt-2 flex items-center gap-1 text-xs"><LoaderCircle size={14} className="animate-spin" aria-hidden="true" />Guardando...</p>}{!pending.has(incident.id) && !transitions[incident.status].length && <p className="mt-2 text-xs text-slate-600">Estado final</p>}{rowErrors[incident.id] && <p id={`incident-status-error-${incident.id}`} role="alert" className="mt-2 text-sm text-red-800">{rowErrors[incident.id]}</p>}
-              </td></tr>)}
+                  </td>
+                </tr>
+              })}
             </tbody></table>
           </div>
         </>}

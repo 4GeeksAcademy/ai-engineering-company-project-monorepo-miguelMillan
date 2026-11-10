@@ -30,22 +30,16 @@ export interface StockExitInput {
 
 export interface InventoryOrder {
   id: number
+  order_type: 'inbound' | 'outbound'
   sku_id: number
+  product_name: string
   quantity: number
   warehouse: Warehouse
   created_at: string
   user_uuid: string
-  type?: string
-  order_type?: string
-  movement_type?: string
-  kind?: string
-  sku?: string | Pick<SKU, 'name'>
-  product?: Pick<SKU, 'name'>
-  sku_name?: string
-  name?: string
-  reference?: string
-  exit_type?: StockExitType
-  tracking_number?: string | null
+  reference: string | null
+  exit_type: StockExitType | null
+  tracking_number: string | null
 }
 
 function errorMessage(payload: unknown, status: number): string {

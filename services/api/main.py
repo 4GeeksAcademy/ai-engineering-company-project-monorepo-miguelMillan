@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from database import database_lifespan
+from models import HealthResponse
 from routes.auth import router as auth_router
 from routes.incidents import router as incidents_router
 from routes.inventory import router as inventory_router
@@ -20,7 +21,7 @@ from routes.users import router as users_router
 def create_app(path: Path | None = None) -> FastAPI:
     application = FastAPI(title="TrackFlow Supplier Directory", lifespan=database_lifespan(path))
 
-    @application.get("/health")
+    @application.get("/health", response_model=HealthResponse)
     async def health():
         return {"status": "ok", "service": "trackflow-suppliers"}
 

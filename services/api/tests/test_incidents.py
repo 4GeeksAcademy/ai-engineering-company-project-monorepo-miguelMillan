@@ -30,7 +30,10 @@ def test_incident_lifecycle_filters_summary_and_allowed_transition(authenticated
     first_id = first.json()["id"]
     first_path = f"/api/incidents/{first_id}"
     assert authenticated_client.get(first_path).json()["title"] == "Paquete retrasado"
-    assert len(authenticated_client.get("/api/incidents").json()) == 2
+    listed = authenticated_client.get("/api/incidents").json()
+    assert len(listed) == 2
+    assert "description" not in listed[0]
+    assert "description" in authenticated_client.get(first_path).json()
     assert len(authenticated_client.get("/api/incidents?category=lost_parcel&branch=la_warehouse").json()) == 1
     assert authenticated_client.get("/api/incidents?category=other").json() == []
 
@@ -41,6 +44,7 @@ def test_incident_lifecycle_filters_summary_and_allowed_transition(authenticated
 
     changed = authenticated_client.patch(f"{first_path}/status", json={"status": "in_progress"})
     assert changed.status_code == 200
+    assert set(changed.json()) == {"id", "status", "updated_at"}
     assert authenticated_client.get(first_path).json()["status"] == "in_progress"
 
 
@@ -55,6 +59,7 @@ def test_incident_empty_list_and_summary_are_valid_boundaries(authenticated_clie
 def test_incident_rejects_invalid_payload_uuid_transition_and_missing_resource(authenticated_client):
     assert create_incident(authenticated_client, title="   ").status_code == 400
     assert create_incident(authenticated_client, category="unknown").status_code == 400
+    assert create_incident(authenticated_client, status="resolved").status_code == 400
     assert authenticated_client.get("/api/incidents/not-a-uuid").status_code == 400
 
     unknown_path = f"/api/incidents/{uuid.uuid4()}"

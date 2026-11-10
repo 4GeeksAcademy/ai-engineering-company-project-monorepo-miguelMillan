@@ -4,7 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from pydantic import ValidationError
 from passlib.hash import bcrypt
 
-from models import AuthMeResponse, ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, ResetPasswordRequest, TokenResponse, User
+from models import AuthMeProfileResponse, AuthMeResponse, ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, MessageResponse, ResetPasswordRequest, TokenResponse, User
 from password_recovery import CONFIRMATION, request_password_reset, reset_password
 from security import create_access_token, get_current_user
 from user_service import get_profile_by_user_id, get_user_by_email, get_user_by_id, update_user
@@ -13,19 +13,19 @@ from user_service import get_profile_by_user_id, get_user_by_email, get_user_by_
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/forgot-password")
+@router.post("/forgot-password", response_model=MessageResponse)
 def forgot_password(payload: ForgotPasswordRequest, request: Request, background_tasks: BackgroundTasks):
     background_tasks.add_task(request_password_reset, request.app, str(payload.email))
-    return {"message": CONFIRMATION}
+    return MessageResponse(message=CONFIRMATION)
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", response_model=MessageResponse)
 def reset_password_route(payload: ResetPasswordRequest, request: Request):
     reset_password(request.app, payload.token, payload.new_password)
-    return {"message": "Contrasena restablecida. Ya puedes iniciar sesion."}
+    return MessageResponse(message="Contrasena restablecida. Ya puedes iniciar sesion.")
 
 
-@router.post("/change-password")
+@router.post("/change-password", response_model=MessageResponse)
 def change_password(payload: ChangePasswordRequest, request: Request, current_user: User = Depends(get_current_user)):
     with request.app.state.lock:
         user = get_user_by_id(request.app.state.db, current_user.id)
@@ -34,7 +34,7 @@ def change_password(payload: ChangePasswordRequest, request: Request, current_us
         if not bcrypt.verify(payload.current_password, user.hashed_password):
             raise HTTPException(status_code=400, detail="La contrasena actual es incorrecta.")
         update_user(request.app.state.db, request.app.state.lock, user.id, {"password": payload.new_password})
-    return {"message": "Contrasena actualizada correctamente."}
+    return MessageResponse(message="Contrasena actualizada correctamente.")
 
 
 @router.post(
@@ -91,4 +91,5 @@ async def login(request: Request):
 def get_me(request: Request, current_user: User = Depends(get_current_user)):
     with request.app.state.lock:
         profile = get_profile_by_user_id(request.app.state.db, current_user.id)
-    return AuthMeResponse(email=current_user.email, role=current_user.role, profile=profile)
+    safe_profile = AuthMeProfileResponse(name=profile.name, phone=profile.phone, address=profile.address) if profile else None
+    return AuthMeResponse(email=current_user.email, role=current_user.role, profile=safe_profile)

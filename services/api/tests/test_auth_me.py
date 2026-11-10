@@ -3,7 +3,7 @@ def test_auth_me_returns_current_user_and_linked_profile(api_client, registered_
 
     assert response.status_code == 200
     assert response.json()["email"] == registered_account["email"]
-    assert response.json()["profile"]["user_id"] == registered_account["id"]
+    assert response.json()["profile"] == {"name": None, "phone": None, "address": None}
 
 
 def test_auth_me_allows_account_without_linked_profile(api_client, registered_account, access_token):

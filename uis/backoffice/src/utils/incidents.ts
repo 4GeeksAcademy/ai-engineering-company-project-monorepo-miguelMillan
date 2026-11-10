@@ -25,11 +25,27 @@ export interface IncidentInput {
   title: string
   description: string
   category: IncidentCategory
+  origin: IncidentOrigin
+  branch: IncidentBranch
+}
+export interface Incident {
+  id: string
+  title: string
+  category: IncidentCategory
   status: IncidentStatus
   origin: IncidentOrigin
   branch: IncidentBranch
 }
-export interface Incident extends IncidentInput { id: string; created_at: string; updated_at: string }
+export interface IncidentDetail extends Incident {
+  description: string
+  created_at: string
+  updated_at: string
+}
+export interface IncidentStatusResponse {
+  id: string
+  status: IncidentStatus
+  updated_at: string
+}
 export interface IncidentSummary {
   total: number
   by_status: Record<IncidentStatus, number>

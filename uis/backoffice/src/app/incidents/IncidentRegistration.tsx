@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Check, LoaderCircle, Plus, RotateCcw } from 'lucide-react'
-import { branchLabels, categoryLabels, fieldMessages, IncidentApiError, incidentButton, incidentControl, incidentError, incidentRequest, originLabels, statusLabels } from '../../utils/incidents'
-import type { Incident, IncidentInput, IncidentOrigin } from '../../utils/incidents'
+import { branchLabels, categoryLabels, fieldMessages, IncidentApiError, incidentButton, incidentControl, incidentError, incidentRequest, originLabels } from '../../utils/incidents'
+import type { IncidentInput, IncidentOrigin } from '../../utils/incidents'
 
 export function IncidentRegistration() {
   const [origin, setOrigin] = useState<IncidentOrigin | ''>('')
@@ -18,7 +18,7 @@ export function IncidentRegistration() {
     const data = new FormData(form)
     const values = Object.fromEntries(data.entries())
     const invalid: Record<string, string> = {}
-    for (const field of ['title', 'description', 'category', 'status', 'origin', 'branch']) {
+    for (const field of ['title', 'description', 'category', 'origin', 'branch']) {
       if (!String(values[field] ?? '').trim()) invalid[field] = fieldMessages[field]
     }
     setErrors(invalid)
@@ -30,13 +30,13 @@ export function IncidentRegistration() {
     }
     const payload: IncidentInput = {
       title: String(values.title).trim(), description: String(values.description),
-      category: values.category as IncidentInput['category'], status: values.status as IncidentInput['status'],
+      category: values.category as IncidentInput['category'],
       origin: values.origin as IncidentInput['origin'], branch: values.branch as IncidentInput['branch'],
     }
     submitting.current = true
     setPending(true)
     try {
-      await incidentRequest<Incident>('', { method: 'POST', body: JSON.stringify(payload) })
+      await incidentRequest('', { method: 'POST', body: JSON.stringify(payload) })
       form.reset()
       setOrigin('')
       setErrors({})
@@ -59,13 +59,10 @@ export function IncidentRegistration() {
           <legend className="sr-only">Datos de la incidencia</legend>
           <div className="md:col-span-2"><label htmlFor="incident-title" className="mb-2 block text-sm font-semibold">Título *</label><input id="incident-title" name="title" required aria-invalid={!!errors.title} aria-describedby={errors.title ? 'incident-title-error' : undefined} className={incidentControl} />{errors.title && <p id="incident-title-error" role="alert" className="mt-2 text-sm text-red-800">{errors.title}</p>}</div>
           <div className="md:col-span-2"><label htmlFor="incident-description" className="mb-2 block text-sm font-semibold">Descripción *</label><textarea id="incident-description" name="description" required rows={4} aria-invalid={!!errors.description} aria-describedby={errors.description ? 'incident-description-error' : undefined} className={incidentControl} />{errors.description && <p id="incident-description-error" role="alert" className="mt-2 text-sm text-red-800">{errors.description}</p>}</div>
-          {([
-            ['category', 'Categoría', categoryLabels], ['status', 'Estado', statusLabels],
-            ['origin', 'Origen', originLabels], ['branch', 'Sede', branchLabels],
-          ] as const).map(([field, label, labels]) => <div key={field} className={field === 'branch' && origin === 'branch' ? 'border-l-4 border-amber-600 bg-amber-50 p-4' : ''}>
+          {([['category', 'Categoría', categoryLabels], ['origin', 'Origen', originLabels], ['branch', 'Sede', branchLabels]] as const).map(([field, label, labels]) => <div key={field} className={field === 'branch' && origin === 'branch' ? 'border-l-4 border-amber-600 bg-amber-50 p-4' : ''}>
             <label htmlFor={`incident-${field}`} className="mb-2 block text-sm font-semibold">{label} *{field === 'branch' && origin === 'branch' ? ' · Reporte desde sede' : ''}</label>
-            <select id={`incident-${field}`} name={field} required defaultValue={field === 'status' ? 'open' : ''} onChange={field === 'origin' ? (event) => setOrigin(event.target.value as IncidentOrigin | '') : undefined} aria-invalid={!!errors[field]} aria-describedby={errors[field] ? `incident-${field}-error` : undefined} className={incidentControl}>
-              {field !== 'status' && <option value="">Seleccionar</option>}{Object.entries(labels).map(([value, text]) => <option value={value} key={value}>{text}</option>)}
+            <select id={`incident-${field}`} name={field} required defaultValue="" onChange={field === 'origin' ? (event) => setOrigin(event.target.value as IncidentOrigin | '') : undefined} aria-invalid={!!errors[field]} aria-describedby={errors[field] ? `incident-${field}-error` : undefined} className={incidentControl}>
+              <option value="">Seleccionar</option>{Object.entries(labels).map(([value, text]) => <option value={value} key={value}>{text}</option>)}
             </select>
             {errors[field] && <p id={`incident-${field}-error`} role="alert" className="mt-2 text-sm text-red-800">{errors[field]}</p>}
           </div>)}

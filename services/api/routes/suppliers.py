@@ -64,7 +64,7 @@ def update_status(supplier_id: int, payload: StatusUpdate, request: Request):
         return serialize(find_supplier(request, supplier_id))
 
 
-@router.delete("/{supplier_id}", status_code=204)
+@router.delete("/{supplier_id}", response_model=None, status_code=204)
 def delete_supplier(supplier_id: int, request: Request):
     with request.app.state.lock:
         find_supplier(request, supplier_id)

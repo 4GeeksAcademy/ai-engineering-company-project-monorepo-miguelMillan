@@ -30,6 +30,7 @@ def test_reset_password_changes_credentials_and_consumes_token(api_client, regis
     response = api_client.post("/auth/reset-password", json={"token": token, "new_password": "new-password-123"})
 
     assert response.status_code == 200
+    assert set(response.json()) == {"message"}
     assert api_client.post(
         "/auth/login", json={"email": registered_account["email"], "password": "new-password-123"}
     ).status_code == 200
