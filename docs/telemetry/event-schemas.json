@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://trackflow.example/schemas/telemetry-event-1.0.0.json",
+  "title": "TrackFlow Event Envelope",
+  "description": "Contrato propuesto para eventos de telemetria; no implica que exista captura implementada.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "timestamp", "sessionId", "userId", "event_type", "schemaVersion", "requestId", "properties"],
+  "properties": {
+    "eventId": {"type": "string", "format": "uuid", "description": "UUID del evento para deduplicacion."},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$", "description": "Instante de ocurrencia ISO 8601 en UTC."},
+    "sessionId": {"type": ["string", "null"], "format": "uuid", "description": "UUID opaco de sesion, o null si no existe; nunca un token."},
+    "userId": {"type": ["string", "null"], "pattern": "^u_[0-9a-f]{64}$", "description": "Seudonimo HMAC del usuario autenticado, o null si no se conoce."},
+    "event_type": {"type": "string", "description": "Identificador entidad_accion del evento."},
+    "schemaVersion": {"type": "string", "const": "1.0.0", "description": "Version del contrato de evento."},
+    "requestId": {"type": ["string", "null"], "format": "uuid", "description": "UUID de correlacion de solicitud, o null cuando no haya solicitud."},
+    "properties": {"type": "object", "description": "Payload limitado por el allowlist del event_type."}
+  },
+  "definitions": {
+    "warehouse": {"type": "string", "enum": ["los_angeles", "zaragoza"], "description": "Almacen: LA se convierte en los_angeles y ZGZ en zaragoza."},
+    "client_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$", "description": "Identificador opaco estable del cliente B2B, obtenido de un registro fiable."},
+    "product_id": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,100}$", "description": "Codigo SKU verificado; no es la PK numerica sku_id."},
+    "product_category": {"type": "string", "enum": ["fashion", "electronics", "cosmetics"], "description": "Categoria de SKU del catalogo."},
+    "quantity": {"type": "integer", "minimum": 0, "description": "Cantidad en unidades, con significado especifico del evento."},
+    "order_id": {"type": "integer", "minimum": 1, "description": "ID interno de orden; su tipo se distingue por event_type."},
+    "section": {"type": "string", "enum": ["overview", "inventory_products", "inventory_inbound", "inventory_outbound", "inventory_orders", "incidents", "incident_registration", "incident_analysis", "suppliers", "account", "login", "other"], "description": "Seccion normalizada, sin URL ni parametros."},
+    "route_group": {"type": "string", "enum": ["health", "auth_login", "auth_me", "auth_recovery", "users", "profiles", "inventory_products", "inventory_product_detail", "inventory_inbound", "inventory_outbound", "inventory_orders", "incidents", "suppliers", "other"], "description": "Grupo de ruta normalizado, sin identificadores ni query string."}
+  },
+  "oneOf": [
+    {
+      "description": "Recepcion de mercancia confirmada tras commit.",
+      "x-classification": "obligatorio", "x-category": "inventario", "x-sensitive-data": "Cliente y SKU son datos comerciales; userId es seudonimo. No incluir referencia libre ni destinatario.",
+      "properties": {"event_type": {"const": "inbound_order_created"}, "properties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["warehouse", "client_id", "product_id", "product_category", "quantity", "order_id"],
+        "properties": {
+          "warehouse": {"$ref": "#/definitions/warehouse"}, "client_id": {"$ref": "#/definitions/client_id"}, "product_id": {"$ref": "#/definitions/product_id"}, "product_category": {"$ref": "#/definitions/product_category"},
+          "quantity": {"type": "integer", "minimum": 1, "description": "Unidades recibidas."}, "order_id": {"$ref": "#/definitions/order_id"}
+        }
+      }}
+    },
+    {
+      "description": "Picking y despacho completados y confirmados; no representa perdidas.",
+      "x-classification": "obligatorio", "x-category": "inventario", "x-sensitive-data": "Cliente y SKU son comerciales; userId es seudonimo. No incluir tracking ni destinatario.",
+      "properties": {"event_type": {"const": "outbound_order_created"}, "properties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["warehouse", "client_id", "product_id", "product_category", "quantity", "order_id"],
+        "properties": {
+          "warehouse": {"$ref": "#/definitions/warehouse"}, "client_id": {"$ref": "#/definitions/client_id"}, "product_id": {"$ref": "#/definitions/product_id"}, "product_category": {"$ref": "#/definitions/product_category"},
+          "quantity": {"type": "integer", "minimum": 1, "description": "Unidades despachadas."}, "order_id": {"$ref": "#/definitions/order_id"}
+        }
+      }}
+    },
+    {
+      "description": "Stock cruza por debajo del minimo configurado para el cliente y SKU.",
+      "x-classification": "obligatorio", "x-category": "inventario", "x-sensitive-data": "Cliente, SKU y nivel de stock son comerciales; restringir acceso.",
+      "properties": {"event_type": {"const": "stock_threshold_triggered"}, "properties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["warehouse", "client_id", "product_id", "product_category", "quantity", "threshold"],
+        "properties": {
+          "warehouse": {"$ref": "#/definitions/warehouse"}, "client_id": {"$ref": "#/definitions/client_id"}, "product_id": {"$ref": "#/definitions/product_id"}, "product_category": {"$ref": "#/definitions/product_category"},
+          "quantity": {"type": "integer", "minimum": 0, "description": "Stock verificado tras el cruce."}, "threshold": {"type": "integer", "minimum": 1, "description": "Minimo configurado vigente para cliente y SKU."}
+        }
+      }}
+    },
+    {
+      "description": "Intento explicito de cambiar stock fuera de una orden, rechazado.",
+      "x-classification": "obligatorio", "x-category": "inventario", "x-sensitive-data": "Cliente y SKU son comerciales; userId es seudonimo. Nunca incluir el cuerpo de la solicitud.",
+      "properties": {"event_type": {"const": "direct_stock_edit_rejected"}, "properties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["warehouse", "client_id", "product_id", "product_category", "quantity"],
+        "properties": {
+          "warehouse": {"$ref": "#/definitions/warehouse"}, "client_id": {"$ref": "#/definitions/client_id"}, "product_id": {"$ref": "#/definitions/product_id"}, "product_category": {"$ref": "#/definitions/product_category"},
+          "quantity": {"type": "integer", "minimum": 0, "description": "Cantidad pertinente al intento, solo cuando se verifica su significado."}
+        }
+      }}
+    },
+    {
+      "description": "Conteo fisico o auditoria detecta diferencia con el sistema.",
+      "x-classification": "obligatorio", "x-category": "inventario", "x-sensitive-data": "Cliente, SKU y discrepancia son comerciales; restringir acceso.",
+      "properties": {"event_type": {"const": "inventory_discrepancy_detected"}, "properties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["warehouse", "client_id", "product_id", "product_category", "quantity"],
+        "properties": {
+          "warehouse": {"$ref": "#/definitions/warehouse"}, "client_id": {"$ref": "#/definitions/client_id"}, "product_id": {"$ref": "#/definitions/product_id"}, "product_category": {"$ref": "#/definitions/product_category"},
+          "quantity": {"type": "integer", "minimum": 1, "description": "Magnitud absoluta de la diferencia en unidades."},
+          "direction": {"type": "string", "enum": ["physical_lower", "physical_higher"], "description": "Opcional: direccion de la diferencia respecto al sistema."}
+        }
+      }}
+    },
+    {
+      "description": "Salida de inventario de tipo perdida confirmada tras commit.",
+      "x-classification": "oportunidad", "x-category": "inventario", "x-sensitive-data": "Cliente y SKU son comerciales; userId es seudonimo.",
+      "properties": {"event_type": {"const": "inventory_stock_loss_recorded"}, "properties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["warehouse", "client_id", "product_id", "product_category", "quantity", "order_id"],
+        "properties": {
+          "warehouse": {"$ref": "#/definitions/warehouse"}, "client_id": {"$ref": "#/definitions/client_id"}, "product_id": {"$ref": "#/definitions/product_id"}, "product_category": {"$ref": "#/definitions/product_category"},
+          "quantity": {"type": "integer", "minimum": 1, "description": "Unidades dadas de baja por perdida."}, "order_id": {"$ref": "#/definitions/order_id"}
+        }
+      }}
+    },
+    {
+      "description": "Solicitud de login recibida, antes de validar credenciales.",
+      "x-classification": "oportunidad", "x-category": "autenticacion", "x-sensitive-data": "No incluir email, contrasena, token ni identidad propuesta.",
+      "properties": {"event_type": {"const": "login_attempted"}, "userId": {"type": "null"}, "properties": {"type": "object", "additionalProperties": false, "properties": {}}}
+    },
+    {
+      "description": "Autenticacion correcta y sesion emitida.",
+      "x-classification": "oportunidad", "x-category": "autenticacion", "x-sensitive-data": "userId se seudonimiza con HMAC; sessionId es UUID opaco, nunca JWT.",
+      "properties": {"event_type": {"const": "login_succeeded"}, "userId": {"type": "string", "pattern": "^u_[0-9a-f]{64}$"}, "sessionId": {"type": "string", "format": "uuid"}, "properties": {"type": "object", "additionalProperties": false, "properties": {}}}
+    },
+    {
+      "description": "Intento de login rechazado, sin revelar identidad ni existencia de cuenta.",
+      "x-classification": "oportunidad", "x-category": "autenticacion", "x-sensitive-data": "No incluir email, credenciales, IP ni respuestas crudas.",
+      "properties": {"event_type": {"const": "login_failed"}, "userId": {"type": "null"}, "properties": {
+        "type": "object", "additionalProperties": false, "required": ["reason"],
+        "properties": {"reason": {"type": "string", "enum": ["credentials_rejected", "invalid_request"], "description": "Motivo agregado, no permite enumerar cuentas."}}
+      }}
+    },
+    {
+      "description": "Vencimiento de sesion confirmado; no cualquier respuesta 401.",
+      "x-classification": "oportunidad", "x-category": "autenticacion", "x-sensitive-data": "userId opcional es seudonimo; no guardar JWT ni detalles de credenciales.",
+      "properties": {"event_type": {"const": "session_expired"}, "properties": {"type": "object", "additionalProperties": false, "properties": {}}}
+    },
+    {
+      "description": "Visita de una seccion normalizada del backoffice.",
+      "x-classification": "oportunidad", "x-category": "navegacion", "x-sensitive-data": "userId es seudonimo; no incluir URL ni parametros.",
+      "properties": {"event_type": {"const": "backoffice_section_viewed"}, "properties": {
+        "type": "object", "additionalProperties": false, "required": ["section"],
+        "properties": {"section": {"$ref": "#/definitions/section"}}
+      }}
+    },
+    {
+      "description": "Respuesta completada de una operacion de API, con duracion.",
+      "x-classification": "oportunidad", "x-category": "rendimiento", "x-sensitive-data": "Ruta agrupada sin IDs, query ni cuerpos; userId es seudonimo.",
+      "properties": {"event_type": {"const": "api_request_completed"}, "properties": {
+        "type": "object", "additionalProperties": false, "required": ["route_group", "method", "status_code", "duration_ms"],
+        "properties": {
+          "route_group": {"$ref": "#/definitions/route_group"},
+          "method": {"type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"], "description": "Metodo HTTP."},
+          "status_code": {"type": "integer", "minimum": 100, "maximum": 599, "description": "Codigo de respuesta HTTP."},
+          "duration_ms": {"type": "number", "minimum": 0, "description": "Duracion de la solicitud en milisegundos."}
+        }
+      }}
+    },
+    {
+      "description": "Error de JavaScript o rechazo de promesa no capturado.",
+      "x-classification": "oportunidad", "x-category": "errores", "x-sensitive-data": "No incluir mensaje, stack, URL, payload ni datos de usuario; solo categoria controlada.",
+      "properties": {"event_type": {"const": "frontend_unhandled_error"}, "properties": {
+        "type": "object", "additionalProperties": false, "required": ["section", "error_kind"],
+        "properties": {
+          "section": {"$ref": "#/definitions/section"},
+          "error_kind": {"type": "string", "enum": ["javascript_error", "unhandled_rejection", "other"], "description": "Clase saneada del fallo."}
+        }
+      }}
+    },
+    {
+      "description": "Operador solicita reintento de carga de una vista.",
+      "x-classification": "oportunidad", "x-category": "errores", "x-sensitive-data": "userId es seudonimo; no incluir errores crudos ni contenido de la vista.",
+      "properties": {"event_type": {"const": "frontend_retry_requested"}, "properties": {
+        "type": "object", "additionalProperties": false, "required": ["section"],
+        "properties": {"section": {"$ref": "#/definitions/section"}}
+      }}
+    }
+  ]
+}
