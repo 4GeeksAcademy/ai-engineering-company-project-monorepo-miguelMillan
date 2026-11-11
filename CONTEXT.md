@@ -1,57 +1,75 @@
-Optimización de rendimiento: Caching
-La plataforma de tu empresa está creciendo. Lo que antes gestionaba un puñado de peticiones al día ahora soporta carga real: más usuarios, más llamadas a la API, interacciones de UI más complejas. El tech lead ha detectado un patrón recurrente en la telemetría: algunos endpoints reciben decenas de peticiones por minuto con consultas idénticas, y algunos componentes se están re-renderizando mucho más de lo necesario.
+# BRIEFING — TrackFlow
 
-El encargo es claro: antes del próximo sprint de funcionalidades, el equipo debe analizar la aplicación existente, identificar las oportunidades de caching con mayor impacto y aplicarlas. No se trata de cachear todo — sino de tomar decisiones deliberadas y justificadas sobre qué cachear, dónde hacerlo y durante cuánto tiempo.
+## Proyectos de Telemetría (Plan · Captura · Almacenamiento · Reporte)
 
-Trabajarás directamente sobre el monorepo de tu proyecto transversal. El resultado no es solo código funcional: es un informe técnico estructurado que explica tu razonamiento. Las decisiones de ingeniería sin documentación son solo intuiciones — el equipo necesita entender por qué se tomó cada decisión.
+<!-- hide -->
 
-1. Middleware de timing (sin dependencias)
-Añade esto a tu main.py:
+_These instructions are [available in English](./trackflow-BRIEFING.md)._
 
-import time
-import logging
-from fastapi import Request
+<!-- endhide -->
 
-logger = logging.getLogger("api.timing")
+---
 
-@app.middleware("http")
-async def timing_middleware(request: Request, call_next):
-    start = time.perf_counter()
-    response = await call_next(request)
-    duration = (time.perf_counter() - start) * 1000  # ms
+## 1. Tu compañía
 
-    logger.info(
-        f"{request.method} {request.url.path} → {response.status_code} | {duration:.1f}ms"
-    )
-    return response
+TrackFlow gestiona almacenes y última milla para marcas de moda, electrónica y cosmética, operando entre Los Ángeles y Zaragoza. El sistema de inventario es el corazón operativo de la compañía: el stock de cada SKU de cada cliente, en cada almacén.
 
-Obtienes una línea de log por petición:
+Hoy Brasaland vende comida y Nexova vende formación; en TrackFlow el inventario **es literalmente el negocio**. Tu Plan de Telemetría, tu captura, tu almacenamiento y tu reporte técnico giran alrededor de ese sistema, y son la base sobre la que, más adelante, TrackFlow construirá el dashboard operativo de Ana y el dashboard ejecutivo global de Thomas.
 
-GET /users → 200 | 312.4ms
-POST /orders → 201 | 48.2ms
-GET /products → 200 | 891.7ms  ← 🐢
-¿Qué buscar en los logs?
+---
 
-Señal en el log	Pregunta que responde	¿Candidato a caché?
-Latencia alta (>100–200 ms de forma consistente)	¿Cuánto cuesta la operación? (eje coste)	Sí, si se repite
-Misma ruta muchas veces en poco tiempo	¿Con qué frecuencia se llama? (eje frecuencia)	Sí, si la respuesta es la misma
-Mismo path + mismo status + tiempos similares en lecturas	¿Los datos subyacentes cambian poco? (eje estabilidad)	Sí, con TTL acorde
-Un endpoint que aparece lento y se invoca en ráfagas con los mismos parámetros (p. ej. GET /products?category=electronics) es un candidato fuerte. Un POST que escribe datos o un GET con respuesta distinta por usuario no lo es — o solo con clave de caché acotada al usuario.
+## 2. Entidades del sistema de inventario en TrackFlow
 
-Complementa con tráfico real:
+| Entidad         | En TrackFlow significa...                                                                                 |
+| --------------- | ---------------------------------------------------------------------------------------------------------- |
+| `Product`      | Un SKU perteneciente a un cliente (marca): ej. `camiseta talla M — Cliente Fashion Co`, `auricular bluetooth — Cliente ElectroBrand`. Cada SKU tiene una categoría (moda, electrónica, cosmética) y pertenece a un cliente. |
+| `InboundOrder`  | Una orden de entrada: recepción de mercancía de un cliente en un almacén (Los Ángeles o Zaragoza).           |
+| `OutboundOrder` | Una orden de salida: preparación (picking) y despacho de un pedido hacia el transportista para entrega al consumidor final. |
+| `warehouse`     | Los Ángeles o Zaragoza.                                                                                       |
+| `client`        | La marca (cliente B2B) dueña del SKU.                                                                        |
 
-Navega tu frontend o lanza peticiones repetidas (misma URL, mismos query params).
-Ordena mentalmente los logs: los paths con más líneas y mayor ms van primero en tu lista de candidatos.
-Cruza con el checklist del informe: documenta en CACHING_REPORT.md el tiempo medido antes de cachear y el estimado después.
-😉 Carga realista en la base de datos:
+---
 
-Con pocos registros, casi todo el API responde rápido y los logs de timing no revelan dónde el caching aporta valor. Antes de fiarte del middleware, aumenta el volumen en las tablas que alimentan tus lecturas más pesadas (catálogo, pedidos, usuarios con relaciones, etc.).
+## 3. Métricas obligatorias de telemetría
 
-Pide a tu agente de código un seeder (script de tu stack: Alembic, seed de Prisma, comando de gestión en Django, etc.) o un script SQL que inserte muchos registros; revísalo y ejecútalo en local.
-Prioriza la calidad de los datos, no solo la cantidad: nombres, categorías, fechas, precios y claves foráneas variadas y coherentes para que filtros, joins, ordenaciones y agregaciones cuesten trabajo de verdad — no quinientas filas idénticas "test".
-Vuelve a ejecutar el middleware de timing tras el seed. En CACHING_REPORT.md, indica volumen aproximado de filas antes y después y cómo cambió la latencia en los endpoints elegidos.
-En el frontend:
+Estas son las métricas que TrackFlow necesita medir **desde ya**, sin importar qué más identifiques en tu propio catálogo. Van directamente al piso de tu Plan de Telemetría (Fase 1) y deben estar instrumentadas de punta a punta al final de la serie de proyectos.
 
-React DevTools → Profiler: componentes que se re-renderizan sin cambio real de props son candidatos a useMemo o a dividir estado.
-Lazy Loading: rutas o modales que no se usan en la carga inicial pero pesan en el bundle (pestaña Network: JS grande que solo se pide al entrar en esa vista).
-⚠️ No implementes caché en todo lo lento: primero mide, luego prioriza los casos donde coste × frecuencia × estabilidad justifican el intercambio frescura/rendimiento.
+> Estas métricas alimentarán, más adelante en el curso, el dashboard de operaciones de almacén de Ana y el dashboard ejecutivo global de Thomas (comparación de volumen y SLA entre Estados Unidos y España). Diséñalas pensando en que se agregarán por almacén, por cliente y por país.
+
+| `event_type`                       | Se dispara cuando...                                                                        | Hipótesis de negocio                                                                                | Decisión que habilita                                                                       |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `inbound_order_created`              | Un almacén registra la recepción de mercancía de un cliente                                        | Necesitamos saber cuánto volumen entra, por cliente y por almacén                                          | Planificar capacidad de almacén y personal según el volumen entrante (Ana)                          |
+| `outbound_order_created`             | Un almacén completa el picking y despacho de un pedido                                             | Necesitamos saber cuántos pedidos se procesan, por cliente y almacén, y a qué ritmo                        | Detectar cuellos de botella operativos antes de que afecten el SLA de entrega (Ana)                 |
+| `stock_threshold_triggered`         | El stock de un SKU cae por debajo del mínimo configurado para ese cliente                          | Necesitamos saber con qué frecuencia un cliente se queda sin stock disponible de un SKU                    | Alertar al cliente y al equipo comercial antes de un quiebre de stock (Miguel)                       |
+| `direct_stock_edit_rejected`        | Un usuario intenta modificar el stock directamente (fuera de una orden) y el sistema lo rechaza    | Necesitamos saber si el personal de almacén intenta saltarse el control de trazabilidad                    | Reforzar capacitación o permisos en el almacén donde esto ocurre con más frecuencia                  |
+| `inventory_discrepancy_detected`    | Un conteo físico o una auditoría detecta una diferencia entre el stock del sistema y el stock real | Necesitamos saber en qué SKUs y almacenes ocurren más discrepancias                                        | Priorizar auditorías de inventario en los SKUs con mayor tasa de discrepancia (Ana)                  |
+
+**Campos mínimos en `properties` para los eventos de inventario** (además del envelope estándar): `warehouse` (`los_angeles`/`zaragoza`), `client_id`, `product_id` (SKU), `product_category`, `quantity`.
+
+⚠️ No incluyas datos personales del consumidor final (destinatario del paquete) en `properties` — estos eventos describen inventario de almacén, no envíos individuales a domicilio (eso corresponde al proyecto de tracking de última milla).
+
+---
+
+## 4. Cómo estas métricas conectan con el futuro
+
+Estas métricas no son solo para el reporte técnico de hoy. A medida que avance el curso, estos mismos datos se van a reutilizar para automatizaciones y para reportes a nivel ejecutivo — con un nivel de agregación y de pulido bastante mayor al que estás construyendo ahora mismo. Diséñalas como si alguien más, más adelante, fuera a depender de ellas sin poder preguntarte cómo funcionan.
+
+---
+
+## 5. Datos semilla sugeridos
+
+Genera al menos:
+
+- 8–10 SKUs distintos, de al menos 2 clientes distintos y cubriendo las 3 categorías (moda, electrónica, cosmética)
+- Los 2 almacenes (Los Ángeles y Zaragoza)
+- 15–20 órdenes de entrada distribuidas entre ambos almacenes
+- 15–20 órdenes de salida
+- Al menos 2 casos que disparen `stock_threshold_triggered` y 1 caso de `inventory_discrepancy_detected`
+
+---
+
+## 6. Restricciones de negocio
+
+- El stock nunca se modifica directamente: toda modificación pasa por `InboundOrder` u `OutboundOrder`, trazable a un usuario.
+- Cada SKU pertenece a un único cliente — no mezcles inventario entre clientes en el mismo `product_id`.
+- Los eventos de inventario no incluyen datos del transportista ni del destinatario final — eso pertenece al dominio de última milla, fuera del alcance de este sistema.

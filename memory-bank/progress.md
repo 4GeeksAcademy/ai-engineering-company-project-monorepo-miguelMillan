@@ -1,5 +1,25 @@
 # Progress Log — TrackFlow
 
+## Telemetría — fase 3 — 2026-11-11
+- `docs/telemetry/telemetry-plan.md` clasifica los 14 eventos con esquema: nueve en stream y cinco en batch, con frecuencia o latencia objetivo provisional y justificación basada en urgencia operativa.
+- Documentados outbox propuesto, reintentos y deduplicación, ventanas de login, límites de entrega, muestreo estratificado de API y ponderación, throttle de alertas de errores sin descartar sucesos, y navegación/reintentos en lote. Las métricas obligatorias y eventos de seguridad no se muestrean.
+- Añadidos riesgos de sesgo, pérdida, privacidad, consistencia y brechas de negocio; excluidos renders, pulsaciones, capturas, credenciales, datos de destinatario y otros payloads o trazas sensibles.
+- Validación documental: contraste automático de los 14 `event_type` del JSON Schema frente a la tabla, sin duplicados ni omisiones; nueve stream y cinco batch, con secciones de límites y riesgos presentes. Contexto activo ya archivado íntegro en `memory-bank/history/TELEMETRY-PHASE1-CONTEXT-2026-11-11.md`; `cmp` confirma coincidencia.
+- Estado: estrategia documentada, sin implementar captura, colas, alertas, muestreo ni transporte. Pendientes las dependencias de identidad, umbrales, auditoría, picking y definición operativa de entrega/retención.
+
+## Telemetría — fase 2 — 2026-11-11
+- `docs/telemetry/event-schemas.json` sustituye el índice provisional por JSON Schema Draft-07: envelope de ocho campos, `schemaVersion` 1.0.0, allowlists cerrados y esquemas para los cinco eventos obligatorios y nueve oportunidades de cinco categorías.
+- `telemetry-plan.md` documenta tipos, obligatoriedad/nulos, semántica y privacidad del envelope y las propiedades de los 14 eventos, seudonimización HMAC, IDs de sesión opacos, filtros contra datos sensibles y dependencias de captura. Las otras oportunidades de fase 1 permanecen en catálogo sin esquema aprobado.
+- Validaciones ejecutadas con `jsonschema` y `FormatChecker`: schema Draft-07 válido, ejemplos aceptados para los 14 eventos y rechazo de claves extra, timestamp inválido y envelope incompleto. Comprobada correspondencia con los cinco nombres obligatorios del contexto, categorías y allowlists documentados.
+- El contexto activo sigue coincidiendo byte a byte con `memory-bank/history/TELEMETRY-PHASE1-CONTEXT-2026-11-11.md`; se conserva sin duplicar. No se implementó captura, almacenamiento ni lógica de negocio; siguen pendientes identidad estable de cliente, sesión opaca, umbrales, auditoría y conciliación de rechazos sin dimensiones verificables.
+
+## Telemetría — fase 1 — 2026-11-11
+- Creado `docs/telemetry/telemetry-plan.md` con los cinco eventos obligatorios de `CONTEXT.md` y 32 oportunidades justificadas de inventario, autenticación, navegación, rendimiento, errores, incidencias y proveedores. Cada fila identifica punto, hipótesis y decisión.
+- Creado `docs/telemetry/event-schemas.json` como índice válido y preliminar de los 37 eventos, su clasificación, las propiedades mínimas exigidas y los almacenes; todavía no es JSON Schema ni un contrato de captura.
+- Contrastados el flujo real de inventario y los antecedentes HITO05. Bloqueos documentados: ausencia de `client_id` estable, mínimos configurables por cliente, flujo de conteo físico, detección explícita de edición directa y confirmación de picking; señal visual `<= 5` no equivale al umbral obligatorio.
+- Validación documental ejecutada con Python: JSON válido, cinco nombres obligatorios extraídos de la sección de métricas del contexto, sin duplicados, clasificación coherente con el plan y propiedades/almacenes requeridos presentes. Dos intentos iniciales del verificador incluyeron el encabezado y otras tablas; se acotó a la sección correcta y el control pasó.
+- Contexto activo archivado íntegro en `memory-bank/history/TELEMETRY-PHASE1-CONTEXT-2026-11-11.md`; `cmp` confirma identidad byte a byte. Sin cambios en la aplicación, datos ni pruebas de runtime; siguiente paso: esperar requisitos de fase 2.
+
 ## Caching — 2026-11-11
 - Añadidos middleware de tiempos HTTP y caché de listado/resumen de incidencias por usuario y filtros, TTL 5 s, límite 32 entradas e invalidación sincronizada en creación y cambio de estado. La caché es por proceso y no coordina escrituras externas.
 - Backoffice React/Vite: carga diferida de análisis CSV, proveedores e inventario; memoización de motivos de filas inválidas dependiente del informe.
