@@ -1,14 +1,15 @@
 import { MetricCard } from './components/MetricCard'
-import { IncidentAnalysis } from './components/IncidentAnalysis'
-import { SupplierDirectory } from './app/suppliers/SupplierDirectory'
 import { IncidentRegistration } from './app/incidents/IncidentRegistration'
 import { IncidentDirectory } from './app/incidents/IncidentDirectory'
 import { AccountProfile } from './app/account/AccountProfile'
-import { InventoryPage } from './app/inventory/InventoryPages'
 import { AuthPage } from './components/AuthPage'
 import { authRequest, clearSession, getSessionToken } from './utils/auth'
 import { LogOut } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
+
+const IncidentAnalysis = lazy(() => import('./components/IncidentAnalysis').then((module) => ({ default: module.IncidentAnalysis })))
+const SupplierDirectory = lazy(() => import('./app/suppliers/SupplierDirectory').then((module) => ({ default: module.SupplierDirectory })))
+const InventoryPage = lazy(() => import('./app/inventory/InventoryPages').then((module) => ({ default: module.InventoryPage })))
 
 const kpis = [
   { label: 'Envios activos hoy', value: '1,284', trend: '+8.2% vs. ayer' },
@@ -109,6 +110,7 @@ function App() {
         </div>
       </header>
 
+      <Suspense fallback={<main className="mx-auto w-full max-w-6xl px-6 py-8"><p role="status">Cargando vista...</p></main>}>
       {path.startsWith('/backoffice/inventory/') ? (
         <main className="mx-auto w-full max-w-6xl px-6 py-8"><InventoryPage path={path} /></main>
       ) : path === '/account/profile' ? (
@@ -178,6 +180,7 @@ function App() {
         </section>
         </main>
       )}
+      </Suspense>
     </div>
   )
 }

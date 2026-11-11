@@ -1,4 +1,6 @@
+import logging
 import os
+import time
 from pathlib import Path
 
 import uvicorn
@@ -18,8 +20,19 @@ from routes.suppliers import router
 from routes.users import router as users_router
 
 
+logger = logging.getLogger("uvicorn.error.timing")
+
+
 def create_app(path: Path | None = None) -> FastAPI:
     application = FastAPI(title="TrackFlow Supplier Directory", lifespan=database_lifespan(path))
+
+    @application.middleware("http")
+    async def timing_middleware(request: Request, call_next):
+        started = time.perf_counter()
+        response = await call_next(request)
+        duration_ms = (time.perf_counter() - started) * 1000
+        logger.info("%s %s -> %s | %.1fms", request.method, request.url.path, response.status_code, duration_ms)
+        return response
 
     @application.get("/health", response_model=HealthResponse)
     async def health():
