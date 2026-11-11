@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { apiFetch } from '../utils/auth'
 
 interface AnalysisReport {
@@ -79,6 +79,10 @@ export function IncidentAnalysis() {
   const [downloading, setDownloading] = useState(false)
   const [notice, setNotice] = useState('')
   const [dragging, setDragging] = useState(false)
+  const invalidRecords = useMemo(() => report?.invalid_records.map(({ row, issues }) => ({
+    row,
+    reasons: issues.map((issue) => issueLabels[issue] ?? issue).join(', '),
+  })) ?? [], [report])
 
   async function analyzeFile(file?: File) {
     if (!file) return
@@ -222,14 +226,14 @@ export function IncidentAnalysis() {
                   </li>
                 ))}
               </ul>
-              {report.invalid_records.length > 0 && (
+              {invalidRecords.length > 0 && (
                 <details className="mt-4 border-t border-amber-200 pt-3 text-sm text-amber-950">
                   <summary className="cursor-pointer font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-800">
                     Ver filas inválidas y sus motivos
                   </summary>
                   <ul className="mt-3 space-y-1">
-                    {report.invalid_records.map(({ row, issues }) => (
-                      <li key={row}>Fila {row}: {issues.map((issue) => issueLabels[issue] ?? issue).join(', ')}</li>
+                    {invalidRecords.map(({ row, reasons }) => (
+                      <li key={row}>Fila {row}: {reasons}</li>
                     ))}
                   </ul>
                 </details>

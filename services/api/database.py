@@ -43,6 +43,7 @@ def database_lifespan(path: Path | None = None):
         auth_settings()
         application.state.db = open_database(path)
         application.state.lock = RLock()
+        application.state.incident_cache = {}
         engine = None
         try:
             engine = create_sql_engine()

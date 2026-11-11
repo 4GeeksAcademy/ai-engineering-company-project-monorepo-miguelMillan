@@ -1,5 +1,13 @@
 # Progress Log — TrackFlow
 
+## Caching — 2026-11-11
+- Añadidos middleware de tiempos HTTP y caché de listado/resumen de incidencias por usuario y filtros, TTL 5 s, límite 32 entradas e invalidación sincronizada en creación y cambio de estado. La caché es por proceso y no coordina escrituras externas.
+- Backoffice React/Vite: carga diferida de análisis CSV, proveedores e inventario; memoización de motivos de filas inválidas dependiente del informe.
+- `scripts/benchmark_caching.py` genera 3000 incidencias variadas en bases temporales. Medianas HTTP con 3000: listado 47,32 a 11,30 ms; resumen 39,53 a 8,31 ms. Comparación local, no tráfico de producción.
+- `CACHING_REPORT.md` documenta las 30 operaciones verificadas contra OpenAPI, hipótesis de frecuencia, TTL, invalidación, mediciones y limitaciones. Contexto activo archivado íntegro en `memory-bank/history/CACHING-CONTEXT-2026-11-11.md`; `cmp` confirma identidad byte a byte.
+- Validaciones: cuatro pruebas de incidencias correctas; comprobación temporal de autenticación, aislamiento por usuario/filtros, TTL e invalidación POST/PATCH; build correcto con tres chunks separados; lint sin errores y advertencia preexistente en `AccountProfile`; diagnósticos sin errores.
+- Pendientes: verificación visual y React Profiler/Network, tráfico y latencias de producción, PageSpeed en URL pública no disponible y evaluación de memoria/coherencia multiproceso. No se modificó la base real ni se creó commit.
+
 ## Serialization audit — verificación Fase 3 — 2026-11-10
 - Reejecutada la suite backend completa tras los cambios de schema: 66 tests correctos; una advertencia conocida de deprecación Starlette/httpx.
 - FastAPI temporal abrió `/docs` y `/openapi.json` con HTTP 200. No hay navegador local ni herramienta para accionar Swagger UI; se abrió la página con el launcher del host, pero `Try it out` manual no pudo ejecutarse. No se declara cumplido ese subcriterio.
