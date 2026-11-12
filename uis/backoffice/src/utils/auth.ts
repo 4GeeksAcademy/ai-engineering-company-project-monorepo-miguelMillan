@@ -1,4 +1,5 @@
 import { clearSession, getSessionToken } from './session'
+import { track } from '../services/telemetry'
 export { clearSession, getSessionToken, saveSession } from './session'
 
 export class AuthRequestError extends Error {
@@ -28,13 +29,33 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   }
 
   let response: Response
+  const started = performance.now()
   try {
     response = await fetch(`${base}${path}`, { ...options, headers })
   } catch (cause) {
     if (options.signal?.aborted) throw cause
     throw new AuthRequestError('No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.')
   }
+  const routeGroup = path.startsWith('/auth/login') ? 'auth_login'
+    : path.startsWith('/auth/me') ? 'auth_me'
+      : path.startsWith('/auth/') ? 'auth_recovery'
+        : path.startsWith('/users') ? 'users'
+          : path.startsWith('/profiles') ? 'profiles'
+            : path.startsWith('/inventory/products/') ? 'inventory_product_detail'
+              : path.startsWith('/inventory/products') ? 'inventory_products'
+                : path.startsWith('/inventory/orders/inbound') ? 'inventory_inbound'
+                  : path.startsWith('/inventory/orders/outbound') ? 'inventory_outbound'
+                    : path.startsWith('/inventory/orders') ? 'inventory_orders'
+                      : path.startsWith('/api/incidents') ? 'incidents'
+                        : path.startsWith('/suppliers') ? 'suppliers' : 'other'
+  track('api_request_completed', {
+    route_group: routeGroup,
+    method: (options.method ?? 'GET').toUpperCase(),
+    status_code: response.status,
+    duration_ms: performance.now() - started,
+  })
   if (response.status === 401 && !isPublicRequest) {
+    track('session_expired', {})
     clearSession()
     window.location.replace('/login?session=expired')
   }

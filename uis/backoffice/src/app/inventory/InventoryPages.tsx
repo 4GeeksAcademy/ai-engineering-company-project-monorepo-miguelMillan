@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowDownToLine, ArrowUpFromLine, CircleAlert, CircleCheck, RefreshCw } from 'lucide-react'
 import { AsyncErrorState } from '../../components/AsyncErrorState'
 import { inventoryRequest } from '../../utils/inventory'
+import { track } from '../../services/telemetry'
 import type { InventoryOrder, SKU, StockEntryInput, StockExitInput, StockExitType } from '../../utils/inventory'
 
 const controlClass = 'min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800'
@@ -12,6 +13,8 @@ const inventoryPaths = {
   outbound: '/backoffice/inventory/orders/outbound',
   orders: '/backoffice/inventory/orders',
 } as const
+
+const warehouseTelemetry = { LA: 'los_angeles', ZGZ: 'zaragoza' } as const
 
 function messageFrom(cause: unknown): string {
   return cause instanceof Error ? cause.message : 'No se pudo completar la solicitud de inventario.'
@@ -136,7 +139,8 @@ function InboundOrderPage() {
     setNotice('')
     const body: StockEntryInput = { sku_id: selectedProduct.id, quantity: Number(quantity), reference: reference.trim(), warehouse: selectedProduct.warehouse }
     try {
-      await inventoryRequest('/orders/inbound', { method: 'POST', body: JSON.stringify(body) })
+      const created = await inventoryRequest<{ id: number }>('/orders/inbound', { method: 'POST', body: JSON.stringify(body) })
+      if (selectedProduct.client_id) track('inbound_order_created', { warehouse: warehouseTelemetry[selectedProduct.warehouse], client_id: selectedProduct.client_id, product_id: selectedProduct.sku, product_category: selectedProduct.category, quantity: body.quantity, order_id: created.id })
       setSkuId('')
       setQuantity('')
       setReference('')
@@ -190,7 +194,11 @@ function OutboundOrderPage() {
       warehouse: selectedProduct.warehouse,
     }
     try {
-      await inventoryRequest('/orders/outbound', { method: 'POST', body: JSON.stringify(body) })
+      const created = await inventoryRequest<{ id: number }>('/orders/outbound', { method: 'POST', body: JSON.stringify(body) })
+      if (selectedProduct.client_id) {
+        const eventType = exitType === 'dispatch' ? 'outbound_order_created' : 'inventory_stock_loss_recorded'
+        track(eventType, { warehouse: warehouseTelemetry[selectedProduct.warehouse], client_id: selectedProduct.client_id, product_id: selectedProduct.sku, product_category: selectedProduct.category, quantity: body.quantity, order_id: created.id })
+      }
       setSkuId('')
       setQuantity('')
       setExitType('dispatch')

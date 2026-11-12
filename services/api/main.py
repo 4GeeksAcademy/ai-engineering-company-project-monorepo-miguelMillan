@@ -17,6 +17,7 @@ from routes.incidents import router as incidents_router
 from routes.inventory import router as inventory_router
 from routes.profiles import router as profiles_router
 from routes.suppliers import router
+from routes.telemetry import router as telemetry_router
 from routes.users import router as users_router
 
 
@@ -80,6 +81,7 @@ def create_app(path: Path | None = None) -> FastAPI:
     application.include_router(auth_router)
     application.include_router(incidents_router)
     application.include_router(inventory_router)
+    application.include_router(telemetry_router)
     return application
 
 

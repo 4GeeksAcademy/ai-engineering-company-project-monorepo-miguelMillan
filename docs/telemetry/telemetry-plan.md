@@ -126,6 +126,7 @@ Todas las claves enumeradas son obligatorias salvo que se marque «opcional». L
 | `api_request_completed` | `route_group`, `method`, `status_code`, `duration_ms` | Ruta agrupada; sin IDs, query, cuerpos ni cabeceras. |
 | `frontend_unhandled_error` | `section`, `error_kind` | Categorías cerradas; sin mensaje, stack, URL ni payload. |
 | `frontend_retry_requested` | `section` | Sección normalizada; sin contenido ni error crudo. |
+| `frontend_web_vital_recorded` | `metric`, `value`, `page` | Métrica Web Vital y página normalizada; sin URL, parámetros ni contenido. |
 
 `quantity` significa unidades recibidas/despachadas en órdenes, stock tras el cruce en umbral, cantidad pertinente verificada en edición rechazada, diferencia absoluta en auditoría y unidades de pérdida en la baja. El contrato de umbral exige `threshold`, pero JSON Schema no compara ambos campos: el productor debe confirmar que `quantity < threshold` y que hubo cruce real. `direction`, cuando se conoce en una discrepancia, indica si el conteo físico es menor o mayor que el del sistema.
 

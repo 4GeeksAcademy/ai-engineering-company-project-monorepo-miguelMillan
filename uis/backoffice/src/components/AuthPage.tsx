@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ArrowLeft, KeyRound, LogIn, Mail } from 'lucide-react'
 import { apiRequest, AuthRequestError, authRequest, getSessionToken, saveSession } from '../utils/auth'
+import { track } from '../services/telemetry'
 
 type AuthPath = '/login' | '/register' | '/forgot-password' | '/reset-password' | '/account/change-password'
 
@@ -94,10 +95,12 @@ export function AuthPage({ path }: { path: AuthPath }) {
         saveSession(result.access_token)
         window.location.assign('/')
       } else if (isLogin) {
+        track('login_attempted', {})
         const result = await authRequest<{ access_token: string }>('/login', {
           method: 'POST', body: JSON.stringify({ email: data.get('email'), password: data.get('password') }),
         })
         saveSession(result.access_token)
+        track('login_succeeded', {})
         window.location.assign('/')
       } else if (isForgot) {
         await authRequest('/forgot-password', { method: 'POST', body: JSON.stringify({ email: data.get('email') }) })
@@ -116,6 +119,12 @@ export function AuthPage({ path }: { path: AuthPath }) {
         setComplete(true)
       }
     } catch (cause: unknown) {
+      if (isLogin) {
+        const reason = cause instanceof AuthRequestError && cause.message.startsWith('No se pudo conectar')
+          ? 'network_error'
+          : 'invalid_credentials'
+        track('login_failed', { reason })
+      }
       setError(cause instanceof Error ? cause.message : 'No se pudo conectar con el servidor. Inténtalo de nuevo.')
       if (cause instanceof AuthRequestError) setFieldErrors(cause.fields)
     } finally {

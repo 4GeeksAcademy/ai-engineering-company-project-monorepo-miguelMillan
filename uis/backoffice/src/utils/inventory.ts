@@ -11,6 +11,7 @@ export interface SKU {
   category: 'fashion' | 'electronics' | 'cosmetics'
   warehouse: Warehouse
   current_stock: number
+  client_id?: string
 }
 
 export interface StockEntryInput {
