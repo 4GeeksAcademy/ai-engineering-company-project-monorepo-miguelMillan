@@ -3,7 +3,7 @@ import { ArrowDownToLine, ArrowUpFromLine, CircleAlert, CircleCheck, RefreshCw }
 import { AsyncErrorState } from '../../components/AsyncErrorState'
 import { inventoryRequest } from '../../utils/inventory'
 import { track } from '../../services/telemetry'
-import type { InventoryOrder, SKU, StockEntryInput, StockExitInput, StockExitType } from '../../utils/inventory'
+import type { InventoryAudit, InventoryOrder, SKU, StockEntryInput, StockExitInput, StockExitType } from '../../utils/inventory'
 
 const controlClass = 'min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800'
 const warehouseLabels = { LA: 'Los Ángeles (LA)', ZGZ: 'Zaragoza (ZGZ)' }
@@ -12,6 +12,7 @@ const inventoryPaths = {
   inbound: '/backoffice/inventory/orders/inbound',
   outbound: '/backoffice/inventory/orders/outbound',
   orders: '/backoffice/inventory/orders',
+  audits: '/backoffice/inventory/audits',
 } as const
 
 const warehouseTelemetry = { LA: 'los_angeles', ZGZ: 'zaragoza' } as const
@@ -41,7 +42,11 @@ function useProducts() {
     setRevision((value) => value + 1)
   }
 
-  return { products, loading, error, retry }
+  function updateProduct(updated: SKU) {
+    setProducts((current) => current.map((product) => product.id === updated.id ? updated : product))
+  }
+
+  return { products, loading, error, retry, updateProduct }
 }
 
 function ProductPicker({ products, loading, error, value, onChange, onRetry }: {
@@ -71,6 +76,7 @@ function InventoryNavigation({ path }: { path: string }) {
     [inventoryPaths.inbound, 'Entrada de stock'],
     [inventoryPaths.outbound, 'Salida de stock'],
     [inventoryPaths.orders, 'Historial de órdenes'],
+    [inventoryPaths.audits, 'Conteo físico'],
   ] as const
 
   return (
@@ -80,12 +86,51 @@ function InventoryNavigation({ path }: { path: string }) {
   )
 }
 
-function PageHeader({ title, description }: { title: string; description: string }) {
-  return <header><h2 className="font-display text-2xl font-bold">{title}</h2><p className="mt-2 text-sm text-slate-600">{description}</p></header>
+function PageHeader({ title, description, id }: { title: string; description: string; id?: string }) {
+  return <header><h2 id={id} className="font-display text-2xl font-bold">{title}</h2><p className="mt-2 text-sm text-slate-600">{description}</p></header>
+}
+
+function StockThresholdForm({ product, onUpdated }: { product: SKU; onUpdated: (product: SKU) => void }) {
+  const [minimumStock, setMinimumStock] = useState(product.minimum_stock?.toString() ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    setNotice('')
+    try {
+      const updated = await inventoryRequest<SKU>(`/products/${product.id}/threshold`, {
+        method: 'PATCH',
+        body: JSON.stringify({ minimum_stock: Number(minimumStock) }),
+      })
+      setMinimumStock(updated.minimum_stock?.toString() ?? '')
+      onUpdated(updated)
+      setNotice('Mínimo guardado.')
+    } catch (cause) {
+      setError(messageFrom(cause))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="min-w-40 space-y-2">
+      <label htmlFor={`minimum-stock-${product.id}`} className="sr-only">Mínimo de stock para {product.sku}</label>
+      <div className="flex items-center gap-2">
+        <input id={`minimum-stock-${product.id}`} type="number" min="1" step="1" required value={minimumStock} onChange={(event) => setMinimumStock(event.target.value)} aria-invalid={Boolean(error)} className="min-h-10 w-24 rounded-md border border-slate-300 px-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800" />
+        <button type="submit" disabled={saving} className="min-h-10 rounded-md border border-slate-300 px-3 text-xs font-semibold hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-50">{saving ? 'Guardando...' : 'Guardar'}</button>
+      </div>
+      {error && <p role="alert" className="text-xs text-red-800">{error}</p>}
+      {notice && <p role="status" className="text-xs text-emerald-800">{notice}</p>}
+    </form>
+  )
 }
 
 function ProductsPage() {
-  const { products, loading, error, retry } = useProducts()
+  const { products, loading, error, retry, updateProduct } = useProducts()
 
   return (
     <section aria-labelledby="inventory-products-title" className="space-y-5">
@@ -96,17 +141,17 @@ function ProductsPage() {
         <div role="region" aria-label="Productos de inventario" tabIndex={0} className="overflow-x-auto border-y border-slate-200 focus-visible:outline-2 focus-visible:outline-emerald-800">
           <table className="w-full min-w-[900px] border-collapse text-left">
             <caption className="sr-only">SKU, cliente, categoría, almacén y stock actual</caption>
-            <thead className="bg-slate-200/70 text-xs uppercase text-slate-700"><tr>{['Producto / SKU', 'Cliente', 'Categoría', 'Almacén', 'Stock actual', 'Acciones'].map((heading) => <th scope="col" key={heading} className="px-4 py-3 font-semibold">{heading}</th>)}</tr></thead>
+            <thead className="bg-slate-200/70 text-xs uppercase text-slate-700"><tr>{['Producto / SKU', 'Cliente', 'Categoría', 'Almacén', 'Stock actual', 'Mínimo', 'Acciones'].map((heading) => <th scope="col" key={heading} className="px-4 py-3 font-semibold">{heading}</th>)}</tr></thead>
             <tbody className="divide-y divide-slate-200 bg-white">
               {products.map((product) => {
-                // Stock bajo: cinco unidades o menos; saludable: más de cinco.
-                const lowStock = product.current_stock <= 5
+                const lowStock = product.minimum_stock !== null && product.current_stock < product.minimum_stock
                 return <tr key={product.id}>
                   <th scope="row" className="px-4 py-4 font-medium"><span className="block text-slate-900">{product.name}</span><span className="mt-1 block text-xs text-slate-600">{product.sku} · #{product.id}</span></th>
                   <td className="px-4 py-4 text-sm">{product.client_name}</td>
                   <td className="px-4 py-4 text-sm">{product.category}</td>
                   <td className="px-4 py-4 text-sm">{warehouseLabels[product.warehouse]}</td>
-                  <td className="px-4 py-4"><span className={`inline-flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-semibold ${lowStock ? 'bg-amber-100 text-amber-950' : 'bg-emerald-100 text-emerald-950'}`}><span aria-hidden="true">{lowStock ? <CircleAlert size={16} /> : <CircleCheck size={16} />}</span>{product.current_stock} unidades <span className="sr-only">{lowStock ? 'Stock bajo' : 'Stock saludable'}</span></span></td>
+                  <td className="px-4 py-4"><span className={`inline-flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-semibold ${lowStock ? 'bg-amber-100 text-amber-950' : 'bg-emerald-100 text-emerald-950'}`}><span aria-hidden="true">{lowStock ? <CircleAlert size={16} /> : <CircleCheck size={16} />}</span>{product.current_stock} unidades <span className="sr-only">{lowStock ? 'Por debajo del mínimo configurado' : 'Stock saludable'}</span></span></td>
+                  <td className="px-4 py-4"><StockThresholdForm product={product} onUpdated={updateProduct} /></td>
                   <td className="px-4 py-4"><div className="flex flex-wrap gap-2">
                     <a href={`${inventoryPaths.inbound}?sku_id=${product.id}`} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"><ArrowDownToLine size={16} aria-hidden="true" />Entrada</a>
                     <a href={`${inventoryPaths.outbound}?sku_id=${product.id}`} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"><ArrowUpFromLine size={16} aria-hidden="true" />Salida</a>
@@ -140,7 +185,7 @@ function InboundOrderPage() {
     const body: StockEntryInput = { sku_id: selectedProduct.id, quantity: Number(quantity), reference: reference.trim(), warehouse: selectedProduct.warehouse }
     try {
       const created = await inventoryRequest<{ id: number }>('/orders/inbound', { method: 'POST', body: JSON.stringify(body) })
-      if (selectedProduct.client_id) track('inbound_order_created', { warehouse: warehouseTelemetry[selectedProduct.warehouse], client_id: selectedProduct.client_id, product_id: selectedProduct.sku, product_category: selectedProduct.category, quantity: body.quantity, order_id: created.id })
+      track('inbound_order_created', { warehouse: warehouseTelemetry[selectedProduct.warehouse], client_id: selectedProduct.client_id, product_id: selectedProduct.sku, product_category: selectedProduct.category, quantity: body.quantity, order_id: created.id })
       setSkuId('')
       setQuantity('')
       setReference('')
@@ -194,11 +239,10 @@ function OutboundOrderPage() {
       warehouse: selectedProduct.warehouse,
     }
     try {
-      const created = await inventoryRequest<{ id: number }>('/orders/outbound', { method: 'POST', body: JSON.stringify(body) })
-      if (selectedProduct.client_id) {
-        const eventType = exitType === 'dispatch' ? 'outbound_order_created' : 'inventory_stock_loss_recorded'
-        track(eventType, { warehouse: warehouseTelemetry[selectedProduct.warehouse], client_id: selectedProduct.client_id, product_id: selectedProduct.sku, product_category: selectedProduct.category, quantity: body.quantity, order_id: created.id })
-      }
+      const created = await inventoryRequest<{ id: number; telemetry_events: Array<{ event_type: string; properties: Record<string, unknown> }> }>('/orders/outbound', { method: 'POST', body: JSON.stringify(body) })
+      const eventType = exitType === 'dispatch' ? 'outbound_order_created' : 'inventory_stock_loss_recorded'
+      track(eventType, { warehouse: warehouseTelemetry[selectedProduct.warehouse], client_id: selectedProduct.client_id, product_id: selectedProduct.sku, product_category: selectedProduct.category, quantity: body.quantity, order_id: created.id })
+      created.telemetry_events.forEach((telemetryEvent) => track(telemetryEvent.event_type, telemetryEvent.properties))
       setSkuId('')
       setQuantity('')
       setExitType('dispatch')
@@ -228,6 +272,59 @@ function OutboundOrderPage() {
         {exitType === 'dispatch' && <div><label htmlFor="tracking-number" className="mb-1 block text-sm font-semibold">Número de seguimiento</label><input id="tracking-number" type="text" required value={trackingNumber} onChange={(event) => setTrackingNumber(event.target.value)} className={controlClass} /></div>}
         <button type="submit" disabled={submitting || loading || Boolean(productsError) || !products.length} className="min-h-11 rounded-md bg-emerald-800 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">{submitting ? 'Registrando...' : 'Registrar salida'}</button>
       </form>
+    </section>
+  )
+}
+
+function InventoryAuditPage() {
+  const { products, loading, error: productsError, retry } = useProducts()
+  const [skuId, setSkuId] = useState(() => new URLSearchParams(window.location.search).get('sku_id') ?? '')
+  const [physicalStock, setPhysicalStock] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [audit, setAudit] = useState<InventoryAudit | null>(null)
+  const selectedProduct = products.find((product) => String(product.id) === skuId)
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedProduct) return
+    setSubmitting(true)
+    setError('')
+    setAudit(null)
+    try {
+      const result = await inventoryRequest<InventoryAudit>('/audits', {
+        method: 'POST',
+        body: JSON.stringify({ sku_id: selectedProduct.id, physical_stock: Number(physicalStock) }),
+      })
+      setAudit(result)
+      if (result.telemetry_event) {
+        track(result.telemetry_event.event_type, result.telemetry_event.properties)
+      }
+    } catch (cause) {
+      setError(messageFrom(cause))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <section aria-labelledby="inventory-audit-title" className="space-y-5">
+      <PageHeader id="inventory-audit-title" title="Conteo físico y auditoría" description="Compara las unidades contadas en el almacén con el stock calculado por el sistema." />
+      {error && <p role="alert" className="border-l-4 border-red-700 bg-red-50 px-4 py-3 text-sm text-red-950">{error}</p>}
+      <form onSubmit={submit} className="max-w-2xl space-y-5 rounded-md border border-slate-200 bg-white p-5">
+        <ProductPicker products={products} loading={loading} error={productsError} onRetry={retry} value={skuId} onChange={(value) => { setSkuId(value); setError(''); setAudit(null) }} />
+        {selectedProduct && <p className="text-sm text-slate-600">Almacén: <span className="font-semibold text-slate-900">{warehouseLabels[selectedProduct.warehouse]}</span></p>}
+        <div>
+          <label htmlFor="physical-stock" className="mb-1 block text-sm font-semibold">Unidades contadas físicamente</label>
+          <input id="physical-stock" type="number" min="0" step="1" required value={physicalStock} onChange={(event) => setPhysicalStock(event.target.value)} className={controlClass} />
+        </div>
+        <button type="submit" disabled={submitting || loading || Boolean(productsError) || !products.length} className="min-h-11 rounded-md bg-emerald-800 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">{submitting ? 'Guardando conteo...' : 'Registrar conteo'}</button>
+      </form>
+      {audit && <section aria-live="polite" className={`space-y-1 border-l-4 px-4 py-3 text-sm ${audit.discrepancy_quantity ? 'border-amber-700 bg-amber-50 text-amber-950' : 'border-emerald-700 bg-emerald-50 text-emerald-950'}`}>
+        <h3 className="font-semibold">{audit.discrepancy_quantity ? 'Discrepancia detectada' : 'Conteo conciliado'}</h3>
+        <p>Stock del sistema: {audit.system_stock} · Conteo físico: {audit.physical_stock}</p>
+        {audit.discrepancy_quantity > 0 && <p>Diferencia: {audit.discrepancy_quantity} unidades ({audit.discrepancy_direction === 'physical_lower' ? 'conteo físico inferior' : 'conteo físico superior'}).</p>}
+      </section>}
     </section>
   )
 }
@@ -296,6 +393,7 @@ export function InventoryPage({ path }: { path: string }) {
       {path === inventoryPaths.inbound && <InboundOrderPage />}
       {path === inventoryPaths.outbound && <OutboundOrderPage />}
       {path === inventoryPaths.orders && <OrderHistoryPage />}
+      {path === inventoryPaths.audits && <InventoryAuditPage />}
       {!Object.values(inventoryPaths).includes(path as typeof inventoryPaths[keyof typeof inventoryPaths]) && <p role="alert" className="text-sm text-red-800">La página de inventario solicitada no existe.</p>}
     </section>
   )

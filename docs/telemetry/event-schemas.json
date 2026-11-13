@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://trackflow.example/schemas/telemetry-event-1.0.0.json",
   "title": "TrackFlow Event Envelope",
-  "description": "Contrato propuesto para eventos de telemetria; no implica que exista captura implementada.",
+  "description": "Contrato de eventos de telemetria con captura encolada por el backoffice despues de confirmar las operaciones de inventario.",
   "type": "object",
   "additionalProperties": false,
   "required": ["eventId", "timestamp", "sessionId", "userId", "event_type", "schemaVersion", "requestId", "properties"],

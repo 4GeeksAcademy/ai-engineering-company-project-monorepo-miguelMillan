@@ -17,12 +17,12 @@ Catálogo y contrato propuestos, no instrumentación implementada. La fuente nor
 ## Flujo y puntos de instrumentación
 
 1. El usuario inicia sesión y accede al backoffice; `App` verifica la sesión y `get_current_user` protege las rutas de inventario. Registrar acceso, resultado de autenticación o rechazo; no afirmar que todo 401 significa expiración de token.
-2. En productos o en formularios de entrada/salida se carga el catálogo; registrar vista, fallos de carga y selección de SKU. La UI muestra una señal fija de stock bajo con `current_stock <= 5`, que **no** es un mínimo configurado por cliente ni prueba una activación de umbral del briefing.
+2. En productos o en formularios de entrada/salida se carga el catálogo; registrar vista, fallos de carga y selección de SKU. El mínimo se configura por SKU/cliente y la UI compara contra ese valor; no usa un corte fijo.
 3. Al abrir el formulario se inicia el flujo; al enviar, el navegador valida campos y la API valida SKU, cantidad, almacén, referencia y reglas de salida. Contar intentos, validaciones fallidas y abandono sin almacenar valores libres. Una advertencia visual de stock insuficiente no equivale por sí sola a un rechazo del servidor.
 4. `POST /inventory/orders/inbound` confirma una `StockEntry`; `POST /inventory/orders/outbound` rechaza cantidades superiores al stock o confirma una `StockExit`. Emitir eventos de éxito solo después del commit; separar `dispatch` de `loss` y correlacionar reintentos sin contar dos veces. El modelo actual no acredita por separado que el picking haya terminado.
-5. Tras una salida confirmada, evaluar el cruce al mínimo configurado por cliente y SKU, no cada visualización. Hoy no existe esa configuración ni un emisor: requiere incorporarlos antes de capturar `stock_threshold_triggered`.
-6. Un intento explícito de alterar `current_stock` fuera de una orden debe rechazarse y registrarse; el modelo actual calcula el stock y prohíbe campos extra, pero no existe una ruta dedicada de edición directa. Una respuesta 404/405 por sí sola no demuestra intención de modificar stock. La detección requiere un punto de captura fiable sin almacenar cuerpos.
-7. El historial permite revisar movimientos, pero no hay flujo de conteo físico/auditoría ni comparación con stock real. `inventory_discrepancy_detected` requiere ese dato de origen; una salida `loss` no demuestra por sí sola una discrepancia detectada.
+5. Tras una salida confirmada, la API compara el stock antes y después con el mínimo configurado por SKU. Si cruza de al menos el mínimo a menos, devuelve una señal que el backoffice encola mediante `track('stock_threshold_triggered', ...)`.
+6. `PUT /inventory/products/{id}/stock` representa un intento explícito de edición directa y siempre lo rechaza. La respuesta incluye el evento solo después de comprobar el SKU y construir sus dimensiones desde datos fiables; el cliente lo encola mediante `track()`, sin registrar el cuerpo.
+7. `POST /inventory/audits` guarda el conteo físico y el stock calculado en el momento de la auditoría. Solo una diferencia distinta de cero genera `inventory_discrepancy_detected`; el conteo conciliado permanece en el registro para dar denominador a futuros análisis.
 
 ## Catálogo de eventos
 
@@ -32,13 +32,13 @@ Cada fila completa la frase: «Capturamos [evento] porque necesitamos saber [hip
 
 | Evento | Clasificación | Punto / condición | Necesitamos saber | Decisión |
 |---|---|---|---|---|
-| `inbound_order_created` | Obligatorio | Backend, recepción confirmada tras commit. | Cuánto volumen entra por cliente y almacén. | Ana planifica capacidad y personal según las recepciones. |
+| `inbound_order_created` | Obligatorio | Backoffice, tras confirmar la recepción en la API. | Cuánto volumen entra por cliente y almacén. | Ana planifica capacidad y personal según las recepciones. |
 | `outbound_order_created` | Obligatorio | Backend, picking y despacho completados; `dispatch` confirmado es una aproximación pendiente de verificar, no incluye `loss`. | Cuántos pedidos se procesan por cliente y almacén y a qué ritmo. | Ana identifica cuellos de botella antes de afectar al SLA. |
-| `stock_threshold_triggered` | Obligatorio | Backend, cruce de stock desde al menos el mínimo hasta por debajo del mínimo configurado. No existe configuración todavía. | Con qué frecuencia un cliente queda sin stock disponible de un SKU. | Miguel alerta al cliente y al equipo comercial antes de un quiebre. |
-| `direct_stock_edit_rejected` | Obligatorio | Backend, rechazo verificable de intento explícito de edición directa; punto aún por definir. | Si se intenta saltar la trazabilidad por almacén. | Reforzar capacitación o permisos donde corresponda. |
-| `inventory_discrepancy_detected` | Obligatorio | Resultado de conteo físico o auditoría comparado con stock del sistema; flujo aún no implementado. | Qué SKU y almacenes presentan más diferencias. | Ana prioriza auditorías según la tasa de discrepancias. |
+| `stock_threshold_triggered` | Obligatorio | Tras confirmar una salida, la API detecta que el stock pasa de al menos el mínimo configurado por SKU a estar por debajo; el backoffice encola la señal. | Con qué frecuencia un cliente queda sin stock disponible de un SKU. | Miguel alerta al cliente y al equipo comercial antes de un quiebre. |
+| `direct_stock_edit_rejected` | Obligatorio | `PUT /inventory/products/{id}/stock` valida el SKU, rechaza con 409 y entrega dimensiones verificadas al backoffice para encolar el evento. | Si se intenta saltar la trazabilidad por almacén. | Reforzar capacitación o permisos donde corresponda. |
+| `inventory_discrepancy_detected` | Obligatorio | `POST /inventory/audits` persiste el conteo y el stock calculado; una diferencia no nula produce la señal de telemetría. | Qué SKU y almacenes presentan más diferencias. | Ana prioriza auditorías según la tasa de discrepancias. |
 
-Un evento de cruce de umbral cuenta alertas, no demuestra por sí solo stock cero; para la hipótesis del contexto debe complementarse con el valor de stock verificado y, en fases posteriores, una definición explícita de falta de disponibilidad. Del mismo modo, una tasa de discrepancias necesita el denominador de conteos/auditorías, aún inexistente.
+Un evento de cruce de umbral cuenta alertas, no demuestra por sí solo stock cero; para la hipótesis del contexto debe complementarse con el valor de stock verificado y, en fases posteriores, una definición explícita de falta de disponibilidad. Los conteos físicos conciliados se persisten y pueden servir de denominador de auditorías.
 
 ### Inventario y operaciones
 
@@ -130,7 +130,7 @@ Todas las claves enumeradas son obligatorias salvo que se marque «opcional». L
 
 `quantity` significa unidades recibidas/despachadas en órdenes, stock tras el cruce en umbral, cantidad pertinente verificada en edición rechazada, diferencia absoluta en auditoría y unidades de pérdida en la baja. El contrato de umbral exige `threshold`, pero JSON Schema no compara ambos campos: el productor debe confirmar que `quantity < threshold` y que hubo cruce real. `direction`, cuando se conoce en una discrepancia, indica si el conteo físico es menor o mayor que el del sistema.
 
-Si una edición directa rechazada no proporciona los cinco valores mínimos verificables, **no se puede emitir un evento obligatorio válido**: no rellenar `quantity`, cliente o SKU con valores ficticios. Falta definir una señal de seguridad separada para estos casos y resolver el requisito del briefing antes de la implementación. La validación no garantiza la procedencia de identificadores ni elimina secretos de valores permitidos: el productor debe construir el objeto a partir de datos confiables y de listas cerradas, no copiar el payload de entrada. Las comprobaciones de formato requieren un validador con `FormatChecker` o equivalente.
+La edición directa solo emite evento después de resolver el SKU y construir `warehouse`, `client_id`, `product_id` y categoría desde el registro; la cantidad representa el valor solicitado y no se conserva el cuerpo original. La validación de formato no prueba por sí sola la procedencia de identificadores: el productor usa registros de inventario confiables, no campos de identidad enviados por el cliente.
 
 ## Estrategia de entrega de fase 3
 
@@ -171,14 +171,14 @@ Como `login_failed` llega antes que `login_attempted` y `login_succeeded`, calcu
 - **Datos excluidos por privacidad:** credenciales, tokens, emails, IP, destinatarios, transportistas, números de seguimiento, referencias libres, cuerpos de solicitud, URLs con parámetros, mensajes y trazas de error sin sanear. No se capturan valores de formularios ni contenido de incidencias; la seudonimización del operario sigue siendo dato personal.
 - **Datos excluidos por coste:** capturas de pantalla, grabaciones de sesión, payloads completos y trazas individuales de todos los renders. La observabilidad se limita a categorías cerradas, conteos y duraciones necesarias para las decisiones descritas.
 - **Fidelidad de métricas:** el muestreo de API y la pérdida de lotes de navegador pueden sesgar tasas o percentiles; registrar cobertura, probabilidades, retrasos y pérdidas de entrega antes de interpretar indicadores. Las notificaciones limitadas no representan el número de errores.
-- **Consistencia y captura:** stream no garantiza inmediatez ni entrega en orden. Caídas, reintentos, concurrencia o relojes desajustados pueden producir retrasos o duplicados; la estrategia de outbox, deduplicación, ventanas y reconciliación requiere implementación y pruebas. No emitir el evento obligatorio de edición directa sin sus dimensiones verificadas: actualmente esa cobertura queda bloqueada, no resuelta con el transporte.
-- **Dependencias de negocio:** no hay `client_id` estable, mínimos configurables ni auditoría física; además falta evidencia del picking completado. Hasta resolverlos no puede afirmarse que se emitan correctamente todas las métricas obligatorias. La elección stream no crea esas capacidades.
+- **Consistencia y captura:** la API devuelve señales de negocio al backoffice, que las agrega a su cola en memoria. Una caída entre el commit y el envío al navegador puede perder la señal; un outbox transaccional, deduplicación y reconciliación siguen pendientes. Los intentos directos sin un SKU verificable se rechazan, pero no generan una métrica de inventario con dimensiones ficticias.
+- **Dependencias de negocio:** el `client_id` se almacena en SKU y se migra para datos existentes; los mínimos y auditorías físicas ya tienen rutas operativas. Sigue pendiente evidenciar el picking completado: `outbound_order_created` aún se basa en el despacho confirmado por el sistema.
 
 ## Dependencias y decisiones pendientes
 
 ## Dependencias y decisiones pendientes
 
-1. Acordar identidad estable de cliente y SKU, procedencia de categorías y dimensiones fiables para solicitudes rechazadas. Las propiedades mínimas obligatorias no deben rellenarse con datos no verificados.
-2. Diseñar y construir mínimos configurables por cliente, conteo físico/auditoría y detección fiable de edición directa; ninguno está implementado por esta fase. Definir asimismo la señal de picking completado para no confundir un registro de salida con el proceso completo.
+1. Verificar la gobernanza del `client_id` explícito en nuevas altas y revisar el mapeo inicial por nombre aplicado a registros previos; las propiedades no deben derivarse del payload de eventos.
+2. Confirmar con Operaciones que el `PUT /inventory/products/{id}/stock` representa los intentos directos que deben contar y definir una señal alternativa si aparecen solicitudes sin SKU verificable. Definir también una señal de picking completado para no confundir un registro de salida con el proceso completo.
 3. Definir cuándo un flujo se considera abandonado, cómo distinguir sesión expirada de otros 401, y cómo evitar duplicados de eventos cliente/servidor y reintentos. El usuario autenticado se obtiene del servidor; no confiar en un identificador enviado por el navegador.
 4. El seed del contexto futuro pide 8–10 SKU, al menos 2 clientes, las 3 categorías y ambos almacenes, 15–20 entradas, 15–20 salidas, 2 activaciones de umbral y 1 discrepancia. No se crean datos ni se afirman estos casos en la fase 1; los dos últimos requieren primero las capacidades indicadas.

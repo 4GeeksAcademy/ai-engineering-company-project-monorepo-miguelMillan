@@ -131,7 +131,7 @@ function currentSection(): string {
   if (path === '/backoffice/inventory/products') return 'inventory_products'
   if (path === '/backoffice/inventory/orders/inbound') return 'inventory_inbound'
   if (path === '/backoffice/inventory/orders/outbound') return 'inventory_outbound'
-  if (path === '/backoffice/inventory/orders') return 'inventory_orders'
+  if (path === '/backoffice/inventory/orders' || path === '/backoffice/inventory/audits') return 'inventory_orders'
   return 'overview'
 }
 

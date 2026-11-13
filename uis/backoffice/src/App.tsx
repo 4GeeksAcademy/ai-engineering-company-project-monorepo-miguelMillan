@@ -43,7 +43,7 @@ function App() {
       : path.startsWith('/backoffice/inventory/products') ? 'inventory_products'
         : path.startsWith('/backoffice/inventory/orders/inbound') ? 'inventory_inbound'
           : path.startsWith('/backoffice/inventory/orders/outbound') ? 'inventory_outbound'
-            : path.startsWith('/backoffice/inventory/orders') ? 'inventory_orders'
+            : path.startsWith('/backoffice/inventory/orders') || path.startsWith('/backoffice/inventory/audits') ? 'inventory_orders'
               : isPublicPath ? 'login'
                 : activeView === 'incidents' ? 'incident_analysis'
                   : activeView === 'incident-registration' ? 'incident_registration'

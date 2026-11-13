@@ -1,5 +1,15 @@
 # Progress Log — TrackFlow
 
+## Telemetría — instrumentación de métricas obligatorias — 2026-11-13
+- Añadidos `client_id` y `minimum_stock` por SKU, migración idempotente para registros existentes y endpoint de configuración del mínimo.
+- Las salidas confirmadas detectan el cruce real por debajo del umbral y devuelven una señal del SKU verificado; el backoffice la encola con `track()`.
+- `PUT /inventory/products/{id}/stock` rechaza la edición directa con 409 y entrega dimensiones fiables para que el cliente registre `direct_stock_edit_rejected`; se omite si el SKU no existe.
+- Creado `POST /inventory/audits` y el registro persistente del conteo físico frente al stock calculado; solo diferencias distintas de cero generan `inventory_discrepancy_detected`. Añadida UI para configurar mínimos y registrar conteos.
+- Actualizados el plan de telemetría y el README de la API. Añadidas pruebas de cruce único, rechazo, discrepancia/conteo conciliado y migración de SKU legado.
+- Validaciones: `cd services/api && uv run pytest tests/test_inventory_telemetry.py` (4 passed; advertencia deprecada de Starlette/httpx); `npm --prefix uis/backoffice run build` correcto; lint focalizado de los cuatro archivos frontend correcto.
+- Contexto usado archivado y comparado en `memory-bank/history/TELEMETRY-CAPTURE-FEEDBACK-CONTEXT-2026-11-13.md`; el contexto activo difería del archivo del 2026-11-12, que se conserva intacto.
+- Bloqueo: la política de exclusión impidió leer `services/api/.env.example`; no se inspeccionó ni modificó. Próximo paso: validar el contrato de identidad de cliente con Operaciones y, en fase de almacenamiento, resolver el outbox transaccional; sigue pendiente confirmar que la salida acredita el picking completo.
+
 ## Telemetría — preparación de captura — 2026-11-12
 - Añadido el stub `POST /telemetry/events` en FastAPI con validación del lote, envelope estricto, versión `1.0.0` y los 14 `event_type` del contrato; registra cantidad y tipos, responde `{\"received\": N}` y no persiste datos.
 - Registrado el router de telemetría en `services/api/main.py` y creada la variable local `NEXT_PUBLIC_TELEMETRY_ENDPOINT` en `uis/backoffice/.env.local` con destino `http://localhost:8000/telemetry/events`.
