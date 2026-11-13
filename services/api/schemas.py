@@ -15,8 +15,10 @@ class SKUCreate(BaseModel):
     name: str = Field(min_length=1)
     sku: str = Field(min_length=1)
     client_name: str = Field(min_length=1)
+    client_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$")
     category: Category
     warehouse: Warehouse
+    minimum_stock: int | None = Field(default=None, gt=0)
 
 
 class SKUResponse(BaseModel):
@@ -26,9 +28,21 @@ class SKUResponse(BaseModel):
     name: str
     sku: str
     client_name: str
+    client_id: str
     category: Category
     warehouse: Warehouse
     current_stock: int
+    minimum_stock: int | None
+
+
+InventoryTelemetryEventType = Literal["stock_threshold_triggered", "inventory_discrepancy_detected"]
+
+
+class InventoryTelemetrySignal(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    event_type: InventoryTelemetryEventType
+    properties: dict[str, str | int]
 
 
 class StockEntryCreate(BaseModel):
@@ -44,6 +58,38 @@ class StockMovementCreatedResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    telemetry_events: list[InventoryTelemetrySignal] = Field(default_factory=list)
+
+
+class StockThresholdUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    minimum_stock: int = Field(gt=0)
+
+
+class DirectStockEditAttempt(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    quantity: int = Field(ge=0)
+
+
+class InventoryAuditCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sku_id: int = Field(gt=0)
+    physical_stock: int = Field(ge=0)
+
+
+class InventoryAuditResponse(BaseModel):
+    id: int
+    sku_id: int
+    warehouse: Warehouse
+    system_stock: int
+    physical_stock: int
+    discrepancy_quantity: int
+    discrepancy_direction: Literal["physical_lower", "physical_higher"] | None
+    created_at: datetime
+    telemetry_event: InventoryTelemetrySignal | None = None
 
 
 class StockExitCreate(BaseModel):

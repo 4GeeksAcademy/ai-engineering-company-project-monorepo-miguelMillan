@@ -4,6 +4,7 @@ import { IncidentDirectory } from './app/incidents/IncidentDirectory'
 import { AccountProfile } from './app/account/AccountProfile'
 import { AuthPage } from './components/AuthPage'
 import { authRequest, clearSession, getSessionToken } from './utils/auth'
+import { track } from './services/telemetry'
 import { LogOut } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 
@@ -36,6 +37,20 @@ function App() {
   const [activeView, setActiveView] = useState<'overview' | 'incidents' | 'suppliers' | 'incident-registration' | 'incident-directory'>('overview')
   const [sessionState, setSessionState] = useState<'checking' | 'ready' | 'error'>(isPublicPath ? 'ready' : 'checking')
   const [sessionError, setSessionError] = useState('')
+
+  useEffect(() => {
+    const section = path === '/account/profile' ? 'account'
+      : path.startsWith('/backoffice/inventory/products') ? 'inventory_products'
+        : path.startsWith('/backoffice/inventory/orders/inbound') ? 'inventory_inbound'
+          : path.startsWith('/backoffice/inventory/orders/outbound') ? 'inventory_outbound'
+            : path.startsWith('/backoffice/inventory/orders') || path.startsWith('/backoffice/inventory/audits') ? 'inventory_orders'
+              : isPublicPath ? 'login'
+                : activeView === 'incidents' ? 'incident_analysis'
+                  : activeView === 'incident-registration' ? 'incident_registration'
+                    : activeView === 'incident-directory' ? 'incidents'
+                      : activeView === 'suppliers' ? 'suppliers' : 'overview'
+    track('backoffice_section_viewed', { section })
+  }, [activeView, isPublicPath, path])
 
   useEffect(() => {
     if (isPublicPath) return

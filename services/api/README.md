@@ -58,6 +58,10 @@ La persistencia por defecto es `services/api/data/suppliers.json` (excluida de G
 
 La API requiere `DATABASE_URL` en `services/api/.env` para iniciar el motor SQLModel y crear las tablas de inventario en PostgreSQL. Configura la URL de conexión de Supabase localmente y no la incluyas en el repositorio. El motor y `SQLModel.metadata.create_all` se inicializan en el lifespan de FastAPI; `get_db` proporciona una sesion independiente por petición.
 
+En inventario, cada SKU expone un `client_id` estable y un `minimum_stock` configurable. `PATCH /inventory/products/{id}/threshold` establece el mínimo; el cruce confirmado de ese umbral aparece en `telemetry_events` de la respuesta de salida. `PUT /inventory/products/{id}/stock` siempre rechaza la edición directa con 409 y entrega la señal de telemetría en el detalle. `POST /inventory/audits` persiste el conteo físico junto con el stock calculado y devuelve una señal solo si detecta discrepancia. Las señales las encola el backoffice mediante `track()`.
+
+Al iniciar, la API agrega las columnas de inventario nuevas si faltan y asigna un `client_id` derivado del nombre a los SKU existentes sin identificador. Los SKU nuevos pueden enviar `client_id` explícito; si se omite, se deriva de `client_name`.
+
 Pydantic rechaza entradas invalidas con 422 antes de persistir: tarifa no positiva o no finita, nombre vacio, categorias vacias/desconocidas, estados distintos de `active`/`suspended`, y combinaciones distintas de USA/USD o Spain/EUR. Campos opcionales: `service_zone`, `contact_email` (email valido), `notes`. El cliente no puede enviar `id` ni `updated_at`.
 
 Users y Profiles se guardan exclusivamente en tablas TinyDB (`users` y `profiles`), nunca en SQL/Supabase. Todas las rutas de proveedores requieren JWT. Son públicos el registro `POST /users`, el login y la recuperación/restablecimiento de contraseña; el cambio de contraseña exige sesión.

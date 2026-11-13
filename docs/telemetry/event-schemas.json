@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://trackflow.example/schemas/telemetry-event-1.0.0.json",
   "title": "TrackFlow Event Envelope",
-  "description": "Contrato propuesto para eventos de telemetria; no implica que exista captura implementada.",
+  "description": "Contrato de eventos de telemetria con captura encolada por el backoffice despues de confirmar las operaciones de inventario.",
   "type": "object",
   "additionalProperties": false,
   "required": ["eventId", "timestamp", "sessionId", "userId", "event_type", "schemaVersion", "requestId", "properties"],
@@ -115,7 +115,7 @@
       "x-classification": "oportunidad", "x-category": "autenticacion", "x-sensitive-data": "No incluir email, credenciales, IP ni respuestas crudas.",
       "properties": {"event_type": {"const": "login_failed"}, "userId": {"type": "null"}, "properties": {
         "type": "object", "additionalProperties": false, "required": ["reason"],
-        "properties": {"reason": {"type": "string", "enum": ["credentials_rejected", "invalid_request"], "description": "Motivo agregado, no permite enumerar cuentas."}}
+        "properties": {"reason": {"type": "string", "enum": ["invalid_credentials", "session_expired", "network_error"], "description": "Motivo agregado, no permite enumerar cuentas."}}
       }}
     },
     {
@@ -161,6 +161,18 @@
       "properties": {"event_type": {"const": "frontend_retry_requested"}, "properties": {
         "type": "object", "additionalProperties": false, "required": ["section"],
         "properties": {"section": {"$ref": "#/definitions/section"}}
+      }}
+    },
+    {
+      "description": "Métrica Web Vital observada para una página normalizada.",
+      "x-classification": "oportunidad", "x-category": "rendimiento", "x-sensitive-data": "No incluir URL, parámetros ni contenido de la página.",
+      "properties": {"event_type": {"const": "frontend_web_vital_recorded"}, "properties": {
+        "type": "object", "additionalProperties": false, "required": ["metric", "value", "page"],
+        "properties": {
+          "metric": {"type": "string", "enum": ["CLS", "INP", "LCP", "FCP", "TTFB"]},
+          "value": {"type": "number", "minimum": 0},
+          "page": {"$ref": "#/definitions/section"}
+        }
       }}
     }
   ]

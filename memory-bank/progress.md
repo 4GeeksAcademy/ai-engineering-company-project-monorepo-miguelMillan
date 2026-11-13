@@ -1,5 +1,42 @@
 # Progress Log — TrackFlow
 
+## Telemetría — instrumentación de métricas obligatorias — 2026-11-13
+- Añadidos `client_id` y `minimum_stock` por SKU, migración idempotente para registros existentes y endpoint de configuración del mínimo.
+- Las salidas confirmadas detectan el cruce real por debajo del umbral y devuelven una señal del SKU verificado; el backoffice la encola con `track()`.
+- `PUT /inventory/products/{id}/stock` rechaza la edición directa con 409 y entrega dimensiones fiables para que el cliente registre `direct_stock_edit_rejected`; se omite si el SKU no existe.
+- Creado `POST /inventory/audits` y el registro persistente del conteo físico frente al stock calculado; solo diferencias distintas de cero generan `inventory_discrepancy_detected`. Añadida UI para configurar mínimos y registrar conteos.
+- Actualizados el plan de telemetría y el README de la API. Añadidas pruebas de cruce único, rechazo, discrepancia/conteo conciliado y migración de SKU legado.
+- Validaciones: `cd services/api && uv run pytest tests/test_inventory_telemetry.py` (4 passed; advertencia deprecada de Starlette/httpx); `npm --prefix uis/backoffice run build` correcto; lint focalizado de los cuatro archivos frontend correcto.
+- Contexto usado archivado y comparado en `memory-bank/history/TELEMETRY-CAPTURE-FEEDBACK-CONTEXT-2026-11-13.md`; el contexto activo difería del archivo del 2026-11-12, que se conserva intacto.
+- Bloqueo: la política de exclusión impidió leer `services/api/.env.example`; no se inspeccionó ni modificó. Próximo paso: validar el contrato de identidad de cliente con Operaciones y, en fase de almacenamiento, resolver el outbox transaccional; sigue pendiente confirmar que la salida acredita el picking completo.
+
+## Telemetría — preparación de captura — 2026-11-12
+- Añadido el stub `POST /telemetry/events` en FastAPI con validación del lote, envelope estricto, versión `1.0.0` y los 14 `event_type` del contrato; registra cantidad y tipos, responde `{\"received\": N}` y no persiste datos.
+- Registrado el router de telemetría en `services/api/main.py` y creada la variable local `NEXT_PUBLIC_TELEMETRY_ENDPOINT` en `uis/backoffice/.env.local` con destino `http://localhost:8000/telemetry/events`.
+- Cruzado `docs/telemetry/event-schemas.json` con `TELEMETRY-PHASE1-CONTEXT-2026-11-11.md`: se conservaron `warehouse`, `client_id`, `product_id`, `product_category`, `quantity` y los nombres de dominio de TrackFlow.
+- Validación focalizada: lote completo de dos eventos HTTP 200 con `received: 2`, logs con cantidad y ambos `event_type`, y payload incompleto HTTP 422; `TELEMETRY_ENDPOINT` se lee desde el entorno. `CONTEXT.md` ya tenía cambios del usuario y no se revirtió; el histórico usado queda archivado en `memory-bank/history/TELEMETRY-CAPTURE-PREP-CONTEXT-2026-11-12.md`.
+- Estado: preparado únicamente el stub y la configuración; no se creó `TelemetryService` ni se instrumentó el backoffice.
+
+## Telemetría — Fase 2, servicio frontend — 2026-11-12
+- Creado `uis/backoffice/src/services/telemetry.ts` con cola en memoria, envío por lotes de 20 eventos o tras 10 segundos, `sendBeacon` al ocultar la pestaña y hasta tres reintentos con backoff exponencial antes de descartar.
+- `track(eventType, properties)` es la única función pública de captura y genera automáticamente IDs, timestamp, sesión, usuario seudonimizado, versión de schema y request ID.
+- `session.ts` crea y elimina el `sessionId` al iniciar/cerrar sesión; `main.tsx` inicializa el listener del servicio y Vite expone `NEXT_PUBLIC_TELEMETRY_ENDPOINT` mediante `envPrefix`.
+- Validaciones: `npm --prefix uis/backoffice run build` correcto y lint correcto, con una advertencia preexistente en `AccountProfile.tsx` (`react(set-state-in-effect)`).
+- Estado: servicio listo; todavía no se instrumentaron componentes ni eventos concretos.
+
+## Telemetría — Fase 3, instrumentación amplia — 2026-11-12
+- Instrumentados `backoffice_section_viewed`, `api_request_completed`, `frontend_unhandled_error`, `frontend_retry_requested`, `frontend_web_vital_recorded`, `login_attempted`, `login_succeeded`, `login_failed` y `session_expired`, con propiedades allowlisted y razones de autenticación controladas.
+- Los commits de entrada/salida de inventario emiten `inbound_order_created`, `outbound_order_created` o `inventory_stock_loss_recorded` únicamente cuando el SKU incluye un `client_id` fiable; usan el warehouse normalizado, SKU, categoría, cantidad e `id` real de la orden.
+- Extendidos `event-schemas.json` y el stub backend con `frontend_web_vital_recorded`; Web Vitals observados: CLS, INP, LCP, FCP y TTFB, con página normalizada.
+- Validaciones: build correcto, lint correcto con la advertencia preexistente de `AccountProfile.tsx`, diagnósticos sin errores y `git diff --check` correcto. La verificación Playwright/Network no pudo ejecutarse porque Chromium no está instalado; FastAPI en puerto 8000 tampoco arrancó por falta de `SECRET_KEY` local.
+- Bloqueos de negocio conservados: no existe `client_id` estable en la respuesta actual, ni flujo de mínimo configurado, edición directa rechazada o auditoría física; no se inventaron valores ni se marcaron esos eventos como verificados.
+
+## Telemetría — verificación de cumplimiento — 2026-11-12
+- Eliminados los fallbacks hardcodeados de la URL frontend/backend; `NEXT_PUBLIC_TELEMETRY_ENDPOINT` se consume en Vite y `TELEMETRY_ENDPOINT` queda declarado en `services/api/.env.example`.
+- UUIDs de evento y sesión mantienen formato UUID incluso cuando el runtime no expone `crypto.randomUUID`; el servicio no envía lotes si falta la configuración frontend.
+- Verificaciones: build, lint, JSON Schema, importación backend y TestClient HTTP 200 con `received: 2` correctos. La ejecución Network con Chromium quedó bloqueada por la librería del sistema `libatk-1.0.so.0`; los procesos temporales fueron detenidos.
+- Estado: los puntos técnicos verificables están corregidos; siguen sin poder cumplirse honestamente `stock_threshold_triggered`, `direct_stock_edit_rejected` e `inventory_discrepancy_detected` hasta implementar sus fuentes de negocio y un `client_id` estable.
+
 ## Telemetría — fase 3 — 2026-11-11
 - `docs/telemetry/telemetry-plan.md` clasifica los 14 eventos con esquema: nueve en stream y cinco en batch, con frecuencia o latencia objetivo provisional y justificación basada en urgencia operativa.
 - Documentados outbox propuesto, reintentos y deduplicación, ventanas de login, límites de entrega, muestreo estratificado de API y ponderación, throttle de alertas de errores sin descartar sucesos, y navegación/reintentos en lote. Las métricas obligatorias y eventos de seguridad no se muestrean.

@@ -1,11 +1,19 @@
 from datetime import datetime, timezone
 from enum import Enum
+import re
+import unicodedata
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 from sqlalchemy import DateTime
 from sqlmodel import Field as SQLField, SQLModel
+
+
+def client_id_from_name(client_name: str) -> str:
+    normalized = unicodedata.normalize("NFKD", client_name).encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^a-z0-9]+", "_", normalized.lower()).strip("_")
+    return (slug or "client")[:64]
 
 
 class SKU(SQLModel, table=True):
@@ -15,8 +23,10 @@ class SKU(SQLModel, table=True):
     name: str = SQLField(max_length=255)
     sku: str = SQLField(max_length=100, unique=True, index=True)
     client_name: str = SQLField(max_length=255)
+    client_id: str = SQLField(max_length=64, index=True)
     category: str = SQLField(max_length=32)
     warehouse: str = SQLField(max_length=3, index=True)
+    minimum_stock: int | None = SQLField(default=None, gt=0)
 
 
 class StockEntry(SQLModel, table=True):
@@ -43,6 +53,23 @@ class StockExit(SQLModel, table=True):
     exit_type: str = SQLField(max_length=16)
     tracking_number: str | None = SQLField(default=None, max_length=100)
     warehouse: str = SQLField(max_length=3, index=True)
+    created_at: datetime = SQLField(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTime(timezone=True),
+    )
+    user_uuid: str = SQLField(max_length=36)
+
+
+class InventoryAudit(SQLModel, table=True):
+    __tablename__ = "inventory_audit"
+
+    id: int | None = SQLField(default=None, primary_key=True)
+    sku_id: int = SQLField(foreign_key="sku.id", index=True)
+    warehouse: str = SQLField(max_length=3, index=True)
+    system_stock: int
+    physical_stock: int = SQLField(ge=0)
+    discrepancy_quantity: int = SQLField(ge=0)
+    discrepancy_direction: str | None = SQLField(default=None, max_length=16)
     created_at: datetime = SQLField(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTime(timezone=True),
