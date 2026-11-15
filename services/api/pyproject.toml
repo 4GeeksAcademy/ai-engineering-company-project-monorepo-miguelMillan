@@ -4,6 +4,7 @@ version = "1.0.0"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.115,<1",
+    "jsonschema>=4.21,<5",
     "libpass[bcrypt]>=1.9.3",
     "psycopg2-binary>=2.9.13",
     "pydantic[email]>=2.10,<3",

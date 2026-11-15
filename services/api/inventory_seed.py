@@ -1,7 +1,8 @@
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from database import create_sql_engine, initialize_sql_database
-from models import SKU, StockEntry, StockExit
+from models import InventoryAudit, SKU, StockEntry, StockExit
 
 
 SEED_USER_UUID = "00000000-0000-4000-8000-000000000001"
@@ -55,7 +56,28 @@ INVENTORY_SKUS = [
         "category": "electronics",
         "warehouse": "ZGZ",
     },
+    {
+        "name": "Chaqueta impermeable ligera",
+        "sku": "URB-JKT-001",
+        "client_name": "UrbanThread",
+        "client_id": "urbanthread",
+        "category": "fashion",
+        "warehouse": "ZGZ",
+    },
+    {
+        "name": "Cargador inalámbrico Qi 20W",
+        "sku": "TEC-WCH-020",
+        "client_name": "SoundWave Electronics",
+        "client_id": "soundwave_electronics",
+        "category": "electronics",
+        "warehouse": "LA",
+    },
 ]
+
+MINIMUM_STOCKS = {
+    "CLT-SNK-W-42": 60,
+    "TEC-EAR-001": 75,
+}
 
 INVENTORY_ENTRIES = [
     {"sku": "CLT-SNK-W-42", "quantity": 50, "reference": "PO-2024-0098", "warehouse": "LA"},
@@ -63,6 +85,16 @@ INVENTORY_ENTRIES = [
     {"sku": "CLT-SNK-W-42-Z", "quantity": 40, "reference": "PO-2024-0130", "warehouse": "ZGZ"},
     {"sku": "TEC-EAR-001", "quantity": 80, "reference": "GR-LA-0301", "warehouse": "LA"},
     {"sku": "CSM-SRM-030", "quantity": 100, "reference": "GR-ZGZ-0142", "warehouse": "ZGZ"},
+    {"sku": "CLT-CHN-N-32", "quantity": 25, "reference": "PO-2026-0150", "warehouse": "LA"},
+    {"sku": "TEC-CHG-065", "quantity": 30, "reference": "PO-2026-0151", "warehouse": "ZGZ"},
+    {"sku": "URB-JKT-001", "quantity": 20, "reference": "PO-2026-0152", "warehouse": "ZGZ"},
+    {"sku": "TEC-WCH-020", "quantity": 40, "reference": "PO-2026-0153", "warehouse": "LA"},
+    {"sku": "CLT-SNK-W-42-Z", "quantity": 15, "reference": "PO-2026-0154", "warehouse": "ZGZ"},
+    {"sku": "CSM-SRM-030", "quantity": 20, "reference": "PO-2026-0155", "warehouse": "ZGZ"},
+    {"sku": "CLT-CHN-N-32", "quantity": 10, "reference": "PO-2026-0156", "warehouse": "LA"},
+    {"sku": "TEC-CHG-065", "quantity": 15, "reference": "PO-2026-0157", "warehouse": "ZGZ"},
+    {"sku": "URB-JKT-001", "quantity": 10, "reference": "PO-2026-0158", "warehouse": "ZGZ"},
+    {"sku": "TEC-WCH-020", "quantity": 10, "reference": "PO-2026-0159", "warehouse": "LA"},
 ]
 
 INVENTORY_EXITS = [
@@ -87,6 +119,90 @@ INVENTORY_EXITS = [
         "tracking_number": "1Z999AA10123456785",
         "warehouse": "ZGZ",
     },
+    {
+        "sku": "CLT-SNK-W-42",
+        "quantity": 5,
+        "exit_type": "dispatch",
+        "tracking_number": "TF-DEMO-THRESHOLD-001",
+        "warehouse": "LA",
+    },
+    {
+        "sku": "TEC-EAR-001",
+        "quantity": 6,
+        "exit_type": "dispatch",
+        "tracking_number": "TF-DEMO-THRESHOLD-002",
+        "warehouse": "LA",
+    },
+    {
+        "sku": "CLT-CHN-N-32",
+        "quantity": 3,
+        "exit_type": "dispatch",
+        "tracking_number": "TF-DEMO-OUTBOUND-003",
+        "warehouse": "LA",
+    },
+    {
+        "sku": "TEC-CHG-065",
+        "quantity": 5,
+        "exit_type": "dispatch",
+        "tracking_number": "TF-DEMO-OUTBOUND-004",
+        "warehouse": "ZGZ",
+    },
+    {
+        "sku": "URB-JKT-001",
+        "quantity": 2,
+        "exit_type": "dispatch",
+        "tracking_number": "TF-DEMO-OUTBOUND-005",
+        "warehouse": "ZGZ",
+    },
+    {
+        "sku": "TEC-WCH-020",
+        "quantity": 4,
+        "exit_type": "dispatch",
+        "tracking_number": "TF-DEMO-OUTBOUND-006",
+        "warehouse": "LA",
+    },
+    {
+        "sku": "CLT-SNK-W-42-Z",
+        "quantity": 3,
+        "exit_type": "dispatch",
+        "tracking_number": "TF-DEMO-OUTBOUND-007",
+        "warehouse": "ZGZ",
+    },
+    {
+        "sku": "CSM-SRM-030",
+        "quantity": 5,
+        "exit_type": "dispatch",
+        "tracking_number": "TF-DEMO-OUTBOUND-008",
+        "warehouse": "ZGZ",
+    },
+    {
+        "sku": "CLT-CHN-N-32",
+        "quantity": 2,
+        "exit_type": "loss",
+        "tracking_number": None,
+        "warehouse": "LA",
+    },
+    {
+        "sku": "TEC-CHG-065",
+        "quantity": 4,
+        "exit_type": "loss",
+        "tracking_number": None,
+        "warehouse": "ZGZ",
+    },
+    {
+        "sku": "URB-JKT-001",
+        "quantity": 1,
+        "exit_type": "loss",
+        "tracking_number": None,
+        "warehouse": "ZGZ",
+    },
+    {
+        "sku": "TEC-WCH-020",
+        "quantity": 5,
+        "exit_type": "loss",
+        "tracking_number": None,
+        "warehouse": "LA",
+    },
 ]
 
 
@@ -103,6 +219,12 @@ def seed_inventory() -> dict[str, int]:
                     session.add(product)
                     products_by_code[product.sku] = product
                     inserted_skus += 1
+            configured_thresholds = 0
+            for sku, minimum_stock in MINIMUM_STOCKS.items():
+                product = products_by_code[sku]
+                if product.minimum_stock is None:
+                    product.minimum_stock = minimum_stock
+                    configured_thresholds += 1
             session.commit()
             products_by_code = {product.sku: product for product in session.exec(select(SKU)).all()}
 
@@ -161,10 +283,55 @@ def seed_inventory() -> dict[str, int]:
                 inserted_exits += 1
 
             session.commit()
+            seeded_audit_skus = set(
+                session.exec(
+                    select(InventoryAudit.sku_id).where(
+                        InventoryAudit.user_uuid == SEED_USER_UUID
+                    )
+                ).all()
+            )
+            audit_product = products_by_code["CLT-CHN-N-32"]
+            inserted_audits = 0
+            if audit_product.id not in seeded_audit_skus:
+                system_stock = session.execute(
+                    select(
+                        func.coalesce(func.sum(StockEntry.quantity), 0)
+                        - func.coalesce(
+                            select(func.sum(StockExit.quantity))
+                            .where(
+                                StockExit.sku_id == audit_product.id,
+                                StockExit.warehouse == audit_product.warehouse,
+                            )
+                            .scalar_subquery(),
+                            0,
+                        )
+                    ).where(
+                        StockEntry.sku_id == audit_product.id,
+                        StockEntry.warehouse == audit_product.warehouse,
+                    )
+                ).scalar_one()
+                if system_stock < 2:
+                    raise RuntimeError("The seeded audit SKU must have at least two units in stock.")
+                physical_stock = system_stock - 2
+                session.add(
+                    InventoryAudit(
+                        sku_id=audit_product.id,
+                        warehouse=audit_product.warehouse,
+                        system_stock=system_stock,
+                        physical_stock=physical_stock,
+                        discrepancy_quantity=2,
+                        discrepancy_direction="physical_lower",
+                        user_uuid=SEED_USER_UUID,
+                    )
+                )
+                inserted_audits = 1
+            session.commit()
             return {
                 "skus": inserted_skus,
                 "entries": inserted_entries,
                 "exits": inserted_exits,
+                "audits": inserted_audits,
+                "thresholds": configured_thresholds,
             }
     finally:
         engine.dispose()
@@ -174,5 +341,7 @@ def main() -> None:
     inserted = seed_inventory()
     print(
         "Inventario insertado: "
-        f"{inserted['skus']} SKUs, {inserted['entries']} entradas, {inserted['exits']} salidas."
+        f"{inserted['skus']} SKUs, {inserted['entries']} entradas, "
+        f"{inserted['exits']} salidas, {inserted['audits']} auditorías; "
+        f"{inserted['thresholds']} mínimos configurados."
     )
