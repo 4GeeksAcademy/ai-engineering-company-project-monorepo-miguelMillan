@@ -1,18 +1,39 @@
 import json
 import logging
 import os
+import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException, Query
 from jsonschema import Draft7Validator, FormatChecker
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import insert
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from database import get_db
 from models import TelemetryEventRecord
+
+try:
+    from services.telemetry.analysis import (
+            auth_failure_rate_by_day,
+        error_rate_by_time,
+        event_volume_by_time,
+    )
+except ModuleNotFoundError as error:
+    if error.name != "services":
+        raise
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from services.telemetry.analysis import (
+        auth_failure_rate_by_day,
+        error_rate_by_time,
+        event_volume_by_time,
+    )
 
 
 logger = logging.getLogger(__name__)
@@ -74,6 +95,8 @@ class TelemetryReceived(BaseModel):
 
 
 router = APIRouter(prefix="/telemetry", tags=["telemetry"])
+REPORT_CACHE_TTL_SECONDS = 60
+_report_cache: dict[tuple[datetime, datetime], tuple[float, dict[str, object]]] = {}
 
 
 @router.post("/events", response_model=TelemetryReceived)
@@ -118,3 +141,89 @@ def receive_events(batch: TelemetryBatch, session: Session = Depends(get_db)):
         rejected,
     )
     return {"received": received, "stored": stored, "rejected": rejected}
+
+
+def _resolve_report_period(
+    start_date: AwareDatetime | None,
+    end_date: AwareDatetime | None,
+) -> tuple[datetime, datetime]:
+    now = datetime.now(timezone.utc)
+    resolved_start = start_date or now - timedelta(days=7)
+    resolved_end = end_date or now
+    if resolved_start > resolved_end:
+        raise HTTPException(
+            status_code=422,
+            detail="start_date debe ser anterior o igual a end_date.",
+        )
+    return resolved_start, resolved_end
+
+
+def _events_dataframe(events: list[TelemetryEventRecord]) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "timestamp": event.timestamp,
+                "event_type": event.event_type,
+                "tags": event.tags,
+            }
+            for event in events
+        ],
+        columns=["timestamp", "event_type", "tags"],
+    )
+
+
+@router.get("/report")
+def telemetry_report(
+    start_date: AwareDatetime | None = Query(default=None),
+    end_date: AwareDatetime | None = Query(default=None),
+    session: Session = Depends(get_db),
+):
+    resolved_start, resolved_end = _resolve_report_period(start_date, end_date)
+    cache_key = (resolved_start, resolved_end)
+    cached = _report_cache.get(cache_key)
+    if cached is not None:
+        expires_at, report = cached
+        if time.monotonic() < expires_at:
+            return report
+        _report_cache.pop(cache_key, None)
+
+    events = session.exec(
+        select(TelemetryEventRecord)
+        .where(
+            TelemetryEventRecord.timestamp >= resolved_start,
+            TelemetryEventRecord.timestamp <= resolved_end,
+        )
+        .order_by(TelemetryEventRecord.timestamp)
+    ).all()
+    auth_events = session.exec(
+        select(TelemetryEventRecord)
+        .where(
+            TelemetryEventRecord.timestamp >= resolved_start,
+            TelemetryEventRecord.timestamp <= resolved_end,
+            TelemetryEventRecord.event_type.in_(("login_failed", "login_succeeded")),
+        )
+        .order_by(TelemetryEventRecord.timestamp)
+    ).all()
+    frame = _events_dataframe(events)
+    auth_frame = _events_dataframe(auth_events)
+    metrics = {
+        "events_per_day": event_volume_by_time(frame, resolved_start, resolved_end),
+        "error_rate_by_type": error_rate_by_time(frame, resolved_start, resolved_end),
+        "auth_failure_rate": auth_failure_rate_by_day(
+            auth_frame,
+            resolved_start,
+            resolved_end,
+        ),
+    }
+    report = {
+        "period": {
+            "from": resolved_start.isoformat(),
+            "to": resolved_end.isoformat(),
+        },
+        "metrics": metrics,
+    }
+    _report_cache[cache_key] = (
+        time.monotonic() + REPORT_CACHE_TTL_SECONDS,
+        report,
+    )
+    return report

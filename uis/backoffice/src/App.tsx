@@ -2,6 +2,7 @@ import { MetricCard } from './components/MetricCard'
 import { IncidentRegistration } from './app/incidents/IncidentRegistration'
 import { IncidentDirectory } from './app/incidents/IncidentDirectory'
 import { AccountProfile } from './app/account/AccountProfile'
+import { TelemetryDashboard } from './app/telemetry/TelemetryDashboard'
 import { AuthPage } from './components/AuthPage'
 import { authRequest, clearSession, getSessionToken } from './utils/auth'
 import { track } from './services/telemetry'
@@ -95,6 +96,7 @@ function App() {
             <button type="button" aria-current={activeView === 'incident-registration' ? 'page' : undefined} onClick={() => setActiveView('incident-registration')} className={`rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${activeView === 'incident-registration' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>Registrar incidencia</button>
             <a href="/backoffice/inventory/products" aria-current={path.startsWith('/backoffice/inventory/') ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Inventario</a>
             <a href="/account/profile" className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Mi perfil</a>
+            <a href="/telemetry" aria-current={path === '/telemetry' ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Telemetría</a>
             <a href="/account/change-password" className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Cambiar contraseña</a>
             {getSessionToken() && <button type="button" title="Cerrar sesión" aria-label="Cerrar sesión" onClick={() => { clearSession(); window.location.assign('/login') }} className="flex h-10 w-10 items-center justify-center rounded-md text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"><LogOut size={18} aria-hidden="true" /></button>}
             <button
@@ -130,6 +132,8 @@ function App() {
         <main className="mx-auto w-full max-w-6xl px-6 py-8"><InventoryPage path={path} /></main>
       ) : path === '/account/profile' ? (
         <main className="mx-auto w-full max-w-6xl px-6 py-8"><AccountProfile /></main>
+      ) : path === '/telemetry' ? (
+        <main className="mx-auto w-full max-w-6xl px-6 py-8"><TelemetryDashboard /></main>
       ) : activeView === 'incident-directory' ? (
         <main className="mx-auto w-full max-w-6xl px-6 py-8"><IncidentDirectory /></main>
       ) : activeView === 'incident-registration' ? (

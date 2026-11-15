@@ -43,6 +43,8 @@ La sesion se guarda en `sessionStorage` (solo la pestana actual); nunca se guard
 
 El proxy `/auth` va directamente a FastAPI en `http://127.0.0.1:8081`; `AUTH_PROXY_TARGET` permite cambiar ese destino. El backend debe estar iniciado y configurado con las variables Resend descritas en su README. La clave de correo nunca se incluye en el frontend. Para un despliegue independiente, `VITE_API_URL` debe apuntar a FastAPI (o un gateway que exponga `/auth` y `/suppliers`); autoriza el origen publico en `CORS_ORIGINS` y configura fallback SPA para estas rutas en el servidor web.
 
+El proxy `/inventory` y `/telemetry` también apuntan por defecto a FastAPI en `http://127.0.0.1:8081`. Si existe `NEXT_PUBLIC_INVENTORY_API_URL` o `NEXT_PUBLIC_TELEMETRY_ENDPOINT` en `.env.local`, actualízala para no conservar una URL antigua como `http://localhost:8000`; para telemetría se recomienda `/telemetry/events`.
+
 Comando local explicito para Codespaces:
 
 ```bash
