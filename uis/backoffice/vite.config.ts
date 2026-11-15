@@ -32,8 +32,15 @@ export default defineConfig(({ mode }) => {
           target: process.env.API_PROXY_TARGET ?? 'http://localhost:8080',
           changeOrigin: true,
         },
+        '/telemetry': {
+          target: process.env.AUTH_PROXY_TARGET ?? 'http://127.0.0.1:8081',
+          changeOrigin: true,
+        },
         '/inventory': {
-          target: process.env.NEXT_PUBLIC_INVENTORY_API_URL ?? env.NEXT_PUBLIC_INVENTORY_API_URL ?? 'http://localhost:8000',
+          target:
+            process.env.NEXT_PUBLIC_INVENTORY_API_URL ??
+            env.NEXT_PUBLIC_INVENTORY_API_URL ??
+            'http://127.0.0.1:8081',
           changeOrigin: true,
         },
       },

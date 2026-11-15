@@ -1,5 +1,41 @@
 # Progress Log — TrackFlow
 
+## Telemetría — ajuste del contrato JSON del reporte, 2026-11-15
+- Ajustado `GET /telemetry/report` para exponer exactamente `period` y `metrics` con las claves `events_per_day`, `error_rate_by_type` y `auth_failure_rate`.
+- Las funciones `latency_by_route` y `dominant_event_types` permanecen disponibles en el pipeline, pero no forman parte del contrato JSON solicitado.
+- Validado con SQLite temporal que no existen claves adicionales en la respuesta; `git diff --check` correcto.
+- No se crea otro archivo histórico porque `CONTEXT.md` no cambió desde el archivo verificado en `HITO-TELEMETRY-CONTEXT-2026-11-15.md`.
+
+## Telemetría — revisión de criterios y archivo de contexto, 2026-11-15
+- Revisión completada: `services/telemetry/analysis.py` existe y contiene cinco métricas independientes, puras y serializables; todas convierten timestamps con `pd.to_datetime(..., utc=True)` antes de agrupaciones temporales.
+- La carga SQL ocurre una vez en el endpoint y entrega `DataFrame` a las funciones puras; el refinamiento, conversión numérica necesaria, agrupación y agregación se realizan con Pandas, sin loops de cálculo.
+- `GET /telemetry/report` acepta fechas ISO opcionales, resuelve los últimos siete días UTC por defecto, devuelve `period`/`metrics` y usa caché en memoria con TTL de 60 segundos por periodo.
+- Las métricas tienen dimensiones temporales, por tipo, ruta o día y responden a volumen, errores, latencia, dominancia de eventos y fallos de autenticación; no incluyen KPIs de negocio.
+- Archivado el contexto íntegro utilizado en `memory-bank/history/HITO-TELEMETRY-CONTEXT-2026-11-15.md`; `cmp` confirmó que coincide byte a byte con `CONTEXT.md`.
+
+## Telemetría — métrica de autenticación y dashboard técnico, 2026-11-15
+- Añadida `auth_failure_rate_by_day` en `services/telemetry/analysis.py`, calculando `login_failed / (login_failed + login_succeeded)` por día en Pandas.
+- El endpoint carga los eventos de autenticación mediante `event_type IN ('login_failed', 'login_succeeded')` y expone la métrica bajo `metrics.auth_failure_rate`. Se usaron los nombres reales instrumentados en el catálogo, que no llevan prefijo `user_`.
+- Creada la vista `/telemetry` en `uis/backoffice/src/app/telemetry/TelemetryDashboard.tsx`, con tablas HTML accesibles para las métricas operacionales y mostrando explícitamente `period.from` y `period.to`.
+- Añadido enlace de navegación desde `uis/backoffice/src/App.tsx`; la vista consume el endpoint autenticado existente y no agrega KPIs de negocio.
+- Validación: `uv run --directory services/api pytest -q tests/test_inventory_telemetry.py` (4 passed), smoke test aislado de la métrica de autenticación correcto, `python -m compileall` correcto y `npm --prefix uis/backoffice run build` correcto. Solo permanece la advertencia conocida deprecada de Starlette/httpx.
+- Esta fase no archiva `CONTEXT.md`; el cierre histórico queda pendiente hasta completar todas las fases.
+
+## Telemetría — endpoint de reporte y caché, fase 2, 2026-11-15
+- Implementado `GET /telemetry/report` en `services/api/routes/telemetry.py` con `start_date` y `end_date` opcionales en ISO 8601; sin parámetros resuelve una sola vez `now - 7 días` y `now`, ambos UTC.
+- El endpoint consulta `telemetry_events` una vez por periodo, crea el `DataFrame` y pasa exactamente el periodo resuelto a las métricas. La respuesta incluye `period` y las métricas `events_per_day`, `error_rate_by_type`, `latency_by_route` y `dominant_event_types`.
+- Añadido caché en memoria por combinación de fechas con TTL de 60 segundos; una petición repetida dentro del TTL devuelve el resultado sin recalcular ni consultar de nuevo.
+- Corregido el uso de `sqlmodel.select` para obtener instancias `TelemetryEventRecord` y añadido compatibilidad de importación cuando FastAPI se ejecuta desde `services/api`.
+- Validación: `uv run --directory services/api pytest -q tests/test_inventory_telemetry.py` (4 passed) y smoke test aislado del endpoint con SQLite temporal (ingestión, periodo explícito, periodo por defecto y cache hit) correctos. Solo permanece la advertencia conocida deprecada de Starlette/httpx.
+- Esta fase no archiva `CONTEXT.md`; la fase 3 queda pendiente.
+
+## Telemetría — análisis Pandas, fase 1, 2026-11-15
+- Creado `services/telemetry/analysis.py` con cuatro funciones puras y serializables: volumen de eventos por ventana temporal/tipo, tasa de errores por ventana, latencia media por ruta API y tipos de evento dominantes.
+- Todas convierten `timestamp` a `datetime` UTC antes de agrupar; la latencia extrae `route_group` y `duration_ms` desde `tags` y la tasa usa el catálogo técnico de eventos fallidos, sin métricas de negocio ni loops de cálculo.
+- Añadidos `services/__init__.py` y `services/telemetry/__init__.py` para exponer el módulo como paquete Python. Añadida dependencia `pandas` y regenerado `services/requirements.txt` con `uv pip compile`.
+- Validación: `python -m compileall -q services/telemetry`, `git diff --check -- services/telemetry services/api/pyproject.toml services/requirements.txt` y smoke test Pandas con `uv run --with pandas python ...` correctos. La primera ejecución del smoke test desde `services/api` falló únicamente por el directorio de importación; se repitió desde la raíz y pasó.
+- Esta fase no archiva `CONTEXT.md`; el endpoint `/telemetry/report` y la caché quedan para las fases siguientes.
+
 ## Telemetría — proxy same-origin en Codespaces, 2026-11-15
 - El preflight directo a `8081.app.github.dev` recibe 401 del túnel privado antes de llegar al middleware CORS. Para evitar CORS sin tocar el frontend, el endpoint quedó configurado en runtime como `/telemetry/events` y Vite reenvía esa ruta a FastAPI en `127.0.0.1:8081`.
 - Verificación HTTP por el proxy same-origin: un evento inválido devolvió `{"received":1,"stored":0,"rejected":1}`; no se escribió en Supabase. Los puertos 5174 y 8081 responden y `git diff --quiet HEAD -- uis` confirma que no cambió el frontend.
@@ -415,6 +451,18 @@
 - Prueba API multipart y exportacion: OK; CSV vacio devuelve 422 y extension incorrecta 400.
 - Prueba end-to-end a traves de Vite con CSV real: carga, metricas y descarga OK; respuesta y CSV sin emails.
 - `npm --prefix uis/backoffice run build`: OK.
+
+## Guía de arranque de servicios — 2026-11-15
+- Creada [docs/GUIA-LEVANTAR-SERVICIOS.md](../docs/GUIA-LEVANTAR-SERVICIOS.md) con comandos para Docker Compose y ejecución manual.
+- Incluye preparación de `.env`, arranque inicial y posteriores, health checks, logs, URLs locales, seed y apagado seguro sin borrar volúmenes.
+- Validación: `git diff --check -- docs/GUIA-LEVANTAR-SERVICIOS.md` correcta.
+- El contexto usado se archivó en `memory-bank/history/SERVICES-STARTUP-GUIDE-CONTEXT-2026-11-15.md` y se verificó con `cmp`.
+
+## Corrección de proxies de backoffice — 2026-11-15
+- El proxy de `/inventory` dejó de usar `localhost:8000` por defecto y apunta a FastAPI en `127.0.0.1:8081`.
+- Añadido el proxy `/telemetry` hacia FastAPI y fallback frontend a `/telemetry/events`.
+- Documentada la limpieza de variables `.env.local` antiguas que todavía apunten a `localhost:8000`.
+- Validación: `npm --prefix uis/backoffice run build` correcta; `git diff --check` correcto; `GET /inventory/products` llega a FastAPI y devuelve `401` sin credenciales, en lugar de `502`.
 
 ## Proximos pasos
 - Hito 10: generar `services/api/.env` siguiendo el comando de `services/api/README.md` y completar la comprobacion manual visual de `/docs`.

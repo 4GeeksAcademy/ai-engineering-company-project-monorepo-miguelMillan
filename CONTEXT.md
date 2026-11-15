@@ -1,11 +1,16 @@
-"El stub ya cumplió su función — sé que los eventos llegan con el formato correcto. Ahora necesito que los guardes.
+Tenemos datos. Ahora necesito visibilidad técnica sobre el sistema.
 
-Crea la tabla en Supabase y reemplaza el stub por el endpoint real. El modelo Pydantic que definiste en la fase anterior es el contrato — úsalo para validar. Los eventos que no cumplan el contrato se rechazan individualmente, pero el resto del lote se persiste igual.
+Escribe el pipeline de análisis. Para cada dimensión operacional relevante, una función de Python que cargue los eventos correspondientes, los transforme con Pandas, y devuelva un resultado serializable. Luego un endpoint GET /telemetry/report que los sirva juntos.
 
-El frontend no toca nada. La URL del endpoint es la misma — solo cambia lo que pasa dentro del backend cuando llega el lote. Si el frontend necesita cambiar algo para que esto funcione, el diseño está mal."
+Dos reglas no negociables: primero, no calcules nada dentro del endpoint en cada request — el pipeline va aparte y el endpoint lo llama, con cache. Segundo, convierte los timestamps a datetime antes de cualquier agrupación — si no lo haces, vas a obtener grupos incorrectos sin ningún error visible, y vas a perder horas encontrando el bug.
 
-Ten a mano tu docs/telemetry/event-schemas.json y telemetry-plan.md — confirma que el mapeo a tags preserva las dimensiones específicas de TELEMETRY-PHASE1-CONTEXT-2026-11-11.md (almacén, oficina, etc.) definidas en tu plan.
+Una aclaración importante: esto no es el reporte para el CEO. Nada de tasas de conversión ni ingresos — eso lo vamos a construir con los pipelines de datos más adelante. Hoy quiero saber qué tan sano está el sistema: volumen de eventos, tasa de errores, latencia, qué tipos de evento dominan. Métricas con dimensión temporal real, no un número global sin contexto.
 
-El frontend no se toca. Verifica que NEXT_PUBLIC_TELEMETRY_ENDPOINT siga apuntando al mismo endpoint — solo cambia lo que pasa dentro del backend.
+ubica services/ (backend FastAPI).
 
-Sigue el orden: tabla en Supabase → endpoint real → verificación end-to-end.
+Revisa telemetry_events en Supabase y confirma que tienes al menos 20 filas con variedad de event_type (Esto ya está)
+
+Revisa tu catálogo de eventos (telemetry-plan.md) — hoy trabajas con las dimensiones técnicas/operacionales de ese catálogo, no con las de negocio
+
+Sigue el orden: funciones de análisis → endpoint de reporte → cache.
+

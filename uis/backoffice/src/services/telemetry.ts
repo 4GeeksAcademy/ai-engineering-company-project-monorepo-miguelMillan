@@ -5,7 +5,9 @@ export const TELEMETRY_SCHEMA_VERSION = '1.0.0' as const
 const BATCH_SIZE = 20
 const FLUSH_INTERVAL_MS = 10_000
 const MAX_RETRIES = 3
-const ENDPOINT = import.meta.env.NEXT_PUBLIC_TELEMETRY_ENDPOINT as string | undefined
+const ENDPOINT =
+  (import.meta.env.NEXT_PUBLIC_TELEMETRY_ENDPOINT as string | undefined) ??
+  '/telemetry/events'
 
 type TelemetryEvent = {
   eventId: string
