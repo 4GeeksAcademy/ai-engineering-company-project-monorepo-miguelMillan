@@ -35,11 +35,14 @@ services:
       retries: 6
 
   backend:
+    environment:
+        DATABASE_URL: ${DATABASE_URL:?Configura DATABASE_URL en Codespaces}
     build:
       context: ./services
       additional_contexts:
         scripts: ./scripts
         shared: ./packages/shared
+        telemetry_schema: ./docs/telemetry
     init: true
     env_file:
       - .env

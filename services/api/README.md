@@ -58,6 +58,12 @@ La persistencia por defecto es `services/api/data/suppliers.json` (excluida de G
 
 La API requiere `DATABASE_URL` en `services/api/.env` para iniciar el motor SQLModel y crear las tablas de inventario en PostgreSQL. Configura la URL de conexión de Supabase localmente y no la incluyas en el repositorio. El motor y `SQLModel.metadata.create_all` se inicializan en el lifespan de FastAPI; `get_db` proporciona una sesion independiente por petición.
 
+### Almacenamiento de telemetría
+
+`POST /telemetry/events` acepta `{ "events": [...] }`, valida cada elemento con `TelemetryEvent` y el JSON Schema Draft-07 de `docs/telemetry/event-schemas.json` (incluidos los allowlists de `properties`), y persiste los válidos en un bulk insert; uno inválido no cancela los demás. Responde `{ "received": N, "stored": M, "rejected": R }`.
+
+`telemetry_events` conserva el envelope validado: `eventId`, `timestamp`, `sessionId`, `userId`, `event_type`, `schemaVersion` y `requestId` se mapean a columnas snake_case; `properties` se conserva íntegro en `tags` JSONB, incluidas dimensiones como `warehouse`, `client_id`, `product_id`, `product_category` y `quantity`. La migración `supabase/migrations/20261115132500_create_telemetry_events.sql` crea los índices B-tree de `timestamp` y `event_type`, el índice GIN de `tags` y la protección de inmutabilidad. No hay operaciones de actualización o eliminación de eventos; la base rechaza ambos tipos de modificación.
+
 En inventario, cada SKU expone un `client_id` estable y un `minimum_stock` configurable. `PATCH /inventory/products/{id}/threshold` establece el mínimo; el cruce confirmado de ese umbral aparece en `telemetry_events` de la respuesta de salida. `PUT /inventory/products/{id}/stock` siempre rechaza la edición directa con 409 y entrega la señal de telemetría en el detalle. `POST /inventory/audits` persiste el conteo físico junto con el stock calculado y devuelve una señal solo si detecta discrepancia. Las señales las encola el backoffice mediante `track()`.
 
 Al iniciar, la API agrega las columnas de inventario nuevas si faltan y asigna un `client_id` derivado del nombre a los SKU existentes sin identificador. Los SKU nuevos pueden enviar `client_id` explícito; si se omite, se deriva de `client_name`.
@@ -107,7 +113,7 @@ La comprobacion local de AUTH-03 usa una base temporal y un transporte simulado:
 
 `GET /inventory/products`, `GET /inventory/products/{id}` y `GET /inventory/orders` son publicos. Crear SKUs y registrar entradas/salidas requiere una sesion TinyDB. El usuario autenticado recibe un `user_uuid` UUID persistido en TinyDB; los usuarios anteriores reciben uno estable al primer acceso. El stock se calcula por SKU y almacen a partir de entradas menos salidas.
 
-Antes de la demo, con `DATABASE_URL` apuntando a la base de desarrollo, ejecuta `uv run seed-inventory`. El seed es idempotente: inserta los SKUs y movimientos que falten sin reemplazar registros existentes. No lo ejecutes contra una base con datos de produccion.
+Antes de la demo, con `DATABASE_URL` apuntando a la base de desarrollo, ejecuta `uv run seed-inventory`. El seed idempotente asegura 8 SKU, 15 entradas y 15 salidas, configura dos mínimos de stock y registra una auditoría con discrepancia; conserva los registros existentes y solo añade los que falten. Las dos salidas de umbral dejan el stock por debajo de los mínimos configurados, pero el seeder no inserta en `telemetry_events`: los eventos se envían cuando las operaciones se realizan desde el backoffice. No lo ejecutes contra una base con datos de producción.
 
 ## Gestion de incidencias
 

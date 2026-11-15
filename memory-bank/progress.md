@@ -1,5 +1,75 @@
 # Progress Log — TrackFlow
 
+## Telemetría — proxy same-origin en Codespaces, 2026-11-15
+- El preflight directo a `8081.app.github.dev` recibe 401 del túnel privado antes de llegar al middleware CORS. Para evitar CORS sin tocar el frontend, el endpoint quedó configurado en runtime como `/telemetry/events` y Vite reenvía esa ruta a FastAPI en `127.0.0.1:8081`.
+- Verificación HTTP por el proxy same-origin: un evento inválido devolvió `{"received":1,"stored":0,"rejected":1}`; no se escribió en Supabase. Los puertos 5174 y 8081 responden y `git diff --quiet HEAD -- uis` confirma que no cambió el frontend.
+- Esta configuración es del proceso de Codespaces; no se añadió configuración al código del frontend. La conectividad del navegador debe probarse con la página abierta desde el puerto 5174.
+
+## Telemetría — dataset de inventario dev cargado, 2026-11-15
+- Ampliado `services/api/inventory_seed.py` de forma idempotente y documentado en el README: 8 SKU, 15 entradas, 15 salidas, dos mínimos de stock y una auditoría discrepante. Conserva los datos previos y añade 2 SKU, 10 entradas y 12 salidas.
+- Confirmado con el usuario que la instancia es dev/demo y que el alcance era solo inventario, sin escribir eventos en `telemetry_events`.
+- Ejecutado `uv run --no-sync --directory services/api seed-inventory` en Supabase: 2 SKU, 10 entradas, 12 salidas, 1 auditoría y 2 mínimos configurados. Verificación remota de solo lectura: totales 8/15/15/1; tres categorías, cuatro clientes y ambos almacenes; saldos 58/60 y 74/75 en los dos casos de umbral; discrepancia 30 frente a 28. `telemetry_events` sigue en 0.
+- Idempotencia probada dos veces sobre SQLite temporal: primera ejecución 8/15/15/1 y segunda 0 inserciones; también se comprobó que la base temporal de seed no escribe en telemetría.
+- Validación: `uv run --no-sync --directory services/api pytest -q tests/test_inventory_telemetry.py` (4 passed; advertencia deprecada Starlette/httpx) y `git diff --check -- services/api/inventory_seed.py services/api/README.md` limpio.
+
+## Telemetría — evidencia solicitada para PR, 2026-11-15
+- Consulta de solo lectura: `telemetry_events` tiene 0 filas en Supabase; todavía no puede tomarse la captura requerida de cinco eventos reales.
+- Reproducción del lote mixto en SQLite temporal, sin tocar Supabase: HTTP 200 con `{"received":3,"stored":2,"rejected":1}`; se almacenaron el evento de negocio `inbound_order_created` y el técnico `login_failed`, y se rechazó un payload con clave extra.
+- `git diff --quiet HEAD -- uis` confirmó que el frontend no tiene cambios rastreados. El backoffice puede generar eventos reales mediante navegación (`backoffice_section_viewed`, `api_request_completed`) y operaciones confirmadas de entrada/salida; hay que ejecutarlas y esperar el flush antes de capturar Supabase.
+
+## Supabase — columnas de SKU aplicadas, 2026-11-15
+- Ejecutada la rutina existente `initialize_sql_database` contra el host Supabase configurado. Añadió `client_id` y `minimum_stock` a `public.sku` y completó `client_id` para los seis SKU existentes; quedaron cero SKU sin cliente.
+- `minimum_stock` quedó sin configurar en los seis SKU, ya que el seed/contexto no define umbrales concretos. No se asignaron valores inventados ni se ejecutó el seeder.
+
+## Revisión de semillas y esquema Supabase, 2026-11-15
+- HITO05 sí había registrado la ejecución de `seed-inventory` en Supabase. Comparación remota de solo lectura contra `services/api/inventory_seed.py`: coinciden exactamente los 6 SKU, 5 entradas y 3 salidas esperados; no se omitió por falta del secreto.
+- Hallazgo pendiente: en Supabase las tablas `sku`, `stock_entry` y `stock_exit` existen, pero `sku` aún carece de `client_id` y `minimum_stock`. El código actual los agrega/backfillea en `initialize_sql_database`; no se inició la API ni se alteró el esquema durante esta revisión.
+- Distinciones: los 15 proveedores exactos de HITO09 se guardan en TinyDB, no en Supabase. La semilla de 8–10 SKU y 15–20 entradas/salidas del contexto de Telemetría es sugerida para una fase futura; `telemetry-plan.md` declara que no se crea en fase 1. El seed actual sigue siendo el de HITO05 (6/5/3). No se ejecutó ningún seeder.
+
+## Telemetría — migración aplicada en Supabase, 2026-11-15
+- Confirmada la migración local `supabase/migrations/20261115132500_create_telemetry_events.sql` y aplicada al proyecto Supabase configurado por `DATABASE_URL`.
+- Verificación remota de solo lectura: `public.telemetry_events` existe con las ocho columnas esperadas, los tres índices (timestamp, event_type, GIN(tags)), RLS habilitado y trigger `telemetry_events_immutable` habilitado para UPDATE y DELETE. La tabla contiene 0 filas; no se insertaron eventos artificiales.
+- Confirmado en la copia de trabajo que el endpoint real está en `services/api/routes/telemetry.py`: valida por evento con `TelemetryEvent.model_validate`, inserta el lote con una operación bulk y devuelve los tres contadores. El frontend no se modificó.
+- No se ejecutó el endpoint contra Supabase ni desde el navegador; el smoke HTTP de fase anterior fue local y aislado. La verificación de eventos reales queda pendiente de generar actividad legítima desde el backoffice.
+
+## Telemetría — revisión de Supabase con configuración disponible, 2026-11-15
+- Consulta de solo lectura con `DATABASE_URL`: conecta a PostgreSQL, pero `public.telemetry_events` no existe en esa base (`to_regclass` devolvió `NULL`). No se aplicó la migración ni se insertaron datos remotos; siguen sin verificarse filas de producción.
+- Revisión estática de la migración local: define ocho columnas, tres índices explícitos (timestamp, event_type y GIN(tags)), RLS y trigger que bloquea UPDATE/DELETE. El endpoint valida evento por evento con `TelemetryEvent.model_validate` más el JSON Schema, realiza un único `session.execute(insert(...), rows)` y conserva `properties` íntegro como `tags`.
+- Smoke HTTP aislado con SQLite temporal: evento de negocio y evento técnico válidos más una propiedad fuera del allowlist; HTTP 200 devolvió `received=3, stored=2, rejected=1`; se consultaron las dos filas y se confirmó la conservación de timestamp y tags. La suite `uv run --no-sync --directory services/api pytest -q tests/test_inventory_telemetry.py` pasó (4 tests; advertencia deprecada de Starlette/httpx).
+- Comparación contra HEAD: no hay cambios bajo `uis/` y el modelo `TelemetryEvent` no tiene cambios; el frontend sigue leyendo `NEXT_PUBLIC_TELEMETRY_ENDPOINT`. No se verificó el valor efectivo del entorno ni se ejecutó el flujo real desde navegador.
+- Bloqueo/siguiente paso: aplicar la migración en el proyecto Supabase correcto y repetir inspección de columnas/índices/trigger; después, comprobar eventos reales técnicos y de negocio. No se generaron filas artificiales en Supabase porque la tabla debe ser inmutable.
+
+## Telemetría — validación de allowlists, 2026-11-15
+- Añadida validación complementaria con JSON Schema Draft-07 y `FormatChecker` por evento, después de `TelemetryEvent.model_validate(...)`. Se mantienen inalterados los campos/modelo `TelemetryEvent`; los payloads con claves extra o dimensiones inválidas se rechazan individualmente y los `properties` admitidos se guardan íntegros en `tags`.
+- Declarada la dependencia `jsonschema` en `services/api/pyproject.toml`; regenerado `services/requirements.txt` universal. El esquema se carga desde el contrato compartido y se copia al contenedor mediante contexto Docker dedicado.
+- Validaciones en entorno temporal aislado: `tests/test_inventory_telemetry.py` (4 passed) y smoke HTTP SQLite con evento de negocio válido, evento técnico válido y payload con clave extra (respuesta 3/2/1; dos filas con tags intactos).
+- Supabase remoto/backoffice siguen sin verificar: `DATABASE_URL` no disponible y acceso a `.env`/`node_modules` denegado por política de exclusión.
+- Contexto activo archivado íntegro en `memory-bank/history/TELEMETRY-ALLOWLIST-VALIDATION-CONTEXT-2026-11-15.md`; `cmp` confirma coincidencia byte a byte.
+
+## Telemetría — revisión de checklist, 2026-11-15
+- Revisión de código: modelo y migración declaran ocho columnas, índices timestamp/event_type/GIN(tags), y trigger que bloquea UPDATE/DELETE. La ruta usa una validación independiente por evento, un `session.execute(insert(...), rows)` por lote y respuesta `received`/`stored`/`rejected`. El bloque `TelemetryEvent` no aparece modificado en el diff; el frontend no tiene cambios locales.
+- Limitación de contrato: `TelemetryEvent.properties` es `dict[str, object]`; `model_validate` no aplica los allowlists anidados del JSON Schema. El endpoint conserva `properties` íntegro como `tags`, por lo que las dimensiones aprobadas no se pierden, pero tampoco filtra propiedades extra.
+- Evidencia limitada a entorno local SQLite: lote técnico mixto respondió 2/1/1 y se consultó su fila. No se verificó tabla remota, migración aplicada ni eventos de negocio originados por el backoffice.
+- Para completar evidencia real: `DATABASE_URL` debe estar disponible en entorno autorizado y el backoffice/navegador debe poder ejecutarse. La política de exclusión bloqueó `.env` y `node_modules`; no se accedió por rutas alternativas.
+
+## Telemetría — verificación end-to-end, fase 3 — 2026-11-15
+- Verificación parcial aislada: levantada API local con SQLite temporal; `curl` envió un lote con `login_failed` válido y un `event_type` inválido; HTTP 200 devolvió `{"received":2,"stored":1,"rejected":1}`. Consulta SQLite confirmó `event_type`, timestamp y `tags`; base temporal eliminada y servidor detenido.
+- No se generaron órdenes desde el backoffice ni se consultó la tabla de la instancia remota de Supabase. No afirmar verificación end-to-end real.
+- Bloqueos: `DATABASE_URL` no está en el entorno; `psql`/CLI Supabase, servicios y Playwright no están disponibles. `docker compose ps` no pudo resolver variables requeridas. La política de exclusión denegó acceso a `.env`, `.env.example` y `node_modules`; no se intentó acceder por vías alternativas.
+- Siguiente paso: habilitar una ejecución con acceso remoto autorizado a Supabase, configuración de runtime disponible y backoffice/browser accesibles; aplicar/verificar migración y repetir el flujo real.
+
+## Telemetría — endpoint de persistencia, fase 2 — 2026-11-15
+- Reemplazado el stub `POST /telemetry/events`: el envelope recibe una lista de objetos sin validar globalmente; cada elemento se valida de forma independiente con el `TelemetryEvent` existente y los inválidos no interrumpen el lote.
+- Los eventos válidos se convierten a columnas de `telemetry_events` y `properties` se guarda íntegro en `tags`; una llamada bulk insert y una transacción persistente por lote. Respuesta `received`/`stored`/`rejected`; el frontend permanece intacto.
+- Validaciones: smoke test HTTP con un evento válido y uno inválido (200, contadores 2/1/1 y dimensiones persistidas); `uv run --directory services/api pytest -q tests/test_inventory_telemetry.py` (4 passed).
+- Bloqueo: la migración Supabase de fase 1 todavía no está aplicada/verificada en la instancia remota; este smoke test usó SQLite temporal.
+
+## Telemetría — almacenamiento, fase 1 — 2026-11-15
+- Añadido `TelemetryEventRecord` al metadata SQLModel para crear `telemetry_events` con campos del envelope y `tags` JSONB. El contrato de `properties` se conserva íntegro como `tags`, incluidas sus dimensiones de inventario.
+- Creada migración Supabase con índices B-tree para `timestamp` y `event_type`, GIN para `tags`, RLS habilitado sin políticas de acceso directo y trigger que rechaza UPDATE/DELETE. No hay lógica de actualización o eliminación de eventos.
+- Validación: `uv run --directory services/api pytest -q tests/test_inventory_telemetry.py` (4 passed); metadata de tabla/índices verificado en SQLite; DDL PostgreSQL compilado y comprobado con JSONB, timestamptz y GIN. Confirmado que `NEXT_PUBLIC_TELEMETRY_ENDPOINT` conserva su configuración en el servicio frontend; no se modificó el frontend.
+- Bloqueo: no se aplicó ni verificó la migración contra una instancia remota de Supabase en esta sesión. Próximo paso: aplicar la migración en Supabase antes de implementar la persistencia del endpoint en la fase siguiente.
+
 ## Telemetría — instrumentación de métricas obligatorias — 2026-11-13
 - Añadidos `client_id` y `minimum_stock` por SKU, migración idempotente para registros existentes y endpoint de configuración del mínimo.
 - Las salidas confirmadas detectan el cruce real por debajo del umbral y devuelven una señal del SKU verificado; el backoffice la encola con `track()`.

@@ -6,7 +6,8 @@ from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, Index, JSON, Uuid
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field as SQLField, SQLModel
 
 
@@ -75,6 +76,26 @@ class InventoryAudit(SQLModel, table=True):
         sa_type=DateTime(timezone=True),
     )
     user_uuid: str = SQLField(max_length=36)
+
+
+class TelemetryEventRecord(SQLModel, table=True):
+    __tablename__ = "telemetry_events"
+    __table_args__ = (
+        Index("ix_telemetry_events_timestamp", "timestamp"),
+        Index("ix_telemetry_events_event_type", "event_type"),
+        Index("ix_telemetry_events_tags_gin", "tags", postgresql_using="gin"),
+    )
+
+    event_id: UUID = SQLField(primary_key=True, sa_type=Uuid(as_uuid=True))
+    timestamp: datetime = SQLField(sa_type=DateTime(timezone=True))
+    session_id: UUID | None = SQLField(default=None, sa_type=Uuid(as_uuid=True))
+    user_id: str | None = SQLField(default=None, max_length=66)
+    event_type: str = SQLField(max_length=64)
+    schema_version: str = SQLField(max_length=16)
+    request_id: UUID | None = SQLField(default=None, sa_type=Uuid(as_uuid=True))
+    tags: dict[str, object] = SQLField(
+        sa_type=JSON().with_variant(JSONB, "postgresql")
+    )
 
 
 class IncidentStatus(str, Enum):
