@@ -1,5 +1,15 @@
 # Progress Log — TrackFlow
 
+## Telemetría — feedback del PR #25: carga SQL y caché, 2026-11-16
+- Las cinco funciones de `services/telemetry/analysis.py` reciben ahora una sesión SQL y cargan sus eventos mediante un helper común. Los límites temporales se aplican solo en SQL y los timestamps se convierten a UTC antes de agrupar. Autenticación y latencia filtran `event_type` en SQL; volumen, dominancia y errores conservan todos los tipos necesarios para sus conteos y denominadores. Solo latencia selecciona `tags`.
+- Eliminada la carga de DataFrames de la ruta. El caché usa las fechas de entrada, incluidos valores omitidos, en lugar de fechas resueltas con microsegundos; mantiene el periodo original durante 60 segundos y renueva la ventana al expirar. Se conserva el contrato de tres métricas dentro de `period`/`metrics`.
+- Documentadas las funciones, consultas, fórmulas, límites del caché y ejemplo JSON en `services/api/README.md`. Actualizada y publicada la descripción del PR #25 con métricas, JSON y validaciones; el PR ya estaba fusionado y no tenía hilos de revisión. La descripción advierte que las correcciones de código siguen locales, sin commit ni push.
+- Validación: el primer intento con `uv` no pudo arrancar porque no estaba instalado. Instalado exclusivamente en el directorio temporal de esta sesión, con entorno Python 3.12 aislado; `uv run --directory services/api --python 3.12 pytest -q tests/test_inventory_telemetry.py` pasó (4 passed; advertencia conocida de Starlette/httpx).
+- Smoke ejecutado con SQLite en memoria y TestClient: cinco métricas correctas, filtros y proyecciones SQL inspeccionados, límites inclusivos, offsets UTC equivalentes, ventanas vacías, JSON exacto, aciertos de caché con fechas explícitas/omitidas/parciales sin nuevas consultas, expiración exacta a los 60 segundos y errores HTTP 422. No se añadieron archivos de tests ni se escribió en Supabase.
+- `git diff --check` correcto. Reglas de UI/layout: no aplican, frontend intacto. Sin cambios de rutas protegidas salvo este progreso autorizado.
+- Contexto utilizado: `cmp CONTEXT.md memory-bank/history/HITO-TELEMETRY-CONTEXT-2026-11-15.md` confirmó coincidencia íntegra. Se conserva ese archivo histórico sin sobrescribirlo ni duplicarlo.
+- Siguiente paso: commit/push y una nueva entrega de las correcciones, porque el PR #25 ya está fusionado. La validación remota sobre Supabase no se ejecutó en esta tarea.
+
 ## Telemetría — ajuste del contrato JSON del reporte, 2026-11-15
 - Ajustado `GET /telemetry/report` para exponer exactamente `period` y `metrics` con las claves `events_per_day`, `error_rate_by_type` y `auth_failure_rate`.
 - Las funciones `latency_by_route` y `dominant_event_types` permanecen disponibles en el pipeline, pero no forman parte del contrato JSON solicitado.

@@ -7,19 +7,18 @@ from pathlib import Path
 from typing import Literal
 from uuid import UUID
 
-import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 from jsonschema import Draft7Validator, FormatChecker
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import insert
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from database import get_db
 from models import TelemetryEventRecord
 
 try:
     from services.telemetry.analysis import (
-            auth_failure_rate_by_day,
+        auth_failure_rate_by_day,
         error_rate_by_time,
         event_volume_by_time,
     )
@@ -96,7 +95,9 @@ class TelemetryReceived(BaseModel):
 
 router = APIRouter(prefix="/telemetry", tags=["telemetry"])
 REPORT_CACHE_TTL_SECONDS = 60
-_report_cache: dict[tuple[datetime, datetime], tuple[float, dict[str, object]]] = {}
+_report_cache: dict[
+    tuple[datetime | None, datetime | None], tuple[float, dict[str, object]]
+] = {}
 
 
 @router.post("/events", response_model=TelemetryReceived)
@@ -158,28 +159,13 @@ def _resolve_report_period(
     return resolved_start, resolved_end
 
 
-def _events_dataframe(events: list[TelemetryEventRecord]) -> pd.DataFrame:
-    return pd.DataFrame(
-        [
-            {
-                "timestamp": event.timestamp,
-                "event_type": event.event_type,
-                "tags": event.tags,
-            }
-            for event in events
-        ],
-        columns=["timestamp", "event_type", "tags"],
-    )
-
-
 @router.get("/report")
 def telemetry_report(
     start_date: AwareDatetime | None = Query(default=None),
     end_date: AwareDatetime | None = Query(default=None),
     session: Session = Depends(get_db),
 ):
-    resolved_start, resolved_end = _resolve_report_period(start_date, end_date)
-    cache_key = (resolved_start, resolved_end)
+    cache_key = (start_date, end_date)
     cached = _report_cache.get(cache_key)
     if cached is not None:
         expires_at, report = cached
@@ -187,30 +173,12 @@ def telemetry_report(
             return report
         _report_cache.pop(cache_key, None)
 
-    events = session.exec(
-        select(TelemetryEventRecord)
-        .where(
-            TelemetryEventRecord.timestamp >= resolved_start,
-            TelemetryEventRecord.timestamp <= resolved_end,
-        )
-        .order_by(TelemetryEventRecord.timestamp)
-    ).all()
-    auth_events = session.exec(
-        select(TelemetryEventRecord)
-        .where(
-            TelemetryEventRecord.timestamp >= resolved_start,
-            TelemetryEventRecord.timestamp <= resolved_end,
-            TelemetryEventRecord.event_type.in_(("login_failed", "login_succeeded")),
-        )
-        .order_by(TelemetryEventRecord.timestamp)
-    ).all()
-    frame = _events_dataframe(events)
-    auth_frame = _events_dataframe(auth_events)
+    resolved_start, resolved_end = _resolve_report_period(start_date, end_date)
     metrics = {
-        "events_per_day": event_volume_by_time(frame, resolved_start, resolved_end),
-        "error_rate_by_type": error_rate_by_time(frame, resolved_start, resolved_end),
+        "events_per_day": event_volume_by_time(session, resolved_start, resolved_end),
+        "error_rate_by_type": error_rate_by_time(session, resolved_start, resolved_end),
         "auth_failure_rate": auth_failure_rate_by_day(
-            auth_frame,
+            session,
             resolved_start,
             resolved_end,
         ),
