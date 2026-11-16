@@ -1,5 +1,145 @@
 # Progress Log — TrackFlow
 
+## Data Pipelines — Mejoras de resiliencia (actividad adicional), 2026-11-16
+
+### Implementación de mejoras documentadas en el diseño
+
+Revisadas las "Preguntas de resiliencia y observabilidad" del `PIPELINE_DESIGN.md` para identificar mejoras de resiliencia/observabilidad que fueron especificadas en el diseño pero aún no implementadas. Se identificaron 5 mejoras, de las cuales se implementaron 3:
+
+#### ✅ Implementadas:
+
+1. **Advisory lock para corridas concurrentes** (ya estaba en código)
+   - Función `_weekly_pipeline_run_lock(week_start)` en `mock_data/pipelines/pipeline.py` (líneas 69-93)
+   - Usa `pg_try_advisory_lock` con namespace `7412`
+   - Previene múltiples flows procesando simultáneamente la misma semana
+   - Registra `skipped`/`already_running` si no se adquiere el lock
+
+2. **Checkpoints y fases para recuperación** (ya estaba en código)
+   - Tabla `reporting.pipeline_runs` incluye `phase` (extracting/transforming/loading/completed) y `last_checkpoint_at`
+   - Se actualizan explícitamente en cada etapa (líneas 527-595)
+   - Permite recuperación post-fallo desde último checkpoint conocido sin asumir estados de commit incompletos
+
+3. **Idempotencia en ingesta de telemetría con `ON CONFLICT DO NOTHING`** (implementado ahora)
+   - Cambio en `services/api/routes/telemetry.py` (líneas 101-146)
+   - Usa `postgresql_insert(...).on_conflict_do_nothing(index_elements=['event_id'])`
+   - Distingue `stored` (nuevos) de `already_present` (duplicados)
+   - Un reintento con el mismo lote ya no genera error de clave primaria ni duplica
+   - Logging mejorado registra `already_present` para observabilidad
+
+#### ⏸ No implementadas (alcance más amplio):
+
+4. **Buffer persistente en IndexedDB (frontend)**
+   - Requeriría cambios en `uis/backoffice` con riesgos de eventos obsoletos y pérdida en limpieza de caché
+   - Aplazado para iteración futura
+
+5. **Encabezado `Idempotency-Key` para lotes**
+   - La ingesta ya es idempotente por `event_id`; requerería tabla de caché de lotes
+   - Aplazado para iteración futura
+
+**Documentación actualizada:**
+- `mock_data/pipelines/PIPELINE_DESIGN.md`: añadida sección "Mejoras de resiliencia e idempotencia implementadas" (líneas finales) con justificación de cada mejora y por qué se priorizó.
+- `services/api/README.md`: actualizada descripción de `POST /telemetry/events` para documentar el comportamiento idempotente y la distinción entre `stored`/`already_present`.
+
+**Validación:**
+- `uv run --directory services/api pytest tests/test_inventory_telemetry.py -q` → 4 passed (pruebas telemetría sin cambios)
+- Cambios de código verificados: imports de sqlalchemy dialects PostgreSQL correctos, lógica de conteo de duplicados robusta.
+
+**Notas:**
+- Las tres mejoras implementadas responden directamente a preguntas de resiliencia documentadas en el diseño.
+- Ambas mejoras no implementadas son candidatas para futuras iteraciones y no rompen la implementación actual.
+- Todas las mejoras implementadas fortalecen la observabilidad, recuperabilidad y eliminan puntos de fallo de duplicación silenciosa.
+
+## Data Pipelines — Fase 3 (CLI verificado) y Fase 4 (Dashboard de negocio), 2026-11-16
+
+### Fase 3: CLI entrypoint verificado tras refactor
+- Confirmado que `python mock_data/pipelines/pipeline.py --help` funciona correctamente después de la refactorización en subflows.
+- Instalado `prefect>=3,<4` globalmente como fallback para permitir ejecución del CLI sin requerir virtual env específico.
+- El entrypoint mantiene su API: `--week-start YYYY-MM-DD` (opcional, por defecto última semana cerrada) y `--trigger {scheduled,manual,late_event}`.
+- No se requería base de datos real para validar la sintaxis y estructura del CLI; solo confirmación de que los imports resuelven y el argparse funciona.
+
+### Fase 4: Dashboard de desempeño obligatorio para stakeholders no técnicos
+- Creado componente `uis/backoffice/src/app/reporting/ReportingPages.tsx` que consume `GET /reporting/weekly-warehouse-client-performance`.
+- El dashboard muestra los 4 KPIs de HITO para cada combinación warehouse/client_id:
+  1. **Volumen de entrada** (inbound_units_count): suma de unidades recibidas, con ícono TrendingUp azul.
+  2. **Throughput de salida** (outbound_orders_count): cantidad de pedidos despachados, con ícono TrendingDown verde.
+  3. **Frecuencia de quiebre de stock** (stockout_events_count): veces que el inventario cayó bajo mínimo, con ícono AlertTriangle ámbar.
+  4. **Tasa de discrepancia** (discrepancy_rate): porcentaje de precisión inventario, con ícono Zap rojo.
+- Cada KPI está claramente etiquetado con su nombre exacto del HITO, mostrando el período de semana (lunes a domingo UTC) en formato legible para ejecutivos.
+- Interfaz responsive (mobile-first, grid 1-2-4 columnas), sin traducciones, sin gráficos complejos — enfoque en legibilidad de datos para CEO (Thomas) y Head of Warehouse Operations (Ana).
+- Integración en App.tsx:
+  - Importado `ReportingPage` desde `./app/reporting/ReportingPages`.
+  - Agregado `'reporting'` a las vistas posibles (`activeView` state).
+  - Añadido botón "Desempeño" en navegación principal del backoffice, vinculado a `/reporting`.
+  - Ruta condicional en el router principal: `path === '/reporting'` renderiza el componente en contexto de la aplicación.
+- Estados de carga y error manejados con componentes existentes (`AsyncErrorState`) y fallback con spinner.
+- Telemetría integrada: tracking de `backoffice_section_viewed` y `frontend_data_load_failed`.
+- Validación: `npm run build` en backoffice compiló sin errores TypeScript ni Vite. Generadas pruebas de tipo correcto.
+- El endpoint `/reporting/weekly-warehouse-client-performance` ya estaba implementado en `services/reporting/routes.py` y es responsable de consumir los datos de `reporting.weekly_warehouse_client_performance`.
+
+### Estado de completud
+- ✅ Fase 1: Refactorización en subflows (completado 2026-11-16)
+- ✅ Fase 2: Tests unitarios (completado 2026-11-16)
+- ✅ Fase 3: CLI entrypoint operativo tras refactor (completado 2026-11-16)
+- ✅ Fase 4: Dashboard de negocio obligatorio (completado 2026-11-16)
+- ⏸ Próximos pasos: Testing e2e en URL pública con PageSpeed >= 80 (opcional post-commit)
+
+## Data Pipelines — subflows y tests unitarios, 2026-11-16
+- Refactorizado el pipeline existente en cuatro subflows Prefect: extracción, transformación, carga y exportación opcional del snapshot. El coordinador los invoca secuencialmente con inputs/outputs explícitos; la exportación usa `return_state=True` y su fallo no invalida la carga confirmada.
+- Conservados el entrypoint CLI, locks, checkpoints, contadores, reintentos SQL y staging/upsert sobre `reporting.weekly_warehouse_client_performance`. Se mantiene `mock_data/`, nombre actual de la antigua carpeta `data/`. Solo se extraen los cuatro tipos de `telemetry_events` exigidos por el hito; no se añadió una fuente de dominio innecesaria.
+- Movida la transformación a `mock_data/process/weekly_performance.py`: preparación/validación de eventos y tres tasks KPI independientes para unidades de entrada, conteos de eventos y razón de discrepancias. Se conservan dimensiones almacén/cliente/semana ISO UTC, deduplicación, rechazo explícito de datos inválidos y cero cuando no hay salidas.
+- Creado `tests/pipelines/test_pipeline.py`: pruebas en memoria mediante `.fn`, sin servidor Prefect, bases de datos ni APIs. Las tres tasks KPI tienen inputs propios de prueba; se comprueban cantidades calculadas a mano, separación de dimensiones, razón 1/2, denominador cero, cantidades malformadas, cliente ausente, deduplicación, offsets UTC y entrada vacía.
+- Prefect no estaba disponible ni declarado: añadido `prefect>=3,<4` mediante `uv add --directory services/api --no-sync`; regenerados `services/api/uv.lock` y `services/requirements.txt` mediante uv. Instalación de validación aislada con Python 3.12 y Prefect 3.9.3; sin cambios al Python compartido.
+- Validaciones: `python -m pytest tests/pipelines/test_pipeline.py` -> 11 passed, incluida la repetición focalizada tras aislar los fixtures. `python mock_data/pipelines/pipeline.py --help` correcto. Smoke adicional con servidor Prefect local temporal e IO simulado: subflows reales, KPIs exactos, orden de checkpoints, fallo opcional contenido y transformación inválida que impide cargar. Los errores de ese smoke fueron inyectados deliberadamente y sus estados se comprobaron.
+- Actualizados los README del pipeline y el diseño con contratos y comandos reproducibles. `git diff --check` correcto. Archivado el contexto activo íntegro en `memory-bank/history/HITO-DATA-PIPELINES-SUBFLOWS-CONTEXT-2026-11-16.md`; `cmp` confirmó coincidencia byte a byte, incluido el final sin salto de línea. Conservado el histórico de KPIs del 2026-11-15.
+- Alcance: fases 1 y 2 solicitadas. No se modificaron frontend, layouts, telemetría técnica, secretos ni infraestructura. El cambio local previo de `CONTEXT.md` pertenece al desarrollador y se conserva. Sin commit ni push.
+- Pendiente: corrida real del script contra PostgreSQL con conexiones y migraciones de reporting configuradas; no se ejecutó ETL ni se escribió en Supabase. El dashboard del contexto general queda para otra fase, fuera de esta solicitud.
+
+## Data Pipelines — documentación final verificada, 2026-11-15
+- Confirmado por el desarrollador que `data/pipelines/PIPELINE_DESIGN.md` es el archivo final y está corregido.
+- Queda constancia de cumplimiento completo: sección `Current State`, brecha de negocio, extracción desde `telemetry_events`, payload y cadencia, propósito con KPIs de TrackFlow, diagrama extracción → transformación → carga, estrategia de actualizaciones e idempotencia, log `pipeline_runs` con nombres/tipos/justificación, mapeo a Prefect y sus tasks/states/blocks.
+- También quedan documentados los tres endpoints de `services/reporting/` y las funciones de `data/pipelines/` que invocan, separados de `services/telemetry/` y `GET /telemetry/report`.
+- El diseño mantiene los nombres de dominio `warehouse`, `client_id`, `week_start`, `inbound_units_count`, `outbound_orders_count`, `stockout_events_count`, `discrepancy_events_count` y `discrepancy_rate`, y el destino `reporting.weekly_warehouse_client_performance`.
+- Las cinco fases de diseño están cerradas y el contexto final ya fue archivado en `memory-bank/history/HITO-DATA-PIPELINES-CONTEXT-2026-11-15.md`.
+
+## Data Pipelines — preguntas de resiliencia y observabilidad, 2026-11-15
+- Añadidas respuestas específicas para duplicados de `eventId`, reintentos post-fallo, eventos tardíos y reconstrucción por `week_start`.
+- Documentadas señales para distinguir silencio real de fallo de captura: heartbeat, estados de `pipeline_runs`, contadores de ingesta y sesiones activas.
+- Definida la trazabilidad `eventId` → `requestId` → `telemetry_events` → `run_id` → snapshot reporting.
+- Documentada la recuperación por checkpoint de fase, el buffer offline futuro en IndexedDB, reintentos con `Idempotency-Key` y respuestas `stored`/`already_present`.
+- Definido el control de corridas concurrentes mediante lock por `week_start` y `run_id` único. No se modificó `CONTEXT.md` ni se archivó otra copia.
+
+## Data Pipelines — integración con la aplicación, fase 5, 2026-11-15
+- Diseñados los tres endpoints separados de `services/reporting/`: estado de la última corrida, disparo manual y feed de KPIs semanal.
+- Cada endpoint delega explícitamente en `data/pipelines/runs`, `data/pipelines/flows` o `data/pipelines/queries`; ninguna lógica ETL se ubica en `services/`.
+- Los contratos usan el vocabulario de TrackFlow: `warehouse`, `client_id`, `week_start`, `inbound_units_count`, `outbound_orders_count`, `stockout_events_count`, `discrepancy_events_count` y `discrepancy_rate`.
+- Completadas las cinco fases de diseño del pipeline; `memory-bank/history/HITO-DATA-PIPELINES-CONTEXT-2026-11-15.md` es la única copia final archivada y `cmp` confirmó que coincide con `CONTEXT.md`.
+
+## Data Pipelines — mapeo a Prefect, fase 4, 2026-11-15
+- Mapeado el diseño a `weekly_warehouse_client_performance_flow` con tasks de extracción, transformación, carga y registro de corrida.
+- Documentados los estados `Running`, `Completed` y `Failed`, junto con reintentos para errores transitorios y parada ante errores de contrato, datos o permisos.
+- Definidos los Prefect blocks para conexiones Supabase de lectura/escritura, configuración runtime, secretos y notificaciones.
+- Aclarado que Prefect orquesta y observa, mientras el lock por semana y la transacción atómica preservan la idempotencia en la base de datos.
+- No se implementó código Prefect; no se archivó `CONTEXT.md` porque queda una fase pendiente.
+
+## Data Pipelines — resiliencia e idempotencia, fase 3, 2026-11-15
+- Documentada en `PIPELINE_DESIGN.md` la carga transaccional con staging temporal, lock por `week_start`, eliminación de filas obsoletas y `INSERT ... ON CONFLICT` sobre `(warehouse, client_id, week_start)`.
+- Definido el comportamiento ante rollback, timeout posterior al commit y reintento: reconstrucción completa del snapshot sin duplicar ni sumar resultados previos.
+- Diseñado el log `reporting.pipeline_runs` con identidad de corrida, pipeline, semana, timestamps UTC, estado controlado, contadores de extracción/transformación/carga, error sanitizado y origen del disparo.
+- No se implementaron tablas ni código; no se archivó `CONTEXT.md` porque las cinco fases aún no han terminado.
+
+## Data Pipelines — diseño del pipeline de desempeño, fase 2, 2026-11-15
+- Ampliado `PIPELINE_DESIGN.md` con el propósito de negocio, KPIs y eventos fuente obligatorios, contrato de extracción desde `public.telemetry_events` y frecuencia semanal.
+- Documentado el flujo extracción → transformación → carga con Mermaid, incluyendo normalización UTC, extracción de `tags`, agrupación por `warehouse` + `client_id` + `week_start` ISO y cálculo de `discrepancy_rate`.
+- Definida la estrategia para relecturas y correcciones: deduplicación por `event_id`, reconstrucción completa de la semana y upsert por la restricción única `(warehouse, client_id, week_start)`, con eliminación de filas obsoletas de la semana.
+- Fijados el destino exacto `reporting.weekly_warehouse_client_performance` y los endpoints separados de telemetría para consulta, estado de corrida y disparo manual.
+- No se implementaron tablas, endpoints ni `services/reporting/`; no se archivó `CONTEXT.md` porque las cinco fases aún no han terminado.
+
+## Data Pipelines — análisis del estado actual, fase 1, 2026-11-15
+- Creado `PIPELINE_DESIGN.md` con la sección `Estado Actual`: captura y almacenamiento actuales de `telemetry_events`, alcance del reporte técnico de ingeniería y brecha de negocio.
+- Documentada la separación entre `services/telemetry/`/`GET /telemetry/report` y el futuro pipeline de negocio bajo `services/reporting/`.
+- Identificada la pregunta pendiente: desempeño semanal por almacén y cliente, con volumen de entrada, throughput de salida, frecuencia de quiebre de stock y tasa de discrepancia.
+- Registrados como requisitos para fases posteriores: frecuencia semanal, grano `warehouse` + `client_id` + `week_start` ISO UTC y tabla `reporting.weekly_warehouse_client_performance`.
+- No se modificaron telemetría, tablas de destino ni endpoints de reporting; no se archivó `CONTEXT.md` porque las cinco fases aún no han terminado.
 ## Telemetría — feedback del PR #25: carga SQL y caché, 2026-11-16
 - Las cinco funciones de `services/telemetry/analysis.py` reciben ahora una sesión SQL y cargan sus eventos mediante un helper común. Los límites temporales se aplican solo en SQL y los timestamps se convierten a UTC antes de agrupar. Autenticación y latencia filtran `event_type` en SQL; volumen, dominancia y errores conservan todos los tipos necesarios para sus conteos y denominadores. Solo latencia selecciona `tags`.
 - Eliminada la carga de DataFrames de la ruta. El caché usa las fechas de entrada, incluidos valores omitidos, en lugar de fechas resueltas con microsegundos; mantiene el periodo original durante 60 segundos y renueva la ventana al expirar. Se conserva el contrato de tres métricas dentro de `period`/`metrics`.

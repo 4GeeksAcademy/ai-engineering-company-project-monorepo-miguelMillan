@@ -175,7 +175,9 @@ El pipeline registrará cada intento en una tabla separada `reporting.pipeline_r
 
 El flow principal será `weekly_warehouse_client_performance_flow(week_start=None, trigger="scheduled")`; `trigger` admite `scheduled`, `manual` o `late_event`. Si no recibe `week_start`, resolverá la semana ISO más reciente cerrada en UTC. Se ejecutará semanalmente antes del reporte del lunes y también podrá invocarse desde `POST /reporting/pipeline-runs` para reprocesar una semana concreta.
 
-El flow coordinará las tasks en orden, pasará el `week_start` como parámetro explícito y registrará el `run_id` nativo de Prefect en `prefect_run_id`, separado del `run_id` propio de `reporting.pipeline_runs`. El lock de sesión evita ETL simultáneo para la misma semana; la transacción de carga sigue siendo responsabilidad de la task y de la base de datos. Prefect orquesta y observa, pero no sustituye la atomicidad del destino.
+El coordinador del flow invoca en orden los subflows `extract_weekly_performance`, `transform_weekly_performance` y `load_weekly_performance_subflow`, pasando semana, eventos y filas explícitamente. Registra el `run_id` nativo del flow principal en `prefect_run_id`, separado del `run_id` propio de `reporting.pipeline_runs`. El lock de sesión evita ETL simultáneo para la misma semana; la transacción de carga sigue siendo responsabilidad de la task y de la base de datos. Prefect orquesta y observa, pero no sustituye la atomicidad del destino.
+
+La exportación secundaria es otro subflow, `export_weekly_evaluation(week_start, rows)`, llamado con `return_state=True`. Devuelve la ruta del snapshot; un estado fallido genera una advertencia sin invalidar el ETL completado. No se comparten variables globales de datos entre subflows.
 
 ### Frecuencia y ejecución desde CLI
 
@@ -205,10 +207,11 @@ En este checkout, `mock_data/pipelines/` es la ruta equivalente a `data/pipeline
    - Devuelve un lote estructurado con `event_id`, `timestamp`, `event_type` y `tags`.
    - Registra `records_read`; aplica reintentos para errores transitorios de red sin reintentar silenciosamente errores de esquema o autorización.
 
-2. **`transform_weekly_performance`**
+2. **Tasks del subflow `transform_weekly_performance`**
    - Recibe el lote extraído y `week_start`.
-   - Convierte timestamps a UTC, valida dimensiones y cantidades, deduplica por `event_id` y calcula los cinco campos derivados del snapshot.
-   - Devuelve filas listas para staging y contadores de `records_transformed` y rechazados.
+   - `prepare_weekly_events` convierte timestamps a UTC, valida dimensiones y cantidades y deduplica por `event_id`.
+   - `calculate_inbound_units` suma las unidades de entrada; `calculate_event_counts` cuenta salidas, quiebres y discrepancias; `calculate_discrepancy_rate` calcula la razón discrepancias/salidas con cero cuando no hay salidas.
+   - Estas tasks viven en `mock_data/process/weekly_performance.py`; el subflow combina sus resultados y devuelve filas listas para staging y `records_transformed`. Los datos inválidos provocan un error explícito, no se omiten silenciosamente.
    - No escribe en Supabase ni en `telemetry_events`, por lo que puede reintentarse de forma segura.
 
 3. **`load_weekly_performance`**
@@ -220,7 +223,7 @@ En este checkout, `mock_data/pipelines/` es la ruta equivalente a `data/pipeline
    - Registra en `reporting.pipeline_runs` el inicio, contadores, estado final, timestamps UTC, trigger y error sanitizado.
    - Se ejecuta al inicio y al finalizar mediante estados controlados; un fallo de observabilidad no debe ocultar un fallo de datos ni marcar como exitoso un load no confirmado.
 
-La dependencia entre tasks es lineal: `extract_telemetry_events` → `transform_weekly_performance` → `load_weekly_performance`, con `record_pipeline_run` envolviendo el lifecycle de la corrida. Un task fallido detiene el flow y evita ejecutar la carga con datos incompletos.
+La dependencia entre subflows es lineal: extracción → transformación → carga, con `record_pipeline_run` envolviendo el lifecycle de la corrida. Cada subflow llama a sus tasks. Una task obligatoria fallida detiene el flow y evita ejecutar la carga con datos incompletos.
 
 ### States relevantes
 
@@ -417,4 +420,60 @@ Esto cubre el caso en que el cliente recibe timeout después de que Supabase ya 
 ### Corridas concurrentes
 
 El monitor observa dos `run_id` con la misma combinación de pipeline y `week_start`, además de estados `running` superpuestos. El flow intenta adquirir un advisory lock de sesión antes de extraer. Solo el ganador procesa la semana; el segundo registra `skipped`/`already_running` y no modifica el destino. Si el primer flow falla, la conexión libera el lock y una nueva corrida puede reconstruir el snapshot desde la fuente. El advisory lock transaccional de carga, la clave única del snapshot y la transacción siguen siendo defensas adicionales frente a escrituras solapadas.
+
+## Mejoras de resiliencia e idempotencia implementadas (Fase Adicional)
+
+Esta sección documenta las mejoras de resiliencia/observabilidad que fueron identificadas en la sección "Preguntas de resiliencia y observabilidad" y se implementaron tras las Fases 1-3.
+
+### 1. Advisory lock para corridas concurrentes
+
+**Pregunta respondida:** "¿Qué ocurre si dos flows intentan procesar la misma semana simultáneamente?"
+
+**Implementación:**
+- En `mock_data/pipelines/pipeline.py`, función `_weekly_pipeline_run_lock(week_start)` (líneas 69-93).
+- Utiliza `pg_try_advisory_lock` con namespace `7412` y clave derivada del nombre del pipeline y `week_start`.
+- El lock es no bloqueante: solo el primer flow lo adquiere; los posteriores reciben `acquired=False`.
+- Se invoca al inicio del flow principal (línea 658) mediante `with _weekly_pipeline_run_lock(resolved_week_start) as lock_acquired`.
+- Si no se adquiere el lock, la corrida se registra como `skipped` con `error_message = "already_running"` en `reporting.pipeline_runs` sin ejecutar ETL.
+- El lock se libera automáticamente al salir del context manager, incluso ante fallo.
+
+**Beneficio:** Previene duplicación de cálculos, escrituras parciales simultáneas y carreras de datos en `reporting.weekly_warehouse_client_performance`. Garantiza que solo una corrida activa procesa una semana en un momento dado.
+
+### 2. Checkpoints y fases para recuperación post-fallo
+
+**Pregunta respondida:** "¿Cómo se recupera el pipeline si falla durante la extracción, transformación o carga?"
+
+**Implementación:**
+- En `mock_data/pipelines/pipeline.py`, tabla `reporting.pipeline_runs` incluye campos `phase` y `last_checkpoint_at` (líneas 168, 293-294, 309, 320-321).
+- Las fases son: `extracting`, `transforming`, `loading`, `completed`.
+- Se actualizan explícitamente en cada etapa (líneas 527-595): inicio, entre subflows y al finalizar.
+- `last_checkpoint_at` se registra en UTC con cada actualización de fase, permitiendo reconstruir desde el último checkpoint conocido.
+- Si un fallo ocurre durante `loading`, la siguiente corrida detecta `failed` o `unknown` según la certeza del commit y puede recalcular desde `extracting` sin perder datos previos.
+- El estado `unknown` se usa cuando no se puede determinar si el commit llegó; el reintento reconstruye por `week_start` (clave única) sin suponer un estado anterior.
+
+**Beneficio:** Permite auditoría de dónde falló exactamente, recuperación segura sin asunciones sobre commits incompletos y reintento idempotente desde la fuente.
+
+### 3. Idempotencia en ingesta de telemetría con `ON CONFLICT DO NOTHING`
+
+**Pregunta respondida:** "¿Qué ocurre si un evento llega dos veces durante el reintento de un lote?"
+
+**Implementación:**
+- En `services/api/routes/telemetry.py`, endpoint `POST /telemetry/events` (líneas 101-146).
+- Cambio de inserción: de `session.execute(insert(TelemetryEventRecord), rows)` a uso de `postgresql_insert` con `.on_conflict_do_nothing(index_elements=['event_id'])`.
+- Ahora distingue entre `stored` (eventos nuevos aceptados) y `already_present` (eventos cuyo `event_id` ya existía).
+- Verifica antes de insertar cuáles `event_id` ya existen en `telemetry_events` para contar correctamente.
+- Respuesta del endpoint actualizada: `{"received": N, "stored": M, "rejected": K}` donde `stored + already_present = received - rejected`.
+- Logging mejorado: registra `already_present` para observabilidad (línea 142).
+
+**Beneficio:** Un reintento con el mismo lote (ej. timeout de red seguido de reintento automático) no duplica eventos ni falla con violación de clave primaria. La respuesta permite al cliente distinguir "nuevo" de "ya recibido previamente", ideal para reintentos idempotentes en el frontend.
+
+### Notas sobre mejoras no implementadas
+
+Dos mejoras documentadas no fueron implementadas en esta fase por tener alcance más amplio o depender de otros sistemas:
+
+1. **Buffer persistente en IndexedDB (frontend):** El backoffice mantiene eventos en memoria y los envía por lote. Un buffer persistente en IndexedDB permitiría recuperación ante desconexión de 20+ minutos. No implementado porque requiere cambios en `uis/backoffice` y conlleva riesgos de eventos obsoletos y pérdida al limpiar caché del navegador.
+
+2. **Encabezado `Idempotency-Key` para lotes:** Los clientes podrían enviar `Idempotency-Key` en `POST /telemetry/events` para lotes, complementando la deduplicación por `event_id`. No implementado porque la ingesta actual ya es idempotente por `event_id` y añadir `Idempotency-Key` requeriría otra tabla de caché de lotes.
+
+Ambas mejoras pueden añadirse en futuras iteraciones sin romper la implementación actual.
 

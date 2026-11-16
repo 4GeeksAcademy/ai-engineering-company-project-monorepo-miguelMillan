@@ -129,16 +129,37 @@ def receive_events(batch: TelemetryBatch, session: Session = Depends(get_db)):
             }
         )
 
+    stored = 0
+    already_present = 0
     if rows:
-        session.execute(insert(TelemetryEventRecord), rows)
+        from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+        from sqlalchemy import text
+        
+        # Verificar cuáles event_id ya existen antes de insertar (para distinguir stored vs already_present)
+        event_ids = [row['event_id'] for row in rows]
+        existing_ids_result = session.execute(
+            text(
+                "SELECT event_id FROM telemetry_events WHERE event_id = ANY(:ids)"
+            ),
+            {"ids": event_ids}
+        )
+        existing_ids = {row[0] for row in existing_ids_result}
+        already_present = len(existing_ids)
+        
+        # Insertar con ON CONFLICT DO NOTHING (idempotente)
+        stmt = postgresql_insert(TelemetryEventRecord).values(rows)
+        stmt = stmt.on_conflict_do_nothing(index_elements=['event_id'])
+        session.execute(stmt)
         session.commit()
+        
+        stored = len(rows) - already_present
 
-    stored = len(rows)
     received = len(batch.events)
     logger.info(
-        "Processed telemetry batch: received=%d stored=%d rejected=%d",
+        "Processed telemetry batch: received=%d stored=%d already_present=%d rejected=%d",
         received,
         stored,
+        already_present,
         rejected,
     )
     return {"received": received, "stored": stored, "rejected": rejected}

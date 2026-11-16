@@ -1,12 +1,12 @@
-El diseño está aprobado. El liderazgo quiere ver este pipeline corriendo, no solo documentado. Requisitos no negociables antes de entregarlo a producción:
+El pipeline básico está listo. Antes de la entrega final al equipo de operaciones, necesito cuatro cosas más:
 
-— El pipeline debe tolerar fallos parciales sin interrumpir toda la ejecución. — Las tasks que tocan servicios externos deben tener reintentos configurados. — El pipeline debe poder correrse como script desde la línea de comandos. — Si una task ya corrió exitosamente en la última hora, no debe repetirse innecesariamente.
+El flow principal está creciendo — refactorízalo en subflows para que cada fase sea independiente, testeable, y reutilizable.
+Necesito tests unitarios para las tasks de transformación. Si un test falla, quiero saberlo antes de que el pipeline llegue a producción, no después.
+Tras el refactor a subflows, el pipeline debe seguir pudiendo correrse como script: python data/pipelines/pipeline.py completa sin errores (conserva el entrypoint de la Parte 2).
+Necesito un dashboard. Nadie en el equipo de liderazgo va a consultar un endpoint — pon los KPIs en algún lugar donde realmente puedan mirarlos.
+Punto de partida: data/pipelines/pipeline.py de la sesión anterior.
 
-Punto de partida: tu data/pipelines/PIPELINE_DESIGN.md del día anterior. Implementa lo que diseñaste — leyendo de telemetría, escribiendo en la nueva tabla de reporting de negocio que acotaste, sin que nada del reporte técnico existente cambie.
-
-Escribe el código de tu pipeline en data/pipelines/. El punto de entrada principal debe llamarse data/pipelines/pipeline.py. Usa data/raw/ para datos de entrada y archivos intermedios, data/process/ para scripts de transformación reutilizables, y data/eval/ para salidas de validación del pipeline.
-
-La task de extracción lee de telemetry_events (y cualquier otra tabla de dominio que necesites) — en modo solo lectura. La task de carga escribe en la tabla de destino nombrada en HITO-DATA-PIPELINES-CONTEXT-2026-11-15.md (bajo el esquema reporting) que diseñaste en la Parte 1. No escribas de vuelta en telemetry_events ni modifiques services/telemetry/analysis.py
-
-Cualquier endpoint que exponga o dispare el pipeline (por ejemplo, para consultar el estado de la última corrida o lanzar una corrida manual) debe implementarse en services/reporting/, un módulo separado de services/telemetry/, importando funciones y flows desde data/pipelines/ según se necesite.
-Instala Prefect 3 en tu entorno: uv add "prefect>=3".
+Mantén la estructura de carpetas existente: data/pipelines/ para flows y subflows, data/process/ para lógica de transformación, data/raw/ para datos de entrada, data/eval/ para salidas de validación.
+Los tests unitarios van en tests/pipelines/ en la raíz del monorepo.
+La página del dashboard va en uis/backoffice/, consumiendo el endpoint de consulta de KPIs de services/reporting/ que construiste en la Parte 2.
+Asegúrate de que Prefect 3 esté instalado desde la Parte 2: uv add "prefect>=3".

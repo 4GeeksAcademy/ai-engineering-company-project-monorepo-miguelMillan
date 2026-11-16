@@ -60,7 +60,9 @@ La API requiere `DATABASE_URL` en `services/api/.env` para iniciar el motor SQLM
 
 ### Almacenamiento de telemetría
 
-`POST /telemetry/events` acepta `{ "events": [...] }`, valida cada elemento con `TelemetryEvent` y el JSON Schema Draft-07 de `docs/telemetry/event-schemas.json` (incluidos los allowlists de `properties`), y persiste los válidos en un bulk insert; uno inválido no cancela los demás. Responde `{ "received": N, "stored": M, "rejected": R }`.
+`POST /telemetry/events` acepta `{ "events": [...] }`, valida cada elemento con `TelemetryEvent` y el JSON Schema Draft-07 de `docs/telemetry/event-schemas.json` (incluidos los allowlists de `properties`), y persiste los válidos en un bulk insert idempotente; uno inválido no cancela los demás. Responde `{ "received": N, "stored": M, "rejected": R }`.
+
+**Idempotencia en ingesta:** La inserción usa `ON CONFLICT DO NOTHING` en la clave primaria `event_id`, por lo que un evento que ya existe no genera error ni se duplica. Esto es especialmente importante para reintentos: si un lote se reenvía tras un timeout o error transitorio de red, los eventos ya persistidos se detectan y se devuelve `already_present` en el logging, permitiendo al cliente distinguir "nuevo" de "previamente almacenado" sin cambiar el conteo de operaciones.
 
 `telemetry_events` conserva el envelope validado: `eventId`, `timestamp`, `sessionId`, `userId`, `event_type`, `schemaVersion` y `requestId` se mapean a columnas snake_case; `properties` se conserva íntegro en `tags` JSONB, incluidas dimensiones como `warehouse`, `client_id`, `product_id`, `product_category` y `quantity`. La migración `supabase/migrations/20261115132500_create_telemetry_events.sql` crea los índices B-tree de `timestamp` y `event_type`, el índice GIN de `tags` y la protección de inmutabilidad. No hay operaciones de actualización o eliminación de eventos; la base rechaza ambos tipos de modificación.
 
