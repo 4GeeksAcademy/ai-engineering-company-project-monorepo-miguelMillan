@@ -120,7 +120,7 @@ Estas superficies no reutilizan `telemetry_events` como destino, no modifican `s
 
 ### Estrategia ante fallos durante la carga
 
-La corrida se serializará por `week_start`: antes de modificar el destino, el worker tomará un lock transaccional/advisory lock cuya clave sea la semana ISO. Así dos corridas manuales o una corrida programada y otra manual no pueden reconstruir simultáneamente la misma semana.
+La corrida se serializará por `week_start`: antes de extraer datos, el flow intenta adquirir un advisory lock de sesión no bloqueante cuya clave incluye el nombre del pipeline y la semana ISO. Si otro flow ya lo mantiene, la nueva corrida se registra como `skipped` con `error_message = "already_running"` y no ejecuta el ETL. La conexión que mantiene el lock se cierra al terminar o fallar el flow, liberándolo también si el proceso se interrumpe. La task de carga conserva además un advisory lock transaccional mientras modifica el destino.
 
 La fase de carga se ejecutará dentro de una única transacción de base de datos:
 
@@ -153,11 +153,12 @@ El pipeline registrará cada intento en una tabla separada `reporting.pipeline_r
 | Campo | Tipo de dato | Motivo de auditoría |
 |---|---|---|
 | `run_id` | `uuid` | Identifica de forma única la corrida. |
+| `prefect_run_id` | `uuid nullable` | Vincula la fila de reporting con la corrida nativa de Prefect. |
 | `pipeline_name` | `text` | Distingue este pipeline de otros. |
 | `week_start` | `date` | Indica la semana ISO procesada. |
 | `started_at` | `timestamptz` | Registra cuándo comenzó la corrida. |
 | `finished_at` | `timestamptz nullable` | Registra cuándo terminó la corrida. |
-| `status` | `text` | Estado: `running`, `succeeded`, `failed` o `unknown`. |
+| `status` | `text` | Estado: `running`, `succeeded`, `failed`, `unknown` o `skipped`. |
 | `records_read` | `integer` | Eventos leídos desde `telemetry_events`. |
 | `records_transformed` | `integer` | Eventos válidos transformados. |
 | `records_written` | `integer` | Filas escritas en la tabla de reporting. |
@@ -172,9 +173,29 @@ El pipeline registrará cada intento en una tabla separada `reporting.pipeline_r
 
 ### Flow principal
 
-El flow principal será `weekly_warehouse_client_performance_flow(week_start=None, trigger="scheduled")`. Si no recibe `week_start`, resolverá la semana ISO más reciente cerrada en UTC. Se ejecutará semanalmente antes del reporte del lunes y también podrá invocarse desde `POST /reporting/pipeline-runs` para reprocesar una semana concreta.
+El flow principal será `weekly_warehouse_client_performance_flow(week_start=None, trigger="scheduled")`; `trigger` admite `scheduled`, `manual` o `late_event`. Si no recibe `week_start`, resolverá la semana ISO más reciente cerrada en UTC. Se ejecutará semanalmente antes del reporte del lunes y también podrá invocarse desde `POST /reporting/pipeline-runs` para reprocesar una semana concreta.
 
-El flow coordinará las tasks en orden, pasará el `week_start` como parámetro explícito y registrará el `run_id` de Prefect junto con el `run_id` de `reporting.pipeline_runs`. El lock por semana y la transacción de carga siguen siendo responsabilidades del task de carga y de la base de datos; Prefect orquesta y observa, pero no sustituye la atomicidad del destino.
+El flow coordinará las tasks en orden, pasará el `week_start` como parámetro explícito y registrará el `run_id` nativo de Prefect en `prefect_run_id`, separado del `run_id` propio de `reporting.pipeline_runs`. El lock de sesión evita ETL simultáneo para la misma semana; la transacción de carga sigue siendo responsabilidad de la task y de la base de datos. Prefect orquesta y observa, pero no sustituye la atomicidad del destino.
+
+### Frecuencia y ejecución desde CLI
+
+El ciclo previsto es semanal, cada lunes por la mañana, para que el reporte ejecutivo tenga los datos de la última semana ISO completa, delimitada en UTC. El deployment de Prefect debe fijar la hora exacta y su zona horaria.
+
+Desde la raíz del repositorio, el script ejecuta el flow con la última semana cerrada:
+
+```bash
+python mock_data/pipelines/pipeline.py
+```
+
+Para reprocesar manualmente una semana concreta:
+
+```bash
+python mock_data/pipelines/pipeline.py --week-start 2026-11-09 --trigger manual
+```
+
+El argumento `--trigger` también acepta `scheduled` y `late_event`.
+
+En este checkout, `mock_data/pipelines/` es la ruta equivalente a `data/pipelines/`. El proceso requiere Prefect 3, Pandas y las variables `REPORTING_READ_DATABASE_URL` y `REPORTING_WRITE_DATABASE_URL`.
 
 ### Tasks
 
@@ -209,15 +230,9 @@ La dependencia entre tasks es lineal: `extract_telemetry_events` → `transform_
 
 Los errores transitorios de conexión pueden usar reintentos con backoff en la extracción y carga. Los errores de validación de datos, contrato o permisos no deben reintentarse indefinidamente: pasan a `Failed` con diagnóstico accionable.
 
-### Prefect Blocks y configuración
+### Configuración de conexiones y secretos
 
-- **`supabase-reporting-read` (`DatabaseCredentials` o block SQLAlchemy)**: URL/credenciales de solo lectura para extraer de `public.telemetry_events`.
-- **`supabase-reporting-write` (`DatabaseCredentials` o block SQLAlchemy)**: conexión con permisos para `reporting.weekly_warehouse_client_performance` y `reporting.pipeline_runs`, separada de la credencial de lectura cuando sea posible.
-- **`reporting-runtime` (`JSON` o block de configuración)**: zona horaria UTC, día/hora de ejecución semanal, tamaño de lote, timeout, número de reintentos y política de backoff.
-- **`reporting-secrets` (`Secret`)**: secretos que no deben aparecer en parámetros, logs ni estados, como credenciales de base de datos o claves de cifrado.
-- **Notificación de fallos** (block de Slack, email o webhook, si se habilita): destino de alertas para flows `Failed`, sin incluir payloads de eventos.
-
-Los blocks se referenciarán por nombre en el deployment y no se guardarán en el repositorio. La configuración de una corrida puntual (`week_start`, `trigger`) sí puede ser parámetro del flow; las credenciales y secretos nunca deben viajar como parámetros.
+La implementación obtiene las conexiones desde `REPORTING_READ_DATABASE_URL` y `REPORTING_WRITE_DATABASE_URL`. En un deployment de Prefect, esas variables deben inyectarse desde Secrets o Blocks de entorno gestionados fuera del repositorio; no deben enviarse como parámetros del flow ni imprimirse en logs. La conexión de lectura debe limitarse a `public.telemetry_events`, y la de escritura a las tablas del esquema `reporting`.
 
 ## Integración con la aplicación
 
@@ -233,6 +248,7 @@ El módulo `services/reporting/` expondrá únicamente una API de consulta y con
 {
   "pipeline_name": "weekly_warehouse_client_performance",
   "run_id": "uuid",
+  "prefect_run_id": "uuid",
   "week_start": "2026-07-13",
   "status": "succeeded",
   "trigger": "scheduled",
@@ -244,6 +260,8 @@ El módulo `services/reporting/` expondrá únicamente una API de consulta y con
   "error_message": null
 }
 ```
+
+`status` también puede ser `skipped` si otra corrida ya tiene adquirido el lock de esa semana.
 
 **Delegación:** llama a `data/pipelines/runs.get_latest_pipeline_run("weekly_warehouse_client_performance")`, que solo consulta `reporting.pipeline_runs`. No inicia una corrida ni recalcula KPIs.
 
@@ -398,7 +416,5 @@ Esto cubre el caso en que el cliente recibe timeout después de que Supabase ya 
 
 ### Corridas concurrentes
 
-El monitor observa dos `run_id` con la misma combinación de pipeline y `week_start`, además de estados `running` superpuestos. Para evitar la carrera, `load_weekly_performance` toma un lock por semana; el cron y el disparo manual se serializan o el segundo recibe un resultado `already_running` con el `run_id` activo.
-
-Si ambos llegan antes de que exista el lock, solo uno puede adquirirlo; el otro no modifica el destino y queda registrado como `skipped`/`already_running`. Si el primero falla, libera el lock, deja `failed` o `unknown` y el segundo puede reintentarlo desde la fuente. La clave única del snapshot y la transacción siguen siendo la defensa final frente a cualquier solapamiento.
+El monitor observa dos `run_id` con la misma combinación de pipeline y `week_start`, además de estados `running` superpuestos. El flow intenta adquirir un advisory lock de sesión antes de extraer. Solo el ganador procesa la semana; el segundo registra `skipped`/`already_running` y no modifica el destino. Si el primer flow falla, la conexión libera el lock y una nueva corrida puede reconstruir el snapshot desde la fuente. El advisory lock transaccional de carga, la clave única del snapshot y la transacción siguen siendo defensas adicionales frente a escrituras solapadas.
 
