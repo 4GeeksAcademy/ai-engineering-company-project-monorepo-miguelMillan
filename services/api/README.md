@@ -68,6 +68,50 @@ En inventario, cada SKU expone un `client_id` estable y un `minimum_stock` confi
 
 Al iniciar, la API agrega las columnas de inventario nuevas si faltan y asigna un `client_id` derivado del nombre a los SKU existentes sin identificador. Los SKU nuevos pueden enviar `client_id` explícito; si se omite, se deriva de `client_name`.
 
+### Reporte técnico de telemetría
+
+`GET /telemetry/report` acepta `start_date` y `end_date` ISO 8601 con zona horaria. Sin fechas usa los últimos siete días UTC. Los límites son inclusivos; un rango invertido devuelve 422.
+
+Cada función de [analysis.py](../telemetry/analysis.py) recibe una sesión SQL y fechas, carga sus eventos mediante el helper compartido y convierte `timestamp` con `pd.to_datetime(..., utc=True)` antes de agrupar. Los límites temporales se aplican exclusivamente en SQL, nunca otra vez en Pandas. Solo latencia carga `tags`; ninguna métrica carga identificadores de usuarios o sesiones.
+
+| Función | Eventos cargados en SQL | Resultado |
+| --- | --- | --- |
+| `event_volume_by_time` | Todos los tipos del periodo | Conteo por día UTC y tipo. |
+| `error_rate_by_time` | Todos los tipos del periodo (denominador necesario) | Total, errores del catálogo `ERROR_EVENT_TYPES` y porcentaje por día UTC. |
+| `auth_failure_rate_by_day` | `event_type IN ('login_failed', 'login_succeeded')` | Intentos, fallos y `100 * fallos / intentos` por día UTC. |
+| `latency_by_route` | `event_type IN ('api_request_completed')` | Número de solicitudes y latencia media en ms por día UTC y `route_group`. |
+| `dominant_event_types` | Todos los tipos del periodo | Tipos más frecuentes y porcentaje del volumen de esa ventana. |
+
+Volumen, errores y dominancia necesitan todos los tipos: filtrar solo errores alteraría el denominador. Se cuentan eventos, no ingresos, conversiones ni otros KPIs de negocio. Los cálculos y agregaciones usan Pandas y devuelven registros serializables.
+
+El endpoint conserva exactamente `period` y tres métricas: `events_per_day`, `error_rate_by_type` y `auth_failure_rate`. Por compatibilidad, `error_rate_by_type` mantiene ese nombre aunque su agrupación sea diaria. Latencia y dominancia permanecen disponibles como funciones del pipeline, no se añaden al JSON.
+
+El caché en memoria dura 60 segundos y usa `(start_date, end_date)` **de entrada**, incluidos valores omitidos. Un acierto no ejecuta consultas ni recalcula métricas; devuelve también el periodo original. Al expirar se resuelve de nuevo la ventana móvil. El caché es local al proceso; no se comparte entre workers ni se invalida al ingerir eventos.
+
+Ejemplo ilustrativo con cuatro eventos (dos solicitudes API, un login fallido y uno correcto); no representa datos de producción:
+
+```json
+{
+  "period": {
+    "from": "2026-11-15T00:00:00+00:00",
+    "to": "2026-11-16T00:00:00+00:00"
+  },
+  "metrics": {
+    "events_per_day": [
+      {"timestamp": "2026-11-15T00:00:00.000Z", "event_type": "api_request_completed", "event_count": 2},
+      {"timestamp": "2026-11-15T00:00:00.000Z", "event_type": "login_failed", "event_count": 1},
+      {"timestamp": "2026-11-15T00:00:00.000Z", "event_type": "login_succeeded", "event_count": 1}
+    ],
+    "error_rate_by_type": [
+      {"timestamp": "2026-11-15T00:00:00.000Z", "total_events": 4, "error_events": 1, "error_rate": 25.0}
+    ],
+    "auth_failure_rate": [
+      {"timestamp": "2026-11-15T00:00:00.000Z", "login_attempts": 2, "failed_logins": 1, "failure_rate": 50.0}
+    ]
+  }
+}
+```
+
 Pydantic rechaza entradas invalidas con 422 antes de persistir: tarifa no positiva o no finita, nombre vacio, categorias vacias/desconocidas, estados distintos de `active`/`suspended`, y combinaciones distintas de USA/USD o Spain/EUR. Campos opcionales: `service_zone`, `contact_email` (email valido), `notes`. El cliente no puede enviar `id` ni `updated_at`.
 
 Users y Profiles se guardan exclusivamente en tablas TinyDB (`users` y `profiles`), nunca en SQL/Supabase. Todas las rutas de proveedores requieren JWT. Son públicos el registro `POST /users`, el login y la recuperación/restablecimiento de contraseña; el cambio de contraseña exige sesión.

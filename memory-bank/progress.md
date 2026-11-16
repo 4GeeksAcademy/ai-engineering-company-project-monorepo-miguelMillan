@@ -1,51 +1,14 @@
 # Progress Log — TrackFlow
 
-## Data Pipelines — documentación final verificada, 2026-11-15
-- Confirmado por el desarrollador que `data/pipelines/PIPELINE_DESIGN.md` es el archivo final y está corregido.
-- Queda constancia de cumplimiento completo: sección `Current State`, brecha de negocio, extracción desde `telemetry_events`, payload y cadencia, propósito con KPIs de TrackFlow, diagrama extracción → transformación → carga, estrategia de actualizaciones e idempotencia, log `pipeline_runs` con nombres/tipos/justificación, mapeo a Prefect y sus tasks/states/blocks.
-- También quedan documentados los tres endpoints de `services/reporting/` y las funciones de `data/pipelines/` que invocan, separados de `services/telemetry/` y `GET /telemetry/report`.
-- El diseño mantiene los nombres de dominio `warehouse`, `client_id`, `week_start`, `inbound_units_count`, `outbound_orders_count`, `stockout_events_count`, `discrepancy_events_count` y `discrepancy_rate`, y el destino `reporting.weekly_warehouse_client_performance`.
-- Las cinco fases de diseño están cerradas y el contexto final ya fue archivado en `memory-bank/history/HITO-DATA-PIPELINES-CONTEXT-2026-11-15.md`.
-
-## Data Pipelines — preguntas de resiliencia y observabilidad, 2026-11-15
-- Añadidas respuestas específicas para duplicados de `eventId`, reintentos post-fallo, eventos tardíos y reconstrucción por `week_start`.
-- Documentadas señales para distinguir silencio real de fallo de captura: heartbeat, estados de `pipeline_runs`, contadores de ingesta y sesiones activas.
-- Definida la trazabilidad `eventId` → `requestId` → `telemetry_events` → `run_id` → snapshot reporting.
-- Documentada la recuperación por checkpoint de fase, el buffer offline futuro en IndexedDB, reintentos con `Idempotency-Key` y respuestas `stored`/`already_present`.
-- Definido el control de corridas concurrentes mediante lock por `week_start` y `run_id` único. No se modificó `CONTEXT.md` ni se archivó otra copia.
-
-## Data Pipelines — integración con la aplicación, fase 5, 2026-11-15
-- Diseñados los tres endpoints separados de `services/reporting/`: estado de la última corrida, disparo manual y feed de KPIs semanal.
-- Cada endpoint delega explícitamente en `data/pipelines/runs`, `data/pipelines/flows` o `data/pipelines/queries`; ninguna lógica ETL se ubica en `services/`.
-- Los contratos usan el vocabulario de TrackFlow: `warehouse`, `client_id`, `week_start`, `inbound_units_count`, `outbound_orders_count`, `stockout_events_count`, `discrepancy_events_count` y `discrepancy_rate`.
-- Completadas las cinco fases de diseño del pipeline; `memory-bank/history/HITO-DATA-PIPELINES-CONTEXT-2026-11-15.md` es la única copia final archivada y `cmp` confirmó que coincide con `CONTEXT.md`.
-
-## Data Pipelines — mapeo a Prefect, fase 4, 2026-11-15
-- Mapeado el diseño a `weekly_warehouse_client_performance_flow` con tasks de extracción, transformación, carga y registro de corrida.
-- Documentados los estados `Running`, `Completed` y `Failed`, junto con reintentos para errores transitorios y parada ante errores de contrato, datos o permisos.
-- Definidos los Prefect blocks para conexiones Supabase de lectura/escritura, configuración runtime, secretos y notificaciones.
-- Aclarado que Prefect orquesta y observa, mientras el lock por semana y la transacción atómica preservan la idempotencia en la base de datos.
-- No se implementó código Prefect; no se archivó `CONTEXT.md` porque queda una fase pendiente.
-
-## Data Pipelines — resiliencia e idempotencia, fase 3, 2026-11-15
-- Documentada en `PIPELINE_DESIGN.md` la carga transaccional con staging temporal, lock por `week_start`, eliminación de filas obsoletas y `INSERT ... ON CONFLICT` sobre `(warehouse, client_id, week_start)`.
-- Definido el comportamiento ante rollback, timeout posterior al commit y reintento: reconstrucción completa del snapshot sin duplicar ni sumar resultados previos.
-- Diseñado el log `reporting.pipeline_runs` con identidad de corrida, pipeline, semana, timestamps UTC, estado controlado, contadores de extracción/transformación/carga, error sanitizado y origen del disparo.
-- No se implementaron tablas ni código; no se archivó `CONTEXT.md` porque las cinco fases aún no han terminado.
-
-## Data Pipelines — diseño del pipeline de desempeño, fase 2, 2026-11-15
-- Ampliado `PIPELINE_DESIGN.md` con el propósito de negocio, KPIs y eventos fuente obligatorios, contrato de extracción desde `public.telemetry_events` y frecuencia semanal.
-- Documentado el flujo extracción → transformación → carga con Mermaid, incluyendo normalización UTC, extracción de `tags`, agrupación por `warehouse` + `client_id` + `week_start` ISO y cálculo de `discrepancy_rate`.
-- Definida la estrategia para relecturas y correcciones: deduplicación por `event_id`, reconstrucción completa de la semana y upsert por la restricción única `(warehouse, client_id, week_start)`, con eliminación de filas obsoletas de la semana.
-- Fijados el destino exacto `reporting.weekly_warehouse_client_performance` y los endpoints separados de telemetría para consulta, estado de corrida y disparo manual.
-- No se implementaron tablas, endpoints ni `services/reporting/`; no se archivó `CONTEXT.md` porque las cinco fases aún no han terminado.
-
-## Data Pipelines — análisis del estado actual, fase 1, 2026-11-15
-- Creado `PIPELINE_DESIGN.md` con la sección `Estado Actual`: captura y almacenamiento actuales de `telemetry_events`, alcance del reporte técnico de ingeniería y brecha de negocio.
-- Documentada la separación entre `services/telemetry/`/`GET /telemetry/report` y el futuro pipeline de negocio bajo `services/reporting/`.
-- Identificada la pregunta pendiente: desempeño semanal por almacén y cliente, con volumen de entrada, throughput de salida, frecuencia de quiebre de stock y tasa de discrepancia.
-- Registrados como requisitos para fases posteriores: frecuencia semanal, grano `warehouse` + `client_id` + `week_start` ISO UTC y tabla `reporting.weekly_warehouse_client_performance`.
-- No se modificaron telemetría, tablas de destino ni endpoints de reporting; no se archivó `CONTEXT.md` porque las cinco fases aún no han terminado.
+## Telemetría — feedback del PR #25: carga SQL y caché, 2026-11-16
+- Las cinco funciones de `services/telemetry/analysis.py` reciben ahora una sesión SQL y cargan sus eventos mediante un helper común. Los límites temporales se aplican solo en SQL y los timestamps se convierten a UTC antes de agrupar. Autenticación y latencia filtran `event_type` en SQL; volumen, dominancia y errores conservan todos los tipos necesarios para sus conteos y denominadores. Solo latencia selecciona `tags`.
+- Eliminada la carga de DataFrames de la ruta. El caché usa las fechas de entrada, incluidos valores omitidos, en lugar de fechas resueltas con microsegundos; mantiene el periodo original durante 60 segundos y renueva la ventana al expirar. Se conserva el contrato de tres métricas dentro de `period`/`metrics`.
+- Documentadas las funciones, consultas, fórmulas, límites del caché y ejemplo JSON en `services/api/README.md`. Actualizada y publicada la descripción del PR #25 con métricas, JSON y validaciones; el PR ya estaba fusionado y no tenía hilos de revisión. La descripción advierte que las correcciones de código siguen locales, sin commit ni push.
+- Validación: el primer intento con `uv` no pudo arrancar porque no estaba instalado. Instalado exclusivamente en el directorio temporal de esta sesión, con entorno Python 3.12 aislado; `uv run --directory services/api --python 3.12 pytest -q tests/test_inventory_telemetry.py` pasó (4 passed; advertencia conocida de Starlette/httpx).
+- Smoke ejecutado con SQLite en memoria y TestClient: cinco métricas correctas, filtros y proyecciones SQL inspeccionados, límites inclusivos, offsets UTC equivalentes, ventanas vacías, JSON exacto, aciertos de caché con fechas explícitas/omitidas/parciales sin nuevas consultas, expiración exacta a los 60 segundos y errores HTTP 422. No se añadieron archivos de tests ni se escribió en Supabase.
+- `git diff --check` correcto. Reglas de UI/layout: no aplican, frontend intacto. Sin cambios de rutas protegidas salvo este progreso autorizado.
+- Contexto utilizado: `cmp CONTEXT.md memory-bank/history/HITO-TELEMETRY-CONTEXT-2026-11-15.md` confirmó coincidencia íntegra. Se conserva ese archivo histórico sin sobrescribirlo ni duplicarlo.
+- Siguiente paso: commit/push y una nueva entrega de las correcciones, porque el PR #25 ya está fusionado. La validación remota sobre Supabase no se ejecutó en esta tarea.
 
 ## Telemetría — ajuste del contrato JSON del reporte, 2026-11-15
 - Ajustado `GET /telemetry/report` para exponer exactamente `period` y `metrics` con las claves `events_per_day`, `error_rate_by_type` y `auth_failure_rate`.

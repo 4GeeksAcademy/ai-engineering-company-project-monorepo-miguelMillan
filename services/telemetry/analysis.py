@@ -1,4 +1,4 @@
-"""Pure Pandas metrics for TrackFlow operational telemetry."""
+"""SQL-backed Pandas metrics for TrackFlow operational telemetry."""
 
 from __future__ import annotations
 
@@ -6,9 +6,10 @@ from datetime import datetime
 import json
 
 import pandas as pd
+from sqlmodel import Session, select
 
+from models import TelemetryEventRecord
 
-REQUIRED_COLUMNS = frozenset({"timestamp", "event_type"})
 ERROR_EVENT_TYPES = frozenset(
     {
         "auth_access_denied",
@@ -23,46 +24,39 @@ ERROR_EVENT_TYPES = frozenset(
 AUTH_EVENT_TYPES = frozenset({"login_failed", "login_succeeded"})
 
 
-def _prepare_events(
-    events: pd.DataFrame,
+def _load_events(
+    session: Session,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
+    event_types: frozenset[str] | None = None,
+    include_tags: bool = False,
 ) -> pd.DataFrame:
-    missing_columns = REQUIRED_COLUMNS.difference(events.columns)
-    if missing_columns:
-        missing = ", ".join(sorted(missing_columns))
-        raise ValueError(f"Telemetry events are missing required columns: {missing}")
-
-    prepared = events.copy()
-    prepared["timestamp"] = pd.to_datetime(prepared["timestamp"], utc=True, errors="raise")
+    columns = [TelemetryEventRecord.timestamp, TelemetryEventRecord.event_type]
+    names = ["timestamp", "event_type"]
+    if include_tags:
+        columns.append(TelemetryEventRecord.tags)
+        names.append("tags")
+    query = select(*columns)
     if start_date is not None:
-        start_timestamp = pd.Timestamp(start_date)
-        if start_timestamp.tzinfo is None:
-            start_timestamp = start_timestamp.tz_localize("UTC")
-        else:
-            start_timestamp = start_timestamp.tz_convert("UTC")
-        prepared = prepared.loc[prepared["timestamp"] >= start_timestamp]
+        query = query.where(
+            TelemetryEventRecord.timestamp >= pd.to_datetime(start_date, utc=True).to_pydatetime()
+        )
     if end_date is not None:
-        end_timestamp = pd.Timestamp(end_date)
-        if end_timestamp.tzinfo is None:
-            end_timestamp = end_timestamp.tz_localize("UTC")
-        else:
-            end_timestamp = end_timestamp.tz_convert("UTC")
-        prepared = prepared.loc[prepared["timestamp"] <= end_timestamp]
+        query = query.where(
+            TelemetryEventRecord.timestamp <= pd.to_datetime(end_date, utc=True).to_pydatetime()
+        )
+    if event_types is not None:
+        query = query.where(TelemetryEventRecord.event_type.in_(event_types))
+    prepared = pd.DataFrame(session.exec(query).all(), columns=names)
+    prepared["timestamp"] = pd.to_datetime(prepared["timestamp"], utc=True, errors="raise")
     return prepared
 
 
 def _with_tags(
     events: pd.DataFrame,
-    start_date: datetime | None = None,
-    end_date: datetime | None = None,
 ) -> pd.DataFrame:
-    prepared = _prepare_events(events, start_date, end_date)
-    if "tags" not in prepared.columns:
-        return prepared
-
-    tags = pd.json_normalize(prepared["tags"].tolist()).set_index(prepared.index)
-    return pd.concat([prepared.drop(columns=["tags"]), tags], axis=1)
+    tags = pd.json_normalize(events["tags"].tolist()).set_index(events.index)
+    return pd.concat([events.drop(columns=["tags"]), tags], axis=1)
 
 
 def _serializable_records(frame: pd.DataFrame) -> list[dict[str, object]]:
@@ -70,14 +64,14 @@ def _serializable_records(frame: pd.DataFrame) -> list[dict[str, object]]:
 
 
 def event_volume_by_time(
-    events: pd.DataFrame,
+    session: Session,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     frequency: str = "1D",
 ) -> list[dict[str, object]]:
     """Return event volume grouped into UTC time windows and event type."""
 
-    prepared = _prepare_events(events, start_date, end_date)
+    prepared = _load_events(session, start_date, end_date)
     result = (
         prepared.groupby(
             [pd.Grouper(key="timestamp", freq=frequency), "event_type"],
@@ -91,14 +85,14 @@ def event_volume_by_time(
 
 
 def error_rate_by_time(
-    events: pd.DataFrame,
+    session: Session,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     frequency: str = "1D",
 ) -> list[dict[str, object]]:
     """Return total events, operational errors, and error rate by UTC window."""
 
-    prepared = _prepare_events(events, start_date, end_date).assign(
+    prepared = _load_events(session, start_date, end_date).assign(
         is_error=lambda frame: frame["event_type"].isin(ERROR_EVENT_TYPES)
     )
     result = (
@@ -119,15 +113,14 @@ def error_rate_by_time(
 
 
 def auth_failure_rate_by_day(
-    events: pd.DataFrame,
+    session: Session,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
 ) -> list[dict[str, object]]:
     """Return daily failed-login rate over all login attempts."""
 
     prepared = (
-        _prepare_events(events, start_date, end_date)
-        .loc[lambda frame: frame["event_type"].isin(AUTH_EVENT_TYPES)]
+        _load_events(session, start_date, end_date, event_types=AUTH_EVENT_TYPES)
         .assign(is_failed=lambda frame: frame["event_type"].eq("login_failed"))
     )
     result = (
@@ -148,22 +141,27 @@ def auth_failure_rate_by_day(
 
 
 def latency_by_route(
-    events: pd.DataFrame,
+    session: Session,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     frequency: str = "1D",
 ) -> list[dict[str, object]]:
     """Return request count and mean latency for completed API requests."""
 
-    prepared = _with_tags(events, start_date, end_date)
-    api_events = prepared.loc[
-        prepared["event_type"].eq("api_request_completed")
-    ]
+    api_events = _with_tags(
+        _load_events(
+            session,
+            start_date,
+            end_date,
+            event_types=frozenset({"api_request_completed"}),
+            include_tags=True,
+        )
+    )
     if api_events.empty:
         return []
 
     required_columns = {"route_group", "duration_ms"}
-    missing_columns = required_columns.difference(prepared.columns)
+    missing_columns = required_columns.difference(api_events.columns)
     if missing_columns:
         missing = ", ".join(sorted(missing_columns))
         raise ValueError(f"Telemetry events are missing required columns: {missing}")
@@ -185,7 +183,7 @@ def latency_by_route(
 
 
 def dominant_event_types(
-    events: pd.DataFrame,
+    session: Session,
     limit: int = 10,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
@@ -195,7 +193,7 @@ def dominant_event_types(
     if limit < 1:
         raise ValueError("limit must be greater than zero")
 
-    prepared = _prepare_events(events, start_date, end_date)
+    prepared = _load_events(session, start_date, end_date)
     result = (
         prepared.groupby("event_type", as_index=False)
         .agg(event_count=("event_type", "count"))
