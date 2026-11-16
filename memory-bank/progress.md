@@ -484,3 +484,76 @@
 - Captura automatica con Playwright bloqueada en este entorno por dependencia de sistema faltante (`libatk-1.0.so.0`).
 - TinyDB requiere una unica instancia/worker; no admite escrituras multiproceso seguras ni seeder concurrente con la API.
 - Dependencia preexistente `source-map-js@1.2.1` con aviso de seguridad alto. Starlette TestClient muestra una advertencia de deprecacion de httpx, sin fallos de pruebas.
+
+## Data Pipelines — implementacion fase 1, flows y tasks — 2026-11-16
+- Implementado `mock_data/pipelines/pipeline.py` (ruta equivalente a `data/pipelines/` en este checkout), con el flow `weekly_warehouse_client_performance_flow` y tasks independientes de extraccion, transformacion y carga.
+- Extraccion limitada a los cuatro eventos de negocio y a una semana ISO UTC, en transaccion PostgreSQL de solo lectura. Transformacion valida dimensiones/cantidades, deduplica por `event_id` y calcula los cinco campos KPI. La carga reconstruye la semana con lock, borrado y upsert en una transaccion atomica.
+- Tasks con cache de Prefect de una hora; extraccion y carga reintentan errores transitorios de base de datos. El flow se puede invocar desde CLI con `python mock_data/pipelines/pipeline.py [--week-start YYYY-MM-DD] [--trigger manual|scheduled]`.
+- El snapshot JSON de evaluacion es opcional y se invoca con `return_state=True`; un fallo simulado de esa task dejo el flow principal en estado Completed.
+- Validacion: sintaxis AST correcta; `--help` correcto; smoke test de transformacion correcto (deduplicacion, agregacion y tasa cero); prueba de aislamiento del fallo opcional correcta. Prefect 3 y Pandas se instalaron solo en un venv temporal para estas comprobaciones.
+- Bloqueos: no se ejecuto contra una base real por falta de credenciales/conexion. `services/api/pyproject.toml` esta restringido por la politica de contenido, por lo que no se pudo ejecutar `uv add "prefect>=3"` ni dejar declarada la dependencia; no se intento acceder por otra via. Configuracion esperada: `REPORTING_READ_DATABASE_URL` y `REPORTING_WRITE_DATABASE_URL`.
+- Archivado el contexto utilizado en `memory-bank/history/HITO-DATA-PIPELINES-PHASE1-FLOWS-CONTEXT-2026-11-16.md`; `cmp` confirmo que coincide con `CONTEXT.md`.
+
+## Data Pipelines — implementacion fase 2, resiliencia — 2026-11-16
+- Confirmados retries en las dos tasks con acceso a base de datos (`extract_telemetry_events` y `load_weekly_performance`): 3 reintentos, espera de 10 s y filtro para reintentar solo errores transitorios. Se agregaron comentarios que justifican el limite de intentos y la espera.
+- Documentada la clave de cache de `transform_weekly_performance`: `task_input_hash` incluye el lote de eventos y `week_start`; expiracion de una hora.
+- El flow ya maneja explicitamente el fallo de la task opcional con `return_state=True`, inspecciona `is_failed()` y registra una advertencia sin detener la carga principal.
+- Validacion estructural AST de retries, espera, cache, manejo de estado y comentarios: OK. Las pruebas funcionales de transformacion y aislamiento de snapshot siguen siendo las ejecutadas en fase 1; esta fase solo cambio comentarios.
+- Archivado el contexto utilizado en `memory-bank/history/HITO-DATA-PIPELINES-PHASE2-RESILIENCE-CONTEXT-2026-11-16.md`; `cmp` confirmo que coincide con `CONTEXT.md`.
+
+## Data Pipelines — implementacion fase 3, idempotencia — 2026-11-16
+- La carga usa staging temporal y advisory lock por `week_start`; aplica `ON CONFLICT (warehouse, client_id, week_start) DO UPDATE` y solo actualiza cuando cambian los KPI. Elimina combinaciones obsoletas de la semana dentro de la misma transaccion. Repetir datos identicos conserva filas, IDs y `computed_at`.
+- Nueva migracion `supabase/migrations/20261116170800_create_reporting_pipeline_tables.sql` para crear el esquema/tablas de reporting, incluida la clave unica de negocio y `reporting.pipeline_runs`.
+- Cada corrida persiste inicio, fin, semana, trigger, fase, contadores, estado y error sanitizado. Los fallos de carga con resultado de commit incierto se marcan `unknown`; los demas fallos se registran como `failed` y se vuelven a lanzar.
+- Validacion estructural y de sintaxis AST: OK. No se pudo ejecutar integracion SQL real: `psql` no esta disponible y no hay `REPORTING_*_DATABASE_URL` configuradas.
+- Archivado el contexto utilizado en `memory-bank/history/HITO-DATA-PIPELINES-PHASE3-IDEMPOTENCY-CONTEXT-2026-11-16.md`; `cmp` confirmo que coincide con `CONTEXT.md`.
+
+## Regla de archivo de contexto sin duplicados — 2026-11-16
+- Añadida `.agents/rules/context-history-archiving.md`: comparar el contexto activo con el historico correspondiente; crear una copia solo si difiere, nunca sobrescribir y actualizar progreso siempre.
+- `cmp` confirmo que `CONTEXT.md` coincide con el archivo archivado de fase 3; no se creo otra copia historica.
+
+## Data Pipelines — implementacion fase 4, ejecucion CLI — 2026-11-16
+- Confirmado que `mock_data/pipelines/pipeline.py` tiene guard `if __name__ == "__main__"` que invoca `main()` y el flow principal.
+- Documentada en `mock_data/pipelines/PIPELINE_DESIGN.md` la frecuencia semanal de lunes por la mañana, los limites ISO en UTC, el comando CLI normal y el de reproceso manual.
+- Validacion estatica del entrypoint y documentacion: OK. Se intento `python mock_data/pipelines/pipeline.py`, pero el entorno no tiene Pandas (`ModuleNotFoundError: No module named 'pandas'`); tambien faltan Prefect y las dos variables de conexion. No se pudo verificar una corrida completa ni se escribio en una base.
+- `CONTEXT.md` habia cambiado desde el archivo de fase 3; se archivo esta revision en `memory-bank/history/HITO-DATA-PIPELINES-PHASE4-EXECUTION-CONTEXT-2026-11-16.md` y se verifico con `cmp`.
+
+## Data Pipelines — implementacion fase 5, endpoints de reporting — 2026-11-16
+- Añadidos `services/reporting/routes.py`, `schemas.py` y helpers en `mock_data/pipelines/queries.py` y `runs.py` para consultar la ultima corrida, disparar el flow manualmente y devolver KPIs semanales con el contrato del briefing. Las rutas usan `get_current_user`; el POST devuelve `202`, conserva el `run_id` asignado y ejecuta el flow con `BackgroundTasks`.
+- Montado el router `/reporting` desde `services/api/main.py`. La raiz del repositorio se incorpora a `sys.path` dentro de `create_app()` antes de importar el modulo reporting, para resolver `mock_data/` sin afectar los imports existentes del API.
+- El POST importa de forma diferida el flow `weekly_warehouse_client_performance_flow` y usa `resolve_week_start`; la consulta de KPIs mantiene el grano warehouse + client_id + week_start y los siete campos definidos por el contexto.
+- Validacion: parseo AST de los modulos Python modificados y smoke test de FastAPI con DB/flow simulados: GET de corrida, contrato KPI, POST manual/run_id y rechazo de semana que no inicia en lunes pasaron; se verifico la dependencia `get_current_user`.
+- Bloqueos: no se pudo validar arranque integral ni PostgreSQL real porque este entorno carece de Pandas, Prefect y URLs de conexion; la migracion de reporting debe aplicarse antes de usar los endpoints contra una base. La primera ejecucion del smoke test fallo por una implementacion incompleta del fake de DB; corregido el fake, la validacion paso.
+- `CONTEXT.md` coincide con la copia de fase 4 (`cmp`); no se creo un archivo historico duplicado. No se modificaron `services/telemetry/analysis.py` ni `GET /telemetry/report`.
+- Estado: fase 5 implementada; pendiente validar con dependencias y base de datos configuradas y comprobar el arranque real de FastAPI.
+
+## Revisión del checklist de data pipelines — 2026-11-16
+- La implementación cubre el flow ETL con tasks de extracción, transformación, carga y registro; reintentos justificados; caché de transformación; snapshot opcional con `return_state=True`; upsert por la clave única del briefing y registro de inicio/fin, estado, contadores y error. El contrato de KPIs y los tres endpoints de reporting coinciden estructuralmente con el contexto.
+- El código vive en `mock_data/pipelines/`, ruta equivalente documentada a `data/pipelines/`; no se modificó `services/telemetry/analysis.py` y el diff de ese archivo está vacío.
+- Se intentó `python mock_data/pipelines/pipeline.py`; la ejecución se detuvo al importar Pandas (`ModuleNotFoundError`). Prefect y las URLs `REPORTING_READ_DATABASE_URL`/`REPORTING_WRITE_DATABASE_URL` tampoco están disponibles; por tanto, la corrida completa y la idempotencia contra PostgreSQL no quedan verificadas en este entorno.
+- Diferencias frente al diseño por resolver o aclarar: no se persiste el identificador de corrida propio de Prefect junto al `run_id` de reporting; las corridas concurrentes se serializan en la carga pero no se marcan `skipped`/`already_running`; el flow no acepta `late_event` aunque el diseño y la tabla lo enumeran. La configuración usa variables de entorno, mientras otra sección del diseño propone Prefect Blocks.
+- No se creó otro histórico: el contexto activo coincide con la copia archivada de fase 4.
+
+## Resolucion de diferencias del pipeline — 2026-11-16
+- `reporting.pipeline_runs` ahora conserva el `prefect_run_id` nativo además del `run_id` de reporting; la respuesta de última corrida lo expone. Se añadió una migración compatible con la tabla existente.
+- El flow adquiere un advisory lock de sesión no bloqueante antes del ETL. Una corrida solapada queda registrada como `skipped`/`already_running`; la carga conserva su lock transaccional. La migración amplía el estado permitido y la respuesta API reconoce `skipped`.
+- `late_event` está admitido por el flow y el CLI. El diseño aclara que Prefect Secrets/Blocks inyectan las variables de entorno que consume la implementación.
+- Validacion: AST, compatibilidad de la firma del flow, smoke test del lock con conexiones simuladas (acquire/skip/release), smoke test del flow solapado/`late_event`, endpoints y contrato KPI: OK. Pylance no resolvio Prefect y señaló una llamada incompatible a `record_pipeline_run(..., return_state=True)`; no se pudo confirmar con el runtime ausente si es un falso positivo del decorador. `git diff --check`: OK.
+- Bloqueo restante: no hay Pandas, Prefect ni URLs PostgreSQL en el entorno; no se pudo ejecutar el ETL completo ni aplicar/probar la migración contra PostgreSQL. No se modificó `services/telemetry/analysis.py` ni se archivó otra copia de `CONTEXT.md`.
+
+## Verificacion de integración aislada — 2026-11-16
+- Se creó un PostgreSQL 16 desechable y un virtualenv temporal con Prefect 3.9.3, Pandas 3.1.1, SQLAlchemy, psycopg2 y SQLModel. Se aplicaron las migraciones de telemetría y reporting, incluida la nueva migración de `prefect_run_id`/`skipped`.
+- Con cinco eventos sintéticos, el flow calculó `inbound=125`, `outbound=2`, `stockout=1`, `discrepancy=1` y `discrepancy_rate=0.5`. Una segunda corrida forzó una nueva carga y conservó una fila, el mismo `id` y `computed_at`; la corrida solapada se registró `skipped`/`already_running`.
+- `python mock_data/pipelines/pipeline.py` terminó `Completed` contra el PostgreSQL de prueba y registró timestamps, contadores, estado y `prefect_run_id`. Los helpers de reporting y sus schemas leyeron los datos reales; el POST del router lanzó el flow y la consulta posterior devolvió `succeeded`.
+- El endpoint se probó con la dependencia de autenticación reemplazada para el test; la integración de identidad real no formó parte de esta prueba. Al detener el servidor Prefect efímero desde TestClient aparecieron logs de cancelación de su recorder, aunque la corrida, las respuestas HTTP y las aserciones completaron correctamente.
+- Se eliminaron el contenedor, el virtualenv, el estado temporal de Prefect y los snapshots de prueba. No se usó ni modificó una base externa. Para ejecutar con el Python normal del workspace todavía hay que instalar/declarar Prefect y Pandas en el entorno permitido y configurar las URLs reales; el `pyproject.toml` del API continúa restringido.
+
+## Verificacion del manejo de fallos con Prefect — 2026-11-16
+- Prueba aislada con Prefect 3 y tareas simuladas: falló la transformación y también el registro de metadata del estado fallido. `record_pipeline_run(..., return_state=True)` devolvió el estado de fallo sin ocultar la excepción original; el flow la volvió a lanzar y el proceso de verificación terminó con las aserciones aprobadas.
+- Esto confirma en runtime la compatibilidad del argumento `return_state` en la rama que el intérprete Pylance del workspace no podía analizar por no tener Prefect instalado. Al apagar el servidor Prefect temporal hubo logs de cancelación de su recorder; no afectaron la prueba y el código de salida fue cero.
+- Se limpiaron el estado y la caché temporal usados por esta prueba. `git diff --check`: OK.
+
+## Instalacion de dependencias del pipeline — 2026-11-16
+- En el intérprete activo `/home/codespace/.python/current/bin/python3` (Python 3.14.2) se instalaron `prefect==3.9.3` y `pandas==3.1.1`; SQLAlchemy, psycopg2 y SQLModel ya estaban instalados. No se modificaron manifiestos del proyecto.
+- Verificación: import de las cinco dependencias e `python mock_data/pipelines/pipeline.py --help`: OK.
+- No se ejecutó el ETL real: `REPORTING_READ_DATABASE_URL` y `REPORTING_WRITE_DATABASE_URL` no están configuradas en este entorno.

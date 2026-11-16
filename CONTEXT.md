@@ -1,16 +1,12 @@
-Tenemos datos. Ahora necesito visibilidad técnica sobre el sistema.
+El diseño está aprobado. El liderazgo quiere ver este pipeline corriendo, no solo documentado. Requisitos no negociables antes de entregarlo a producción:
 
-Escribe el pipeline de análisis. Para cada dimensión operacional relevante, una función de Python que cargue los eventos correspondientes, los transforme con Pandas, y devuelva un resultado serializable. Luego un endpoint GET /telemetry/report que los sirva juntos.
+— El pipeline debe tolerar fallos parciales sin interrumpir toda la ejecución. — Las tasks que tocan servicios externos deben tener reintentos configurados. — El pipeline debe poder correrse como script desde la línea de comandos. — Si una task ya corrió exitosamente en la última hora, no debe repetirse innecesariamente.
 
-Dos reglas no negociables: primero, no calcules nada dentro del endpoint en cada request — el pipeline va aparte y el endpoint lo llama, con cache. Segundo, convierte los timestamps a datetime antes de cualquier agrupación — si no lo haces, vas a obtener grupos incorrectos sin ningún error visible, y vas a perder horas encontrando el bug.
+Punto de partida: tu data/pipelines/PIPELINE_DESIGN.md del día anterior. Implementa lo que diseñaste — leyendo de telemetría, escribiendo en la nueva tabla de reporting de negocio que acotaste, sin que nada del reporte técnico existente cambie.
 
-Una aclaración importante: esto no es el reporte para el CEO. Nada de tasas de conversión ni ingresos — eso lo vamos a construir con los pipelines de datos más adelante. Hoy quiero saber qué tan sano está el sistema: volumen de eventos, tasa de errores, latencia, qué tipos de evento dominan. Métricas con dimensión temporal real, no un número global sin contexto.
+Escribe el código de tu pipeline en data/pipelines/. El punto de entrada principal debe llamarse data/pipelines/pipeline.py. Usa data/raw/ para datos de entrada y archivos intermedios, data/process/ para scripts de transformación reutilizables, y data/eval/ para salidas de validación del pipeline.
 
-ubica services/ (backend FastAPI).
+La task de extracción lee de telemetry_events (y cualquier otra tabla de dominio que necesites) — en modo solo lectura. La task de carga escribe en la tabla de destino nombrada en HITO-DATA-PIPELINES-CONTEXT-2026-11-15.md (bajo el esquema reporting) que diseñaste en la Parte 1. No escribas de vuelta en telemetry_events ni modifiques services/telemetry/analysis.py
 
-Revisa telemetry_events en Supabase y confirma que tienes al menos 20 filas con variedad de event_type (Esto ya está)
-
-Revisa tu catálogo de eventos (telemetry-plan.md) — hoy trabajas con las dimensiones técnicas/operacionales de ese catálogo, no con las de negocio
-
-Sigue el orden: funciones de análisis → endpoint de reporte → cache.
-
+Cualquier endpoint que exponga o dispare el pipeline (por ejemplo, para consultar el estado de la última corrida o lanzar una corrida manual) debe implementarse en services/reporting/, un módulo separado de services/telemetry/, importando funciones y flows desde data/pipelines/ según se necesite.
+Instala Prefect 3 en tu entorno: uv add "prefect>=3".
