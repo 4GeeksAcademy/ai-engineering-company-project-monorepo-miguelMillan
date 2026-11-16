@@ -4,18 +4,15 @@ import argparse
 import hashlib
 import json
 import logging
-import math
 import os
 import re
 from collections.abc import Generator
 from contextlib import contextmanager
-from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
 
-import pandas as pd
 from prefect import flow, get_run_logger, runtime, task
 from prefect.states import State
 from prefect.tasks import task_input_hash
@@ -27,22 +24,23 @@ from sqlalchemy.exc import (
     TimeoutError as SQLAlchemyTimeoutError,
 )
 
-_EVENT_TYPES = (
-    "inbound_order_created",
-    "outbound_order_created",
-    "stock_threshold_triggered",
-    "inventory_discrepancy_detected",
+if __package__ in (None, ""):
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from mock_data.process.weekly_performance import (
+    TransformResult,
+    calculate_discrepancy_rate,
+    calculate_event_counts,
+    calculate_inbound_units,
+    prepare_weekly_events,
 )
-_WAREHOUSES = {"los_angeles", "zaragoza"}
+
+
 _CACHE_EXPIRATION = timedelta(hours=1)
 _PIPELINE_LOCK_NAMESPACE = 7412
 _LOGGER = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class TransformResult:
-    rows: list[dict[str, Any]]
-    records_transformed: int
 
 
 def resolve_week_start(value: date | None) -> date:
@@ -186,96 +184,31 @@ def extract_telemetry_events(
     return events
 
 
-# task_input_hash combina events y week_start.
-# TTL de una hora limita la antigüedad de la caché.
-@task(
-    name="transform-weekly-performance",
-    cache_key_fn=task_input_hash,
-    cache_expiration=_CACHE_EXPIRATION,
-    persist_result=True,
-)
+@flow(name="extract-weekly-performance")
+def extract_weekly_performance(
+    week_start: str,
+    source_fingerprint: str,
+) -> list[dict[str, Any]]:
+    return extract_telemetry_events(week_start, source_fingerprint)
+
+
+@flow(name="transform-weekly-performance")
 def transform_weekly_performance(
     events: list[dict[str, Any]],
     week_start: str,
 ) -> TransformResult:
-    start_date = date.fromisoformat(week_start)
-    frame = pd.DataFrame(events)
+    frame = prepare_weekly_events(events, week_start)
     if frame.empty:
         return TransformResult(rows=[], records_transformed=0)
 
-    frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
-    if frame["timestamp"].isna().any():
-        raise ValueError("La extracción contiene timestamps inválidos.")
-
-    frame = (
-        frame.sort_values("timestamp")
-        .drop_duplicates(subset="event_id", keep="last")
-        .reset_index(drop=True)
+    inbound = calculate_inbound_units(frame)
+    counts = calculate_event_counts(frame)
+    grouped = inbound.merge(
+        calculate_discrepancy_rate(counts),
+        on=["warehouse", "client_id"],
+        validate="one_to_one",
     )
-    start_at = datetime.combine(start_date, time.min, tzinfo=timezone.utc)
-    end_at = start_at + timedelta(days=7)
-    if ((frame["timestamp"] < start_at) | (frame["timestamp"] >= end_at)).any():
-        raise ValueError("La extracción contiene eventos fuera de la semana solicitada.")
-
-    warehouses: list[str] = []
-    clients: list[str] = []
-    quantities: list[int] = []
-    for event in frame.to_dict(orient="records"):
-        tags = event.get("tags")
-        if not isinstance(tags, dict):
-            raise ValueError(f"tags inválido para el evento {event['event_id']}.")
-
-        warehouse = tags.get("warehouse")
-        client_id = tags.get("client_id")
-        if warehouse not in _WAREHOUSES:
-            raise ValueError(f"warehouse inválido para el evento {event['event_id']}.")
-        if not isinstance(client_id, str) or not client_id.strip():
-            raise ValueError(f"client_id inválido para el evento {event['event_id']}.")
-
-        quantity = 0
-        if event["event_type"] == "inbound_order_created":
-            raw_quantity = tags.get("quantity")
-            if (
-                isinstance(raw_quantity, bool)
-                or not isinstance(raw_quantity, (int, float))
-                or not math.isfinite(raw_quantity)
-                or raw_quantity < 0
-                or not float(raw_quantity).is_integer()
-            ):
-                raise ValueError(f"quantity inválido para el evento {event['event_id']}.")
-            quantity = int(raw_quantity)
-
-        warehouses.append(warehouse)
-        clients.append(client_id.strip())
-        quantities.append(quantity)
-
-    frame["warehouse"] = warehouses
-    frame["client_id"] = clients
-    frame["inbound_units"] = quantities
-    frame["outbound_orders"] = (frame["event_type"] == "outbound_order_created").astype(int)
-    frame["stockout_events"] = (frame["event_type"] == "stock_threshold_triggered").astype(int)
-    frame["discrepancy_events"] = (
-        frame["event_type"] == "inventory_discrepancy_detected"
-    ).astype(int)
-
-    grouped = (
-        frame.groupby(["warehouse", "client_id"], as_index=False, sort=True)
-        .agg(
-            inbound_units_count=("inbound_units", "sum"),
-            outbound_orders_count=("outbound_orders", "sum"),
-            stockout_events_count=("stockout_events", "sum"),
-            discrepancy_events_count=("discrepancy_events", "sum"),
-        )
-    )
-    grouped["week_start"] = start_date.isoformat()
-    grouped["discrepancy_rate"] = grouped.apply(
-        lambda row: (
-            row["discrepancy_events_count"] / row["outbound_orders_count"]
-            if row["outbound_orders_count"]
-            else 0.0
-        ),
-        axis=1,
-    )
+    grouped["week_start"] = week_start
 
     rows = []
     for row in grouped.to_dict(orient="records"):
@@ -564,6 +497,23 @@ def write_evaluation_snapshot(
     return str(output_path)
 
 
+@flow(name="load-weekly-performance")
+def load_weekly_performance_subflow(
+    rows: list[dict[str, Any]],
+    week_start: str,
+    destination_fingerprint: str,
+) -> int:
+    return load_weekly_performance(rows, week_start, destination_fingerprint)
+
+
+@flow(name="export-weekly-evaluation")
+def export_weekly_evaluation(
+    week_start: str,
+    rows: list[dict[str, Any]],
+) -> str:
+    return write_evaluation_snapshot(week_start, rows)
+
+
 def _execute_weekly_pipeline_run(
     run_id: str,
     prefect_run_id: str,
@@ -592,7 +542,7 @@ def _execute_weekly_pipeline_run(
         )
         source_fingerprint = _database_fingerprint("REPORTING_READ_DATABASE_URL")
         destination_fingerprint = _database_fingerprint("REPORTING_WRITE_DATABASE_URL")
-        extracted = extract_telemetry_events(
+        extracted = extract_weekly_performance(
             week_start,
             source_fingerprint,
         )
@@ -628,7 +578,7 @@ def _execute_weekly_pipeline_run(
             records_written=records_written,
         )
         phase = "loading"
-        records_written = load_weekly_performance(
+        records_written = load_weekly_performance_subflow(
             transformed.rows,
             week_start,
             destination_fingerprint,
@@ -671,14 +621,14 @@ def _execute_weekly_pipeline_run(
             )
         raise
 
-    snapshot_state = write_evaluation_snapshot(
+    snapshot_state = export_weekly_evaluation(
         week_start,
         transformed.rows,
         return_state=True,
     )
     if snapshot_state.is_failed():
         get_run_logger().warning(
-            "La task opcional de snapshot falló; la carga principal ya se completó."
+            "El subflow opcional de snapshot falló; la carga principal ya se completó."
         )
 
     return {
