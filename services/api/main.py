@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -20,11 +21,15 @@ from routes.suppliers import router
 from routes.telemetry import router as telemetry_router
 from routes.users import router as users_router
 
-
 logger = logging.getLogger("uvicorn.error.timing")
 
 
 def create_app(path: Path | None = None) -> FastAPI:
+    repository_root = str(Path(__file__).resolve().parents[2])
+    if repository_root not in sys.path:
+        sys.path.insert(0, repository_root)
+    from services.reporting.routes import router as reporting_router
+
     application = FastAPI(title="TrackFlow Supplier Directory", lifespan=database_lifespan(path))
 
     @application.middleware("http")
@@ -82,6 +87,7 @@ def create_app(path: Path | None = None) -> FastAPI:
     application.include_router(incidents_router)
     application.include_router(inventory_router)
     application.include_router(telemetry_router)
+    application.include_router(reporting_router)
     return application
 
 
