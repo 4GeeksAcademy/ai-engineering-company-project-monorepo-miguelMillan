@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="386" viewBox="0 0 1500 386">
+<rect width="1500" height="100%" fill="#0b1020"/>
+<rect x="0" y="0" width="1500" height="112" fill="#111827"/>
+<circle cx="32" cy="34" r="7" fill="#f87171"/><circle cx="56" cy="34" r="7" fill="#fbbf24"/><circle cx="80" cy="34" r="7" fill="#34d399"/>
+<text x="40" y="88" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#f9fafb">Snapshot CSV — primeras filas</text>
+<text x="40" y="143" font-family="Arial,sans-serif" font-size="17" fill="#93c5fd">CSV REAL · IDENTIFICADORES REDACTADOS</text>
+<text x="40" y="168" font-family="Arial,sans-serif" font-size="16" fill="#9ca3af">CSV real de 2026-11-15 (39 eventos); session_id, user_id y request_id redactados en esta vista.</text>
+<rect x="24" y="190" width="1452" height="172" rx="10" fill="#030712" stroke="#374151"/>
+
+<text x="42" y="230" font-family="monospace" font-size="13" fill="#60a5fa">event_id,timestamp,session_id,user_id,event_type,schema_version,request_id,tags</text>
+<text x="42" y="268" font-family="monospace" font-size="13" fill="#d1d5db">0cf247a5-4d70-4baa-baf0-63492f023a1a,2026-11-15T14:47:38.608000+00:00,[REDACTED],[REDACTED],backoffice_section_viewed,1.0.0,[REDACTED],"{""section"": ""overview""}"</text>
+<text x="42" y="306" font-family="monospace" font-size="13" fill="#d1d5db">18fb7298-4c69-4595-a301-c2334a7bfa03,2026-11-15T14:47:38.610000+00:00,[REDACTED],[REDACTED],backoffice_section_viewed,1.0.0,[REDACTED],"{""section"": ""overview""}"</text>
+<text x="42" y="344" font-family="monospace" font-size="13" fill="#d1d5db">8d240716-3105-4dc1-8106-022f6219322f,2026-11-15T14:47:38.637000+00:00,[REDACTED],[REDACTED],frontend_web_vital_recorded,1.0.0,[REDACTED],"{""metric"": ""TTFB"", ""page"": ""overview"", ""value"": 143.19999998807907}"</text>
+</svg>

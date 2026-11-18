@@ -1,0 +1,4 @@
+# ILUSTRATIVO: el job completo no pudo ejecutarse; job_runs/reporting.pipeline_runs no están migradas.
+2026-11-18 02:15:00,123 job=nightly_export status=INFO status=processing event=start target_date=2026-11-17 run_id=<UUID>
+2026-11-18 02:15:02,456 job=nightly_export status=INFO status=processing action=snapshot_exported path=mock_data/raw/telemetry_2026-11-17.csv
+2026-11-18 02:16:10,789 job=nightly_export status=INFO status=completed target_date=2026-11-17 run_id=<UUID>

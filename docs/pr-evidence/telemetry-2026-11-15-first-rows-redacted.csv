@@ -1,0 +1,4 @@
+event_id,timestamp,session_id,user_id,event_type,schema_version,request_id,tags
+[REDACTED],2026-11-15T14:47:38.608000+00:00,[REDACTED],[REDACTED],backoffice_section_viewed,1.0.0,[REDACTED],"{""section"": ""overview""}"
+[REDACTED],2026-11-15T14:47:38.610000+00:00,[REDACTED],[REDACTED],backoffice_section_viewed,1.0.0,[REDACTED],"{""section"": ""overview""}"
+[REDACTED],2026-11-15T14:47:38.637000+00:00,[REDACTED],[REDACTED],frontend_web_vital_recorded,1.0.0,[REDACTED],"{""metric"": ""TTFB"", ""page"": ""overview"", ""value"": 143.19999998807907}"

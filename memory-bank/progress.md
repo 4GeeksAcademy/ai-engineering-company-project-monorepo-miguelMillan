@@ -1,5 +1,41 @@
 # Progress Log — TrackFlow
 
+## Evidencias para PR del job nocturno, 2026-11-18
+
+- Se generó `docs/pr-evidence/cron-proposal.svg` con la expresión `15 2 * * *`; corresponde a una plantilla de crontab, no a un cron instalado. Se mantiene cron del sistema porque el job es batch standalone, desacoplado de FastAPI.
+- La BD accesible contiene `public.telemetry_events` pero no `public.job_runs` ni el esquema reporting; por eso la corrida completa no puede tener éxito. Se capturó un log real de fallo en `docs/pr-evidence/nightly-export-failed.log` al faltar `public.job_runs`.
+- No se alteraron ni aplicaron migraciones ni se ejecutó el pipeline sobre esa BD. La ejecución exitosa permanece explícitamente como ejemplo ilustrativo en `docs/pr-evidence/successful-run-example.log` (no evidencia real).
+- Se llamó el exportador real para `2026-11-15`, generando 39 filas; se conservó solo la muestra de primeras 3 filas con IDs de evento/sesión/usuario/request redactados (`docs/pr-evidence/telemetry-2026-11-15-first-rows-redacted.csv` y SVG). Se borró del workspace el snapshot completo tras obtener la muestra.
+- `git diff --check` limpio. Pendiente instalar cron y aplicar migraciones en entorno apropiado para obtener logs de éxito y bloqueo real.
+
+## Auditoría de aceptación del job nocturno, 2026-11-18
+
+- Revisados los criterios de independencia, estados, exclusión, idempotencia, fallos, CSV, separación de tablas, logs, cron y `TARGET_DATE`.
+- Confirmado por código que `scripts/nightly_export.py` corre standalone y lanza el pipeline semanal como subproceso; el CSV queda en `mock_data/raw/` porque este checkout no contiene `data/`, según aclaración previa del usuario. `public.job_runs` se mantiene aparte de `reporting.pipeline_runs`.
+- El lock actual combina una fila durable `processing` con `LOCK TABLE ... SHARE ROW EXCLUSIVE` para serializar el chequeo/creación; las pruebas unitarias verifican SQL/flujo simulado, pero no demuestran concurrencia real en PostgreSQL. La comprobación de entorno encontró `DATABASE_URL` definida, sin imprimirla; queda pendiente verificar conexión/migración y ejecutar dos procesos concurrentes.
+- Corregido `TARGET_DATE` para aceptar únicamente `YYYY-MM-DD` y añadidas pruebas para fechas con padding/formato ISO extendido inválidos. El runner intenta marcar `failed` ante cualquier `BaseException` propagada, incluidos KeyboardInterrupt/SystemExit, pero una terminación abrupta del proceso/host no puede ejecutar recuperación: el registro puede quedar `processing` indefinidamente. Documentada la intervención operativa requerida; no hay lease ni recuperación automática.
+- El ejemplo cron se documenta como plantilla no instalada. La configuración efectiva depende del crontab/entorno del host. Logging del runner tiene timestamp/job/status; salida del subproceso se hereda a stdout/stderr y el cron de ejemplo la redirige.
+- Validación posterior: `python -m pytest tests/test_nightly_export.py tests/test_job_runner.py -q` → 10 passed; `py_compile`, `git diff --check` y diagnósticos del editor limpios. Sin conexión/migración confirmada no afirmar lock concurrente demostrado ni operación completa sobre Supabase.
+
+## Revisión de idempotencia y observabilidad del job nocturno, 2026-11-18
+
+- Sustituido `services/nightly_job.py` por el módulo requerido `services/job_runner.py`, con funciones de crear/actualizar/consultar ejecuciones (`create_job`, `update_job`, `has_processing_lock`, `has_completed_for_date`). El control usa filas de `public.job_runs`, sin una tabla ni columna de lock aparte.
+- El chequeo de processing y completed más la inserción se serializan con `LOCK TABLE ... SHARE ROW EXCLUSIVE`; una segunda instancia registra cancelación `failed` con mensaje y no exporta. Si ya hay `completed` para `(nightly_export, target_date)`, registra una invocación no-op `completed` y no relanza CSV ni pipeline.
+- Toda excepción del runner se registra a nivel ERROR con traceback y se propaga; se intenta persistir `failed` y `finished_at`. Logs incluyen timestamp y `job=nightly_export`, además del estado resultante. `TARGET_DATE` sigue siendo opcional.
+- Actualizada migración con índice parcial de `processing`; actualizado README con el detalle del mecanismo.
+- Pruebas: `python -m pytest tests/test_nightly_export.py tests/test_job_runner.py -q` → 7 passed tras añadir el caso de cancelación; `py_compile` pasó. `git diff --check` detectó whitespace final, corregido después; no se probó concurrencia real ni PostgreSQL.
+
+## Job nocturno de exportación de telemetría, 2026-11-18
+
+- Añadida la migración `supabase/migrations/20261118100000_create_job_runs.sql` para `public.job_runs`, con `target_date` obligatorio, estados controlados e índice compuesto `(job_name, target_date)`. Se mantiene separada de `reporting.pipeline_runs`.
+- Implementado `scripts/nightly_export.py`: resuelve `TARGET_DATE` o ayer UTC, exporta una sola vez el CSV `mock_data/raw/telemetry_YYYY-MM-DD.csv` y lanza el pipeline ya existente `mock_data/pipelines/pipeline.py` como subproceso. La fuente del pipeline continúa siendo PostgreSQL, no el snapshot.
+- Implementado `services/nightly_job.py` con estados, advisory lock, registro de cada invocación y recuperación como `failed` de filas `pending`/`processing` dejadas por una terminación previa. Una ejecución duplicada omite el trabajo; una repetición de un día completado queda registrada como no-op completado.
+- Elegido cron del sistema operativo para desacoplar la tarea de FastAPI. Documentados motivos y expresión `15 2 * * *` en `scripts/README.es.md`; añadido `scripts/nightly_export.cron.example`.
+- Actualizado `AGENTS.md`: nuevas entradas de `memory-bank/progress.md` siempre al principio, y como máximo una copia histórica por contexto/hito. No se creó copia de `CONTEXT.md`.
+- Corregida la ruta de los datos al directorio real `mock_data/` (este checkout no tiene `data/`).
+- Validación: `python -m pytest tests/test_nightly_export.py -q` → 3 passed; `python -m py_compile scripts/nightly_export.py services/nightly_job.py` y `git diff --check` correctos. No se ejecutó contra PostgreSQL ni se probó un pipeline real; la migración debe aplicarse y cron configurarse en el host.
+- El cambio previo del usuario en `CONTEXT.md` permanece sin modificar por esta tarea; no se archivó ni duplicó.
+
 ## Data Pipelines — Mejoras de resiliencia (actividad adicional), 2026-11-16
 
 ### Implementación de mejoras documentadas en el diseño
