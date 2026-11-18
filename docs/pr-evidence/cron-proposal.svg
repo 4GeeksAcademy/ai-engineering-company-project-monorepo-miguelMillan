@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="360" viewBox="0 0 1500 360">
+<rect width="1500" height="100%" fill="#0b1020"/>
+<rect x="0" y="0" width="1500" height="112" fill="#111827"/>
+<circle cx="32" cy="34" r="7" fill="#f87171"/><circle cx="56" cy="34" r="7" fill="#fbbf24"/><circle cx="80" cy="34" r="7" fill="#34d399"/>
+<text x="40" y="88" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#f9fafb">Cron — propuesta versionada</text>
+<text x="40" y="143" font-family="Arial,sans-serif" font-size="17" fill="#93c5fd">CONFIGURACIÓN PROPUESTA</text>
+<text x="40" y="168" font-family="Arial,sans-serif" font-size="16" fill="#9ca3af">Cron del sistema operativo; esta plantilla no está instalada en el host.</text>
+<rect x="24" y="190" width="1452" height="146" rx="10" fill="#030712" stroke="#374151"/>
+
+<text x="42" y="230" font-family="monospace" font-size="15" fill="#d1d5db"># Plantilla versionada; NO instalada en este host</text>
+<text x="42" y="268" font-family="monospace" font-size="15" fill="#d1d5db">15 2 * * * cd /ruta/al/monorepo &amp;&amp; /ruta/al/monorepo/services/api/.venv/bin/python scripts/nightly_export.py &gt;&gt; /ruta/al/monorepo/nightly-export.log 2&gt;&amp;1</text>
+</svg>

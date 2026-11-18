@@ -1,0 +1,1 @@
+2026-11-18 19:22:19,285 job=nightly_export status=ERROR status=failed target_date=2026-11-15 error=ProgrammingError: relation "public.job_runs" does not exist

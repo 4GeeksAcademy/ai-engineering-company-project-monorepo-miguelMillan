@@ -1,5 +1,13 @@
 # Progress Log — TrackFlow
 
+## Evidencias para PR del job nocturno, 2026-11-18
+
+- Se generó `docs/pr-evidence/cron-proposal.svg` con la expresión `15 2 * * *`; corresponde a una plantilla de crontab, no a un cron instalado. Se mantiene cron del sistema porque el job es batch standalone, desacoplado de FastAPI.
+- La BD accesible contiene `public.telemetry_events` pero no `public.job_runs` ni el esquema reporting; por eso la corrida completa no puede tener éxito. Se capturó un log real de fallo en `docs/pr-evidence/nightly-export-failed.log` al faltar `public.job_runs`.
+- No se alteraron ni aplicaron migraciones ni se ejecutó el pipeline sobre esa BD. La ejecución exitosa permanece explícitamente como ejemplo ilustrativo en `docs/pr-evidence/successful-run-example.log` (no evidencia real).
+- Se llamó el exportador real para `2026-11-15`, generando 39 filas; se conservó solo la muestra de primeras 3 filas con IDs de evento/sesión/usuario/request redactados (`docs/pr-evidence/telemetry-2026-11-15-first-rows-redacted.csv` y SVG). Se borró del workspace el snapshot completo tras obtener la muestra.
+- `git diff --check` limpio. Pendiente instalar cron y aplicar migraciones en entorno apropiado para obtener logs de éxito y bloqueo real.
+
 ## Auditoría de aceptación del job nocturno, 2026-11-18
 
 - Revisados los criterios de independencia, estados, exclusión, idempotencia, fallos, CSV, separación de tablas, logs, cron y `TARGET_DATE`.

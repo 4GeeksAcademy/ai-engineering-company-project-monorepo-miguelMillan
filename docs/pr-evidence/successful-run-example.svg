@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="360" viewBox="0 0 1500 360">
+<rect width="1500" height="100%" fill="#0b1020"/>
+<rect x="0" y="0" width="1500" height="112" fill="#111827"/>
+<circle cx="32" cy="34" r="7" fill="#f87171"/><circle cx="56" cy="34" r="7" fill="#fbbf24"/><circle cx="80" cy="34" r="7" fill="#34d399"/>
+<text x="40" y="88" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#f9fafb">Ejecución exitosa — ejemplo de formato</text>
+<text x="40" y="143" font-family="Arial,sans-serif" font-size="17" fill="#93c5fd">EJEMPLO ILUSTRATIVO</text>
+<text x="40" y="168" font-family="Arial,sans-serif" font-size="16" fill="#9ca3af">Ejemplo ilustrativo, NO es una ejecución real. La BD carece de las migraciones necesarias.</text>
+<rect x="24" y="190" width="1452" height="146" rx="10" fill="#030712" stroke="#374151"/>
+
+<text x="42" y="230" font-family="monospace" font-size="15" fill="#86efac">2026-11-18 02:15:00,123 job=nightly_export status=INFO status=processing event=start target_date=2026-11-17 run_id=&lt;UUID&gt;</text>
+<text x="42" y="268" font-family="monospace" font-size="15" fill="#86efac">2026-11-18 02:15:02,456 job=nightly_export status=INFO status=processing action=snapshot_exported path=mock_data/raw/telemetry_2026-11-17.csv</text>
+<text x="42" y="306" font-family="monospace" font-size="15" fill="#86efac">2026-11-18 02:16:10,789 job=nightly_export status=INFO status=completed target_date=2026-11-17 run_id=&lt;UUID&gt;</text>
+</svg>
