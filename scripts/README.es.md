@@ -39,3 +39,52 @@ Los mapeos del briefing convierten estados, categorías y país a sede (`US` →
 El ID de cada incidencia importada es un UUID5 estable derivado de `incident_id`, que se comprueba antes del insert; el identificador CSV no se almacena en el modelo. Sin identificador se usa `title + created_at`, como indica el contexto. Un identificador presente pero inválido se descarta. El analizador original sigue exigiendo `incident_id`. El seed no sobrescribe incidencias existentes, aunque se haya corregido el CSV.
 
 Validado en base temporal: primera ejecución, **95 insertadas y 5 descartadas**; segunda, **0 insertadas y 95 omitidas**. Totales transformados: estados `open=29`, `resolved=52`, `discarded=14`; categorías `lost_parcel=14`, `carrier_issue=45`, `delivery_failure=19`, `returns_issue=17`. Un CSV con encabezados inválidos termina con código 2 sin insertar registros; las filas inválidas se reportan pero no impiden importar las válidas.
+
+## Exportación nocturna de telemetría
+
+`nightly_export.py` se ejecuta como proceso independiente (no dentro de FastAPI),
+exporta un snapshot diario inmutable en `mock_data/raw/telemetry_YYYY-MM-DD.csv`,
+y luego invoca como subproceso el pipeline semanal existente de
+`mock_data/pipelines/pipeline.py`. Usa `TARGET_DATE=YYYY-MM-DD` para reejecutar
+un día; por defecto elige ayer en UTC. `REPORTING_READ_DATABASE_URL` y
+`REPORTING_WRITE_DATABASE_URL` se usan si están definidas y, en su defecto, el
+script usa `DATABASE_URL`. Las migraciones de telemetría, reporting y
+`job_runs` deben estar aplicadas.
+
+Ejecución manual desde la raíz (con el entorno Python del proyecto instalado):
+
+```bash
+python scripts/nightly_export.py
+TARGET_DATE=2026-11-17 python scripts/nightly_export.py
+```
+
+El módulo `services/job_runner.py` mantiene `public.job_runs`. Una fila con
+`status='processing'` actúa como lock: la nueva invocación se registra como
+cancelada (`failed`) y termina sin trabajo. Los días completados son no-op
+idempotentes, con la omisión registrada como `completed`. Un día fallido se
+puede reintentar. El fichero CSV no es la fuente del pipeline: el pipeline
+vuelve a leer la base de datos.
+
+El lock de fila persiste hasta que el runner actualiza el estado terminal.
+Si el proceso o el host muere sin ejecutar el manejador de errores, la fila
+puede quedar en `processing` indefinidamente: no hay lease/timeout ni
+recuperación automática y se requiere intervención operativa. Los errores
+capturables del runner sí se marcan `failed`.
+
+El disparador elegido es **cron del sistema operativo**, porque el job es un
+proceso batch independiente y no debe depender del ciclo de vida ni del hilo de
+FastAPI. Tras configurar las variables de entorno de conexión en el entorno del
+usuario de cron, instalarlo por ejemplo a las 02:15 hora local con:
+
+La entrada de ejemplo está disponible en `scripts/nightly_export.cron.example`.
+El ejemplo no está instalado/configurado en este repositorio: hay que
+incorporarlo al crontab del host, definir allí las variables DB y reemplazar
+las rutas de ejemplo.
+
+```cron
+15 2 * * * cd /ruta/al/monorepo && /ruta/al/monorepo/services/api/.venv/bin/python scripts/nightly_export.py >> /ruta/al/monorepo/nightly-export.log 2>&1
+```
+
+La fecha objetivo se resuelve en UTC independientemente de la zona horaria de
+cron. La exclusión entre instancias se basa exclusivamente en el estado
+`processing` de `job_runs`, no en advisory locks ni en una columna adicional.
