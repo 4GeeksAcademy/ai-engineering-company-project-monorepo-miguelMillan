@@ -74,6 +74,7 @@ export function IncidentAnalysis() {
   const inputRef = useRef<HTMLInputElement>(null)
   const [report, setReport] = useState<AnalysisReport | null>(null)
   const [fileName, setFileName] = useState('')
+  const [taskId, setTaskId] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [downloading, setDownloading] = useState(false)
@@ -93,6 +94,7 @@ export function IncidentAnalysis() {
 
     setError('')
     setReport(null)
+    setTaskId('')
     setFileName(file.name)
     setLoading(true)
     const formData = new FormData()
@@ -105,9 +107,25 @@ export function IncidentAnalysis() {
       })
       const payload = await response.json()
       if (!response.ok) {
-        throw new Error(payload.error ?? 'No se pudo analizar el archivo.')
+        throw new Error(payload.detail ?? payload.error ?? 'No se pudo analizar el archivo.')
       }
-      setReport(payload as AnalysisReport)
+      setTaskId(payload.task_id)
+      const statusUrl = `${new URL(payload.status_url as string, response.url).pathname}`
+      const deadline = Date.now() + 10 * 60 * 1000
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1200))
+        const statusResponse = await apiFetch(statusUrl)
+        const status = await statusResponse.json()
+        if (!statusResponse.ok) throw new Error(status.detail ?? 'No se pudo consultar la tarea.')
+        if (status.status === 'success') {
+          setReport(status.result as AnalysisReport)
+          return
+        }
+        if (status.status === 'failure') {
+          throw new Error(status.error ?? 'No se pudo analizar el archivo.')
+        }
+      }
+      throw new Error('El análisis sigue en curso. Puedes volver a consultar la tarea más tarde.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo conectar con la API.')
     } finally {
@@ -118,9 +136,13 @@ export function IncidentAnalysis() {
   async function downloadResults() {
     setError('')
     setNotice('')
+    if (!taskId) {
+      setError('Primero completa un análisis para descargar sus resultados.')
+      return
+    }
     setDownloading(true)
     try {
-      const response = await apiFetch('/api/incidents/results/export')
+      const response = await apiFetch(`/api/incidents/results/export?task_id=${encodeURIComponent(taskId)}`)
       if (!response.ok) {
         const payload = await response.json().catch(() => null)
         throw new Error(payload?.error ?? 'No se pudieron descargar los resultados.')
@@ -190,7 +212,7 @@ export function IncidentAnalysis() {
             {loading ? 'Analizando…' : 'Seleccionar CSV'}
           </button>
           {report && (
-            <button type="button" onClick={downloadResults} disabled={downloading} className="min-h-11 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-wait disabled:opacity-60">
+            <button type="button" onClick={downloadResults} disabled={downloading || loading || !taskId || !report} className="min-h-11 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-wait disabled:opacity-60">
               {downloading ? 'Descargando…' : error ? 'Reintentar descarga CSV' : 'Descargar resultados CSV'}
             </button>
           )}

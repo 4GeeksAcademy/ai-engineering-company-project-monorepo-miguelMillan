@@ -1,15 +1,18 @@
-Necesitamos un script que se ejecute cada noche de forma automática, sin intervención manual. El script debe exportar los datos de telemetría del día anterior a CSV (si aún no se ha hecho), lanzar el pipeline de datos, y dejar constancia en base de datos de qué pasó y cuándo.
+Necesitamos desacoplar las operaciones pesadas de la API. Cuando un endpoint reciba una solicitud que implique trabajo de larga duración, debe encolar la tarea y devolver inmediatamente un task_id al cliente. Un worker independiente procesa la cola. El cliente puede consultar el estado de su tarea en cualquier momento.
 
 Criterios de aceptación:
 
-El script es un proceso completamente independiente de la API — no puede bloquear ningún endpoint ni ejecutarse en el mismo hilo de FastAPI.
-Si el script ya está corriendo cuando el siguiente ciclo lo dispara, la segunda instancia debe abortar silenciosamente. No dos ejecuciones en paralelo.
-Si el script falla, el estado de ese registro en base de datos debe quedar en failed, no en processing. Ningún registro puede quedarse zombi.
-El script debe ser idempotente: si se ejecuta dos veces sobre el mismo día, el resultado debe ser el mismo que si se hubiera ejecutado una sola vez.
-Cada ejecución queda registrada con timestamp, estado (pending → processing → completed | failed) y, en caso de error, el mensaje de la excepción.
-Pon el script en scripts/ y la lógica de estado en services/. El disparador queda en crontab o en el scheduler del framework — la decisión es tuya, justifícala en el PR.
+Redis corre como broker en Docker. La API y los workers se conectan al mismo broker.
+Al menos una operación existente en tu API —la que más tarde en responder— se convierte en tarea asíncrona mediante Celery.
+El endpoint que recibe la solicitud devuelve 202 Accepted con un task_id inmediatamente, sin esperar a que la tarea termine.
+Existe un endpoint GET /tasks/{task_id} que devuelve el estado actual de la tarea (pending, started, success, failure) y el resultado cuando esté disponible.
+Si una tarea falla hasta tres veces, pasa a una Dead Letter Queue (DLQ). El fallo queda registrado con task_id, número de intento y mensaje de error.
+Los workers corren como procesos separados, no dentro del proceso de FastAPI.
+Flower está levantado y accesible para monitorear la cola durante el desarrollo.
 
-Revisa tu monorepo: identifica las tablas de telemetría existentes y las convenciones de nomenclatura que ya has usado para rutas y campos.
-Crea la tabla de control de ejecuciones en base de datos (puedes añadirla al schema existente o crear una migración nueva).
-Implementa el script en scripts/nightly_export.py y el servicio de control de estado en services/.
-Configura el disparador en crontab o en el scheduler de tu framework y documenta la expresión cron en el PR.
+
+Añade Redis a tu docker-compose.yml como servicio broker. Usa la imagen oficial y exponla en el puerto estándar.
+Instala las dependencias necesarias con uv add celery redis flower.
+Crea el módulo Celery en tu monorepo (services/celery_app.py o similar) y configúralo para apuntar a Redis como broker y backend de resultados.
+Identifica en tu API el endpoint o la operación que más tarda en responder — ese es el candidato a convertir en tarea asíncrona.
+Levanta un worker con celery -A services.celery_app worker y verifica que se conecta al broker antes de modificar ningún endpoint.

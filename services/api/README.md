@@ -32,10 +32,19 @@ services/api/
 - `PATCH /suppliers/{id}/rate` -> cuerpo `{"rate_per_shipment": 8.25}`; actualiza automaticamente `updated_at`.
 - `PATCH /suppliers/{id}/status` -> cuerpo `{"status": "active"}` o `{"status": "suspended"}`.
 - `DELETE /suppliers/{id}` -> elimina (204), o 404. En operaciones se recomienda suspender en lugar de eliminar.
-- `POST /api/incidents/analyze` -> recibe `multipart/form-data` con un archivo `.csv` en el campo `file`; responde con totales, desglose por categoria, estado y pais, CSAT e incidencias de validacion.
-- `GET /api/incidents/results/export` -> descarga como `results.csv` el ultimo analisis completado en esta instancia.
+- `POST /api/incidents/analyze` -> recibe `multipart/form-data` con un archivo `.csv` en el campo `file`; devuelve `202` con `task_id` y `status_url`.
+- `GET /tasks/{task_id}` -> requiere JWT y devuelve estado de Celery (`pending`, `started`, `retry`, `success` o `failure`); en `success` incluye el reporte y en fallo terminal un mensaje genérico.
+- `GET /api/incidents/results/export?task_id={task_id}` -> requiere JWT y descarga `results.csv` solo cuando la tarea indicada finaliza correctamente.
 
-Los archivos se limitan a 10 MB. Los CSV con esquema invalido o no procesables devuelven un error descriptivo. El servidor reutiliza el procesador Python ubicado en `scripts/incidents_analysis.py`; requiere Python 3.10 o posterior y puede configurarse con `PYTHON`.
+Los archivos se limitan a 10 MB. El gateway/API valida el archivo y lo persiste en `backend_data`; el mensaje Celery contiene únicamente el UUID de la tarea. El worker lee el CSV desde el volumen compartido y elimina el input al finalizar o agotar los reintentos. Todas las excepciones de ejecución se reintentan hasta 3 veces (4 intentos totales contando el original), con backoff exponencial y jitter; al agotarse se intenta registrar traceback y número real de intentos en la DLQ. El procesador es `scripts/incidents_analysis.py`. La duración del análisis no bloquea el request; el tiempo de recepción y persistencia del upload sí depende del tamaño (máximo 10 MB), por lo que no se garantiza una latencia absoluta menor de 200 ms para todos los tamaños.
+
+### Celery, Redis y Flower
+
+La cola usa `REDIS_URL` como broker y backend de resultados. En Compose se comparte internamente `redis://redis:6379/0`; Redis usa política `noeviction`, AOF y volumen persistente. `celery-worker` es un servicio separado y comparte `backend_data` con la API para recibir solo referencias de inputs. Los inputs residuales de más de siete días se limpian cuando el worker inicia una tarea. Flower está publicado en `http://localhost:5555` con autenticación básica obligatoria (`FLOWER_BASIC_AUTH=usuario:contraseña`). El token interno `TASKS_INTERNAL_TOKEN` protege el adaptador entre el gateway y FastAPI. El puerto Redis 6379 solo debe publicarse localmente/desarrollo.
+
+Aplicar primero `supabase/migrations/20261118120000_create_task_dead_letters.sql` para crear `public.task_dead_letters`. La DLQ guarda `task_id`, nombre, número de intentos, traceback completo y fecha de fallo. Las tareas almacenan reporte/CSV temporalmente en el backend Redis de resultados, con expiración de 24 horas.
+
+Para ejecutar Compose hacen falta el `.env` seguro existente y `FLOWER_BASIC_AUTH`/`TASKS_INTERNAL_TOKEN`; no imprimas ni compartas la salida de `docker compose config`. Arranca con `docker compose up --build -d redis backend celery-worker flower` y consulta `docker compose logs -f celery-worker`; detén los servicios con `docker compose stop celery-worker flower redis`. Flower se abre en `http://localhost:5555`. Para desarrollo local: `docker compose up -d redis`, define un `TASKS_INTERNAL_TOKEN` aleatorio en el entorno de Node y FastAPI, luego en `services/api`: `REDIS_URL=redis://localhost:6379/0 uv run celery -A celery_app:app worker --loglevel=INFO` y `REDIS_URL=redis://localhost:6379/0 uv run celery -A celery_app:app flower --port=5555 --basic-auth=usuario:contraseña`.
 
 ## Ejecutar en local
 Requisitos: Node.js y Python >= 3.10 con [uv](https://docs.astral.sh/uv/getting-started/installation/).
