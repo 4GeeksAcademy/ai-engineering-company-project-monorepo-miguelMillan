@@ -1,0 +1,17 @@
+public.job_runs  (SELECT * FROM public.job_runs ORDER BY created_at)
+id         job_name        target_date status     started_at                 finished_at                error_message
+95a91dbd   nightly_export  2026-11-15  failed     2026-11-19 17:59:07.917Z   2026-11-19 17:59:27.574Z   CalledProcessError: Command '('/workspaces/nightly-export-evidence/.venv/bin/python', '/workspaces/nightly-export-evidence/mock_data/pipelines/pipelin
+e5b79487   nightly_export  2026-11-15  completed  2026-11-19 17:59:43.094Z   2026-11-19 17:59:56.662Z   
+98e43928   nightly_export  2026-11-15  completed  -                          2026-11-19 18:00:14.968Z   
+2acd7679   nightly_export  2026-11-15  completed  -                          2026-11-19 18:00:31.585Z   
+28a0be16   nightly_export  2026-11-15  completed  -                          2026-11-19 18:00:31.716Z   
+dca6f6d0   nightly_export  2026-11-14  completed  2026-11-19 18:01:59.958Z   2026-11-19 18:02:15.203Z   
+ff3784bf   nightly_export  2026-11-14  failed     -                          2026-11-19 18:02:00.059Z   Cancelled: another nightly_export run is processing.
+9500f3f0   nightly_export  2026-11-13  completed  2026-11-19 18:02:27.762Z   2026-11-19 18:02:42.694Z   
+ec2ffdbc   nightly_export  2026-11-15  completed  -                          2026-11-19 18:04:13.668Z   
+
+reporting.pipeline_runs  (SELECT * FROM reporting.pipeline_runs ORDER BY started_at)
+run_id     pipeline_name                        week_start  status     phase      trigger    read  transf written started_at                 finished_at               
+6df983f0   weekly_warehouse_client_performance  2026-11-09  succeeded  completed  scheduled  0     0      0       2026-11-19 17:59:50.040Z   2026-11-19 17:59:54.591Z  
+e359813a   weekly_warehouse_client_performance  2026-11-09  succeeded  completed  scheduled  0     0      0       2026-11-19 18:02:09.975Z   2026-11-19 18:02:13.142Z  
+539cbc78   weekly_warehouse_client_performance  2026-11-09  succeeded  completed  scheduled  0     0      0       2026-11-19 18:02:35.578Z   2026-11-19 18:02:40.905Z  

@@ -1,0 +1,24 @@
+2026-11-19 18:02:27,829 job=nightly_export status=INFO status=processing event=start target_date=2026-11-13 run_id=9500f3f0-9cf8-4ee2-b586-d3c442d86095
+2026-11-19 18:02:28,472 job=nightly_export status=INFO status=processing action=snapshot_exported path=/workspaces/nightly-export-evidence/mock_data/raw/telemetry_2026-11-13.csv
+18:02:31.421 | INFO    | prefect - Starting temporary server on http://127.0.0.1:8291
+See https://www.prefect.io/docs/v3/concepts/server#how-to-guides for more information on running a dedicated Prefect server.
+18:02:35.575 | INFO    | Flow run 'elastic-seriema' - Beginning flow run 'elastic-seriema' for flow 'weekly-warehouse-client-performance'
+18:02:36.856 | INFO    | Task run 'record-pipeline-run-383' - Finished in state Completed()
+18:02:37.119 | INFO    | Flow run 'therapeutic-peacock' - Beginning subflow run 'therapeutic-peacock' for flow 'extract-weekly-performance'
+18:02:37.131 | INFO    | Task run 'extract-telemetry-events-18d' - Finished in state Cached(type=COMPLETED)
+18:02:37.170 | INFO    | Flow run 'therapeutic-peacock' - Finished in state Completed()
+18:02:37.790 | INFO    | Task run 'record-pipeline-run-5e6' - Finished in state Completed()
+18:02:37.928 | INFO    | Flow run 'venerable-boobook' - Beginning subflow run 'venerable-boobook' for flow 'transform-weekly-performance'
+18:02:37.938 | INFO    | Task run 'prepare-weekly-events-a3a' - Finished in state Completed()
+18:02:37.998 | INFO    | Flow run 'venerable-boobook' - Finished in state Completed()
+18:02:38.613 | INFO    | Task run 'record-pipeline-run-20c' - Finished in state Completed()
+18:02:40.830 | INFO    | Flow run 'invaluable-hedgehog' - Beginning subflow run 'invaluable-hedgehog' for flow 'load-weekly-performance'
+18:02:40.835 | INFO    | Task run 'load-weekly-performance-c2b' - Finished in state Cached(type=COMPLETED)
+18:02:40.903 | INFO    | Flow run 'invaluable-hedgehog' - Finished in state Completed()
+18:02:41.484 | INFO    | Task run 'record-pipeline-run-99e' - Finished in state Completed()
+18:02:41.590 | INFO    | Flow run 'translucent-beluga' - Beginning subflow run 'translucent-beluga' for flow 'export-weekly-evaluation'
+18:02:41.595 | INFO    | Task run 'write-evaluation-snapshot-492' - Finished in state Cached(type=COMPLETED)
+18:02:41.629 | INFO    | Flow run 'translucent-beluga' - Finished in state Completed()
+18:02:41.740 | INFO    | Flow run 'elastic-seriema' - Finished in state Completed()
+18:02:41.751 | INFO    | prefect - Stopping temporary server on http://127.0.0.1:8291
+2026-11-19 18:02:42,827 job=nightly_export status=INFO status=completed target_date=2026-11-13 run_id=9500f3f0-9cf8-4ee2-b586-d3c442d86095
