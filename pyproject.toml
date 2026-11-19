@@ -3,8 +3,12 @@ name = "ai-engineering-company-project-monorepo-miguelmillan"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+    "fastembed>=0.6",
     "matplotlib>=3.11.2",
+    "openai>=1.60",
     "pandas>=3.1.1",
+    "python-dotenv>=1.0",
+    "qdrant-client>=1.13",
     "scikit-learn>=1.9.1",
     "xgboost>=3.4.1",
 ]

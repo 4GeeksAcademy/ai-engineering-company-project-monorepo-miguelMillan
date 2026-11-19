@@ -1,11 +1,96 @@
-Ya entrenaste un modelo de pronóstico — construido sobre features conscientes del tiempo (lags, estadísticas rodantes, señales de calendario/estacionalidad) — para predecir las ventas de tu empresa, y ajustaste sus hiperparámetros. Pero un modelo entrenado no es lo mismo que un modelo confiable: tu tech lead ha abierto un ticket pidiendo una evaluación técnica formal antes de aprobar su paso a staging. Nadie va a promover un modelo a producción solo porque "el error final se ve bien".
+# BRIEFING — TrackFlow
 
-El ticket es específico y trae tres preguntas que tu reporte debe responder sin ambigüedad:
+## Hito 7 — RAG y Base de Conocimiento
 
-¿El modelo tiene underfitting, overfitting, o está razonablemente bien ajustado?
-¿Qué tan estable es su desempeño si cambias qué porción de los datos usas para entrenar?
-Si hay un problema, ¿cuál es la acción correctiva específica — no genérica — que se debería tomar?
-Responder "el modelo funciona bien" sin evidencia no es una evaluación técnica, es una opinión. Tu reporte debe estar respaldado por curvas de aprendizaje, validación cruzada y métricas justificadas.
+---
 
-Confirma que el modelo de pronóstico entrenado, sus features conscientes del tiempo (lags, estadísticas rodantes, señales de calendario) y el split temporal (8 años entrenamiento / 2 años prueba) de tu proyecto anterior siguen disponibles y son reproducibles.
-Instala cualquier dependencia adicional con uv add — nunca uses pip install ni pipenv.
+## 1. Introducción
+
+Miguel Torres (Director Comercial) tiene 8 personas entre account managers y business development que responden constantemente las mismas preguntas de marcas prospecto y clientes actuales: qué SLA de entrega manejan, cómo funciona la política de devoluciones, qué transportistas cubren cada zona, cómo se calculan las tarifas de almacenamiento.
+
+El **ticket** que el equipo comercial trasladó a tecnología pide un asistente que cualquier account manager pueda usar **como lo haría un vendedor de TrackFlow** en una llamada con un cliente: con datos exactos y sin prometer condiciones que no existen en los acuerdos estándar.
+
+Tu base de conocimiento debe construirse a partir de los documentos fuente de la sección 2.
+
+---
+
+## 2. Documentos Fuente para la Base de Conocimiento
+
+Usa los siguientes documentos fuente como base de tu base de conocimiento. Cópialos desde [`00-general-contexts/trackflow/`](../00-general-contexts/trackflow/) a `docs/company-knowledge-base/` en tu monorepo. Cada uno se entrega como un archivo independiente para que lo cargues directamente en tu pipeline de chunking.
+
+| Archivo                                                                                                 | Contenido                   |
+| ------------------------------------------------------------------------------------------------------- | --------------------------- |
+| [`trackflow-sla-delivery.es.md`](../00-general-contexts/trackflow/trackflow-sla-delivery.es.md)         | SLA de Entrega              |
+| [`trackflow-returns-policy.es.md`](../00-general-contexts/trackflow/trackflow-returns-policy.es.md)     | Política de Devoluciones    |
+| [`trackflow-carrier-coverage.es.md`](../00-general-contexts/trackflow/trackflow-carrier-coverage.es.md) | Cobertura de Transportistas |
+| [`trackflow-storage-pricing.es.md`](../00-general-contexts/trackflow/trackflow-storage-pricing.es.md)   | Tarifas de Almacenamiento   |
+
+---
+
+**Nombre de la colección Qdrant:** `trackflow_knowledge` — usa este nombre exacto en `setup()`.
+
+## 3. Estructura de Datos de Dominio
+
+```json
+{
+  "id": "uuid-del-chunk",
+  "vector": [
+    /* embedding */
+  ],
+  "payload": {
+    "company": "trackflow",
+    "source_document": "sla-delivery | returns-policy | carrier-coverage | storage-pricing",
+    "section": "título o subtítulo de la sección de origen",
+    "language": "es",
+    "chunk_index": 0,
+    "text": "cuerpo del chunk usado para armar el prompt"
+  }
+}
+```
+
+---
+
+## 4. KPIs y Umbrales de la Respuesta
+
+- **Recall@3**: al menos el 80% de las preguntas de prueba deben tener el
+  chunk correcto entre los 3 primeros resultados recuperados.
+- **Faithfulness**: ningún porcentaje, tarifa o plazo en la respuesta puede
+  diferir de los chunks recuperados.
+- Preguntas sobre descuentos de almacenamiento o excepciones de
+  transportista fuera de lo documentado deben responder que requieren
+  aprobación, nunca inventar una condición.
+
+---
+
+- **Umbral mínimo de similitud**: define un umbral y documenta por qué lo
+  elegiste; si ningún chunk lo supera, la respuesta debe decir explícitamente
+  que no hay información suficiente — nunca inventes datos.
+
+## 5. Instrucciones de Datos Semilla
+
+- Indexa los cuatro documentos fuente completos de la sección 2.
+- Cada documento debe producir al menos 3 chunks.
+- Crea `data/eval/test-queries.json` con al menos 8 preguntas cubriendo los
+  cuatro documentos, incluyendo al menos una sobre picos de demanda
+  (Black Friday / Rebajas).
+
+---
+
+## 6. Restricciones de Negocio
+
+- Nunca se debe prometer un SLA de entrega durante fechas de alta demanda
+  declaradas — debe seguirse la advertencia de `trackflow-sla-delivery.es.md`.
+- Las devoluciones internacionales nunca deben describirse como
+  "automáticas" — deben remitirse siempre a gestión manual.
+- Ningún descuento de almacenamiento puede ofrecerse sin mencionar que
+  requiere aprobación de Miguel Torres.
+
+---
+
+## 7. Entregables Esperados
+
+- Base de conocimiento indexada en Qdrant con los cuatro documentos fuente.
+- Endpoint FastAPI que responde preguntas como "¿cuál es la ventana de
+  devolución estándar?" o "¿qué transportista cubre mejor Aragón rural?"
+  con una respuesta generada y trazable a la fuente.
+- Interfaz mínima de consulta funcionando contra ese endpoint.

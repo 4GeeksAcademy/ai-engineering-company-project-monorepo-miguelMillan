@@ -1,0 +1,991 @@
+{
+  "collection": "trackflow_knowledge",
+  "k": 3,
+  "questions_in_scope": 17,
+  "questions_out_of_scope": 6,
+  "coverage_by_document": {
+    "returns-policy": 4,
+    "sla-delivery": 6,
+    "carrier-coverage": 3,
+    "storage-pricing": 4
+  },
+  "recall_at_k_without_threshold": 0.8235294117647058,
+  "recommended_min_score": 0.45,
+  "recall_at_k_with_recommended_min_score": 0.8235294117647058,
+  "out_of_scope_rejection_with_recommended_min_score": 0.5,
+  "kpi_recall_threshold": 0.8,
+  "in_scope": [
+    {
+      "id": "returns-01",
+      "question": "¿Cuál es la ventana de devolución estándar?",
+      "expected": "returns-policy#1",
+      "rank": 1,
+      "expected_score": 0.5701144,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "returns-policy#1",
+          "section": "Política de Devoluciones > Ventana de devolución estándar",
+          "score": 0.5701
+        },
+        {
+          "chunk": "returns-policy#2",
+          "section": "Política de Devoluciones > Costos de devolución",
+          "score": 0.4093
+        },
+        {
+          "chunk": "returns-policy#0",
+          "section": "Política de Devoluciones > El proceso estándar de devoluciones (reverse logistics) de TrackFlo…",
+          "score": 0.3435
+        }
+      ]
+    },
+    {
+      "id": "returns-02",
+      "question": "Si un pedido llega roto por culpa del transporte, ¿quién paga el envío de vuelta?",
+      "expected": "returns-policy#2",
+      "rank": 1,
+      "expected_score": 0.6225558,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "returns-policy#2",
+          "section": "Política de Devoluciones > Costos de devolución",
+          "score": 0.6226
+        },
+        {
+          "chunk": "carrier-coverage#2",
+          "section": "Cobertura de Transportistas > La selección de transportista para cada envío la determina el siste…",
+          "score": 0.5373
+        },
+        {
+          "chunk": "returns-policy#0",
+          "section": "Política de Devoluciones > El proceso estándar de devoluciones (reverse logistics) de TrackFlo…",
+          "score": 0.4589
+        }
+      ]
+    },
+    {
+      "id": "returns-03",
+      "question": "Un comprador de Estados Unidos quiere devolver el producto desde España, ¿se tramita solo?",
+      "expected": "returns-policy#3",
+      "rank": null,
+      "expected_score": null,
+      "hit_at_k": false,
+      "top_3": [
+        {
+          "chunk": "returns-policy#2",
+          "section": "Política de Devoluciones > Costos de devolución",
+          "score": 0.4266
+        },
+        {
+          "chunk": "sla-delivery#2",
+          "section": "SLA de Entrega > Envío internacional (entre Estados Unidos y España)",
+          "score": 0.398
+        },
+        {
+          "chunk": "returns-policy#1",
+          "section": "Política de Devoluciones > Ventana de devolución estándar",
+          "score": 0.3883
+        }
+      ]
+    },
+    {
+      "id": "returns-04",
+      "question": "¿Qué pasos sigue una devolución desde que el cliente final la pide hasta que el producto se clasifica en el almacén?",
+      "expected": "returns-policy#0",
+      "rank": 4,
+      "expected_score": 0.5572945,
+      "hit_at_k": false,
+      "top_3": [
+        {
+          "chunk": "returns-policy#1",
+          "section": "Política de Devoluciones > Ventana de devolución estándar",
+          "score": 0.6763
+        },
+        {
+          "chunk": "returns-policy#2",
+          "section": "Política de Devoluciones > Costos de devolución",
+          "score": 0.5958
+        },
+        {
+          "chunk": "storage-pricing#3",
+          "section": "Tarifas de Almacenamiento > El cliente puede solicitar un reporte de antigüedad de inventario e…",
+          "score": 0.5852
+        }
+      ]
+    },
+    {
+      "id": "sla-01",
+      "question": "¿Cuántos días tarda un envío normal dentro del mismo país?",
+      "expected": "sla-delivery#0",
+      "rank": 1,
+      "expected_score": 0.58575803,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "sla-delivery#0",
+          "section": "SLA de Entrega > Envío estándar",
+          "score": 0.5858
+        },
+        {
+          "chunk": "sla-delivery#2",
+          "section": "SLA de Entrega > Envío internacional (entre Estados Unidos y España)",
+          "score": 0.5758
+        },
+        {
+          "chunk": "sla-delivery#1",
+          "section": "SLA de Entrega > Envío express",
+          "score": 0.5511
+        }
+      ]
+    },
+    {
+      "id": "sla-02",
+      "question": "¿Podemos garantizar los plazos de entrega durante Black Friday?",
+      "expected": "sla-delivery#4",
+      "rank": 1,
+      "expected_score": 0.56167984,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "sla-delivery#4",
+          "section": "SLA de Entrega > TrackFlow no garantiza SLA de entrega los días de alta demanda decl…",
+          "score": 0.5617
+        },
+        {
+          "chunk": "returns-policy#1",
+          "section": "Política de Devoluciones > Ventana de devolución estándar",
+          "score": 0.4302
+        },
+        {
+          "chunk": "sla-delivery#0",
+          "section": "SLA de Entrega > Envío estándar",
+          "score": 0.4239
+        }
+      ]
+    },
+    {
+      "id": "sla-03",
+      "question": "En las Rebajas de enero, ¿cuánto se pueden alargar las entregas?",
+      "expected": "sla-delivery#4",
+      "rank": 1,
+      "expected_score": 0.5383266,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "sla-delivery#4",
+          "section": "SLA de Entrega > TrackFlow no garantiza SLA de entrega los días de alta demanda decl…",
+          "score": 0.5383
+        },
+        {
+          "chunk": "returns-policy#1",
+          "section": "Política de Devoluciones > Ventana de devolución estándar",
+          "score": 0.5097
+        },
+        {
+          "chunk": "sla-delivery#0",
+          "section": "SLA de Entrega > Envío estándar",
+          "score": 0.4742
+        }
+      ]
+    },
+    {
+      "id": "sla-04",
+      "question": "¿Qué compensación recibe la marca si no cumplimos el porcentaje de entregas a tiempo?",
+      "expected": "sla-delivery#3",
+      "rank": null,
+      "expected_score": null,
+      "hit_at_k": false,
+      "top_3": [
+        {
+          "chunk": "returns-policy#1",
+          "section": "Política de Devoluciones > Ventana de devolución estándar",
+          "score": 0.6395
+        },
+        {
+          "chunk": "storage-pricing#2",
+          "section": "Tarifas de Almacenamiento > Inventario con más de 180 días sin movimiento (sin ventas ni salida…",
+          "score": 0.6237
+        },
+        {
+          "chunk": "returns-policy#2",
+          "section": "Política de Devoluciones > Costos de devolución",
+          "score": 0.5999
+        }
+      ]
+    },
+    {
+      "id": "sla-05",
+      "question": "¿Tenéis entrega en 24 horas en Zaragoza o Madrid?",
+      "expected": "sla-delivery#1",
+      "rank": 1,
+      "expected_score": 0.56007594,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "sla-delivery#1",
+          "section": "SLA de Entrega > Envío express",
+          "score": 0.5601
+        },
+        {
+          "chunk": "sla-delivery#2",
+          "section": "SLA de Entrega > Envío internacional (entre Estados Unidos y España)",
+          "score": 0.5021
+        },
+        {
+          "chunk": "sla-delivery#0",
+          "section": "SLA de Entrega > Envío estándar",
+          "score": 0.4999
+        }
+      ]
+    },
+    {
+      "id": "sla-06",
+      "question": "¿Cuánto tarda un envío entre Estados Unidos y España y quién controla la aduana?",
+      "expected": "sla-delivery#2",
+      "rank": 1,
+      "expected_score": 0.57075715,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "sla-delivery#2",
+          "section": "SLA de Entrega > Envío internacional (entre Estados Unidos y España)",
+          "score": 0.5708
+        },
+        {
+          "chunk": "sla-delivery#0",
+          "section": "SLA de Entrega > Envío estándar",
+          "score": 0.5213
+        },
+        {
+          "chunk": "sla-delivery#1",
+          "section": "SLA de Entrega > Envío express",
+          "score": 0.5169
+        }
+      ]
+    },
+    {
+      "id": "carrier-01",
+      "question": "¿Qué transportista cubre mejor Aragón rural?",
+      "expected": "carrier-coverage#1",
+      "rank": 1,
+      "expected_score": 0.65002835,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "carrier-coverage#1",
+          "section": "Cobertura de Transportistas > España (Zaragoza)",
+          "score": 0.65
+        },
+        {
+          "chunk": "carrier-coverage#2",
+          "section": "Cobertura de Transportistas > La selección de transportista para cada envío la determina el siste…",
+          "score": 0.4034
+        },
+        {
+          "chunk": "sla-delivery#1",
+          "section": "SLA de Entrega > Envío express",
+          "score": 0.3475
+        }
+      ]
+    },
+    {
+      "id": "carrier-02",
+      "question": "¿Con qué transportista mandamos paquetes al extranjero desde Los Ángeles?",
+      "expected": "carrier-coverage#0",
+      "rank": 1,
+      "expected_score": 0.65408784,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "carrier-coverage#0",
+          "section": "Cobertura de Transportistas > Estados Unidos (Los Ángeles)",
+          "score": 0.6541
+        },
+        {
+          "chunk": "sla-delivery#1",
+          "section": "SLA de Entrega > Envío express",
+          "score": 0.5072
+        },
+        {
+          "chunk": "sla-delivery#2",
+          "section": "SLA de Entrega > Envío internacional (entre Estados Unidos y España)",
+          "score": 0.48
+        }
+      ]
+    },
+    {
+      "id": "carrier-03",
+      "question": "¿Puede un account manager elegir el transportista de un envío concreto?",
+      "expected": "carrier-coverage#2",
+      "rank": 1,
+      "expected_score": 0.77209926,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "carrier-coverage#2",
+          "section": "Cobertura de Transportistas > La selección de transportista para cada envío la determina el siste…",
+          "score": 0.7721
+        },
+        {
+          "chunk": "storage-pricing#4",
+          "section": "Tarifas de Almacenamiento > Clientes con más de 50 metros cúbicos de volumen promedio mensual p…",
+          "score": 0.5086
+        },
+        {
+          "chunk": "carrier-coverage#0",
+          "section": "Cobertura de Transportistas > Estados Unidos (Los Ángeles)",
+          "score": 0.5017
+        }
+      ]
+    },
+    {
+      "id": "storage-01",
+      "question": "¿Cuánto cuesta almacenar un metro cúbico al mes en Los Ángeles?",
+      "expected": "storage-pricing#0",
+      "rank": 1,
+      "expected_score": 0.6545441,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "storage-pricing#0",
+          "section": "Tarifas de Almacenamiento > Tarifa estándar",
+          "score": 0.6545
+        },
+        {
+          "chunk": "carrier-coverage#0",
+          "section": "Cobertura de Transportistas > Estados Unidos (Los Ángeles)",
+          "score": 0.4405
+        },
+        {
+          "chunk": "sla-delivery#1",
+          "section": "SLA de Entrega > Envío express",
+          "score": 0.4096
+        }
+      ]
+    },
+    {
+      "id": "storage-02",
+      "question": "¿Qué se cobra por el stock que lleva más de seis meses sin venderse?",
+      "expected": "storage-pricing#2",
+      "rank": 2,
+      "expected_score": 0.45771733,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "returns-policy#1",
+          "section": "Política de Devoluciones > Ventana de devolución estándar",
+          "score": 0.4688
+        },
+        {
+          "chunk": "storage-pricing#2",
+          "section": "Tarifas de Almacenamiento > Inventario con más de 180 días sin movimiento (sin ventas ni salida…",
+          "score": 0.4577
+        },
+        {
+          "chunk": "storage-pricing#1",
+          "section": "Tarifas de Almacenamiento > Los primeros 30 días de cualquier producto nuevo en inventario no g…",
+          "score": 0.4259
+        }
+      ]
+    },
+    {
+      "id": "storage-03",
+      "question": "Un cliente grande pide un descuento en el almacenamiento, ¿se lo puedo ofrecer?",
+      "expected": "storage-pricing#4",
+      "rank": 1,
+      "expected_score": 0.5910294,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "storage-pricing#4",
+          "section": "Tarifas de Almacenamiento > Clientes con más de 50 metros cúbicos de volumen promedio mensual p…",
+          "score": 0.591
+        },
+        {
+          "chunk": "storage-pricing#2",
+          "section": "Tarifas de Almacenamiento > Inventario con más de 180 días sin movimiento (sin ventas ni salida…",
+          "score": 0.5438
+        },
+        {
+          "chunk": "storage-pricing#1",
+          "section": "Tarifas de Almacenamiento > Los primeros 30 días de cualquier producto nuevo en inventario no g…",
+          "score": 0.536
+        }
+      ]
+    },
+    {
+      "id": "storage-04",
+      "question": "¿Se paga almacenamiento por los productos que acaban de entrar al inventario?",
+      "expected": "storage-pricing#1",
+      "rank": 1,
+      "expected_score": 0.6956995,
+      "hit_at_k": true,
+      "top_3": [
+        {
+          "chunk": "storage-pricing#1",
+          "section": "Tarifas de Almacenamiento > Los primeros 30 días de cualquier producto nuevo en inventario no g…",
+          "score": 0.6957
+        },
+        {
+          "chunk": "storage-pricing#2",
+          "section": "Tarifas de Almacenamiento > Inventario con más de 180 días sin movimiento (sin ventas ni salida…",
+          "score": 0.6171
+        },
+        {
+          "chunk": "storage-pricing#0",
+          "section": "Tarifas de Almacenamiento > Tarifa estándar",
+          "score": 0.524
+        }
+      ]
+    }
+  ],
+  "out_of_scope": [
+    {
+      "id": "oos-01",
+      "question": "¿Cuál es el horario de atención telefónica de TrackFlow?",
+      "top_score": 0.5368427,
+      "top_chunk": "sla-delivery#2"
+    },
+    {
+      "id": "oos-02",
+      "question": "¿TrackFlow incluye seguro de mercancía en los envíos?",
+      "top_score": 0.5772544,
+      "top_chunk": "carrier-coverage#0"
+    },
+    {
+      "id": "oos-03",
+      "question": "¿Cuál es la política de privacidad y protección de datos personales?",
+      "top_score": 0.26591066,
+      "top_chunk": "returns-policy#3"
+    },
+    {
+      "id": "oos-04",
+      "question": "¿Cuántos empleados tiene la oficina de tecnología?",
+      "top_score": 0.18671706,
+      "top_chunk": "sla-delivery#1"
+    },
+    {
+      "id": "oos-05",
+      "question": "¿Qué receta lleva una paella valenciana?",
+      "top_score": 0.19603395,
+      "top_chunk": "carrier-coverage#1"
+    },
+    {
+      "id": "oos-06",
+      "question": "¿Cuál es el precio de la acción de TrackFlow en bolsa?",
+      "top_score": 0.736156,
+      "top_chunk": "storage-pricing#0"
+    }
+  ],
+  "threshold_sweep": [
+    {
+      "min_score": 0.0,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.01,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.02,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.03,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.04,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.05,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.06,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.07,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.08,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.09,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.1,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.11,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.12,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.13,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.14,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.15,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.16,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.17,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.18,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.0
+    },
+    {
+      "min_score": 0.19,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.16666666666666666
+    },
+    {
+      "min_score": 0.2,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.3333333333333333
+    },
+    {
+      "min_score": 0.21,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.3333333333333333
+    },
+    {
+      "min_score": 0.22,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.3333333333333333
+    },
+    {
+      "min_score": 0.23,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.3333333333333333
+    },
+    {
+      "min_score": 0.24,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.3333333333333333
+    },
+    {
+      "min_score": 0.25,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.3333333333333333
+    },
+    {
+      "min_score": 0.26,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.3333333333333333
+    },
+    {
+      "min_score": 0.27,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.28,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.29,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.3,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.31,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.32,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.33,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.34,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.35,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.36,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.37,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.38,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.39,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.4,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.41,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.42,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.43,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.44,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.45,
+      "recall_at_k": 0.8235294117647058,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.46,
+      "recall_at_k": 0.7647058823529411,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.47,
+      "recall_at_k": 0.7647058823529411,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.48,
+      "recall_at_k": 0.7647058823529411,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.49,
+      "recall_at_k": 0.7647058823529411,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.5,
+      "recall_at_k": 0.7647058823529411,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.51,
+      "recall_at_k": 0.7647058823529411,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.52,
+      "recall_at_k": 0.7647058823529411,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.53,
+      "recall_at_k": 0.7647058823529411,
+      "out_of_scope_rejection": 0.5
+    },
+    {
+      "min_score": 0.54,
+      "recall_at_k": 0.7058823529411765,
+      "out_of_scope_rejection": 0.6666666666666666
+    },
+    {
+      "min_score": 0.55,
+      "recall_at_k": 0.7058823529411765,
+      "out_of_scope_rejection": 0.6666666666666666
+    },
+    {
+      "min_score": 0.56,
+      "recall_at_k": 0.7058823529411765,
+      "out_of_scope_rejection": 0.6666666666666666
+    },
+    {
+      "min_score": 0.57,
+      "recall_at_k": 0.5882352941176471,
+      "out_of_scope_rejection": 0.6666666666666666
+    },
+    {
+      "min_score": 0.58,
+      "recall_at_k": 0.47058823529411764,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.59,
+      "recall_at_k": 0.4117647058823529,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.6,
+      "recall_at_k": 0.35294117647058826,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.61,
+      "recall_at_k": 0.35294117647058826,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.62,
+      "recall_at_k": 0.35294117647058826,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.63,
+      "recall_at_k": 0.29411764705882354,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.64,
+      "recall_at_k": 0.29411764705882354,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.65,
+      "recall_at_k": 0.29411764705882354,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.66,
+      "recall_at_k": 0.11764705882352941,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.67,
+      "recall_at_k": 0.11764705882352941,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.68,
+      "recall_at_k": 0.11764705882352941,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.69,
+      "recall_at_k": 0.11764705882352941,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.7,
+      "recall_at_k": 0.058823529411764705,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.71,
+      "recall_at_k": 0.058823529411764705,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.72,
+      "recall_at_k": 0.058823529411764705,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.73,
+      "recall_at_k": 0.058823529411764705,
+      "out_of_scope_rejection": 0.8333333333333334
+    },
+    {
+      "min_score": 0.74,
+      "recall_at_k": 0.058823529411764705,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.75,
+      "recall_at_k": 0.058823529411764705,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.76,
+      "recall_at_k": 0.058823529411764705,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.77,
+      "recall_at_k": 0.058823529411764705,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.78,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.79,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.8,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.81,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.82,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.83,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.84,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.85,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.86,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.87,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.88,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.89,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.9,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.91,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.92,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.93,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.94,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.95,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.96,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.97,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.98,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 0.99,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    },
+    {
+      "min_score": 1.0,
+      "recall_at_k": 0.0,
+      "out_of_scope_rejection": 1.0
+    }
+  ],
+  "embedding_provider": "fastembed",
+  "embedding_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+}
