@@ -1,3 +1,5 @@
-# Install in the service user's crontab after replacing paths and setting DB URLs.
-# Runs daily at 02:15 local time; TARGET_DATE is still resolved in UTC by the script.
-15 2 * * * cd /ruta/al/monorepo && /ruta/al/monorepo/services/api/.venv/bin/python scripts/nightly_export.py >> /ruta/al/monorepo/nightly-export.log 2>&1
+# Crontab del job nocturno de TrackFlow (instalar con: crontab scripts/nightly_export.cron.example
+# tras sustituir /ruta/al/monorepo por la ruta absoluta del checkout).
+# Se ejecuta a diario a las 02:15 hora del host; TARGET_DATE se resuelve en UTC (ayer).
+# El wrapper carga las URLs de BD desde ~/.config/trackflow/nightly-export.env (chmod 600).
+15 2 * * * /ruta/al/monorepo/scripts/nightly_export_cron.sh >> /ruta/al/monorepo/nightly-export.log 2>&1

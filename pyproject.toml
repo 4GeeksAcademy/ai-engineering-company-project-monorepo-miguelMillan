@@ -13,6 +13,15 @@ dependencies = [
 dev = [
     "pytest>=9.2.0",
 ]
+nightly = [
+    "prefect>=3.9.3",
+    "psycopg[binary]>=3.2",
+    "sqlalchemy>=2.1.8",
+    "sqlmodel>=0.0.50",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+
+[tool.uv]
+default-groups = ["dev", "nightly"]

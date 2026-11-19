@@ -1,5 +1,7 @@
 # Evidencias para el PR
 
+> **Actualización 2026-11-19:** ya hay evidencia de ejecución **real** contra Supabase (migraciones aplicadas, completed/failed/processing, concurrencia, re-ejecución, `pipeline_runs`, CSV completo y wrapper de cron) en [`real-run/README.md`](real-run/README.md). Los archivos de abajo son la evidencia previa y se conservan como histórico; el log de éxito sigue siendo ilustrativo.
+
 - `cron-proposal.svg`: plantilla cron propuesta; no instalada en el host.
 - `successful-run-example.svg` / `successful-run-example.log`: formato de log de éxito **ilustrativo**, no ejecución real.
 - `nightly-export-failed.svg` / `nightly-export-failed.log`: fallo real capturado. El job se detuvo antes de escribir CSV o ejecutar pipeline porque `public.job_runs` no existe en la BD conectada.

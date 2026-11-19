@@ -1,0 +1,295 @@
+2026-11-19 17:59:07,983 job=nightly_export status=INFO status=processing event=start target_date=2026-11-15 run_id=95a91dbd-d362-46f0-b512-af985232a1e8
+2026-11-19 17:59:08,598 job=nightly_export status=INFO status=processing action=snapshot_exported path=/workspaces/nightly-export-evidence/mock_data/raw/telemetry_2026-11-15.csv
+17:59:15.782 | INFO    | prefect - Starting temporary server on http://127.0.0.1:8848
+See https://www.prefect.io/docs/v3/concepts/server#how-to-guides for more information on running a dedicated Prefect server.
+17:59:25.910 | ERROR   | docket.dependencies - ↩ [    46ms] send_telemetry_heartbeat(){send_telemetry_heartbeat}
+Traceback (most recent call last):
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1977, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 1192, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/connectors/asyncio.py", line 258, in execute
+    self._adapt_connection._handle_exception(error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/connectors/asyncio.py", line 412, in _handle_exception
+    self._handle_exception_no_connection(self.dbapi, error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py", line 237, in _handle_exception_no_connection
+    super()._handle_exception_no_connection(dbapi, error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/connectors/asyncio.py", line 409, in _handle_exception_no_connection
+    raise error.with_traceback(exc_info[2])
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/connectors/asyncio.py", line 256, in execute
+    return await_(self._execute_async(operation, parameters))
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/util/concurrency.py", line 171, in await_
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/util/concurrency.py", line 209, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/connectors/asyncio.py", line 279, in _execute_async
+    result = await self._cursor.execute(operation, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/aiosqlite/cursor.py", line 40, in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/aiosqlite/cursor.py", line 32, in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/aiosqlite/core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/aiosqlite/core.py", line 63, in _connection_worker_thread
+    result = function()
+sqlite3.OperationalError: database is locked
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/docket/worker.py", line 1163, in _execute
+    result = await execution.function(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+        *execution.args, **final_kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/server/services/telemetry.py", line 80, in send_telemetry_heartbeat
+    session_start_timestamp, session_id = await _fetch_or_set_telemetry_session(db=db)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/server/services/telemetry.py", line 54, in _fetch_or_set_telemetry_session
+    await configuration.write_configuration(session, telemetry_session)
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/server/models/configuration.py", line 29, in write_configuration
+    await session.flush()
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/ext/asyncio/session.py", line 1031, in flush
+    await greenlet_spawn(self.sync_session.flush, objects=objects)
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/util/concurrency.py", line 216, in greenlet_spawn
+    result = context.switch(value)
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/orm/session.py", line 4626, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "<sqlalchemy generated warned() wrapper for sqlalchemy.orm.session.Session._flush>", line 2, in _flush
+    return target(fn, self, objects=objects)
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/util/deprecations.py", line 281, in warned
+    return fn(*args, **kwargs)  # type: ignore[no-any-return]
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/orm/session.py", line 4769, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/orm/session.py", line 4730, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/orm/unitofwork.py", line 467, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/orm/unitofwork.py", line 643, in execute
+    util.preloaded.orm_persistence._save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/orm/persistence.py", line 92, in _save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/orm/persistence.py", line 1250, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1494, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/sql/elements.py", line 534, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1714, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<9 lines>...
+        param_dict=param_dict,
+    )
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1868, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1996, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 2351, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1977, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 1192, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/connectors/asyncio.py", line 258, in execute
+    self._adapt_connection._handle_exception(error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/connectors/asyncio.py", line 412, in _handle_exception
+    self._handle_exception_no_connection(self.dbapi, error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py", line 237, in _handle_exception_no_connection
+    super()._handle_exception_no_connection(dbapi, error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/connectors/asyncio.py", line 409, in _handle_exception_no_connection
+    raise error.with_traceback(exc_info[2])
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/connectors/asyncio.py", line 256, in execute
+    return await_(self._execute_async(operation, parameters))
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/util/concurrency.py", line 171, in await_
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/util/concurrency.py", line 209, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/sqlalchemy/connectors/asyncio.py", line 279, in _execute_async
+    result = await self._cursor.execute(operation, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/aiosqlite/cursor.py", line 40, in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/aiosqlite/cursor.py", line 32, in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/aiosqlite/core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/aiosqlite/core.py", line 63, in _connection_worker_thread
+    result = function()
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+[SQL: INSERT INTO configuration ("key", value, id, created, updated) VALUES (:key, :value, :id, :created, :updated)]
+[parameters: {'key': 'TELEMETRY_SESSION', 'value': '{"session_id": "89714607-2c06-4b3b-92e2-446e229151db", "session_start_timestamp": "2026-11-19T17:59:25.903268+00:00"}', 'id': 'c76c292c-d853-4bc4-a688-092676be19b6', 'created': '2026-11-19 17:59:25.906943', 'updated': '2026-11-19 17:59:25.906954'}]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+17:59:26.388 | INFO    | Flow run 'hilarious-badger' - Beginning flow run 'hilarious-badger' for flow 'weekly-warehouse-client-performance'
+17:59:26.423 | ERROR   | Flow run 'hilarious-badger' - Encountered exception during execution: RuntimeError('Configura REPORTING_WRITE_DATABASE_URL para ejecutar el pipeline.')
+Traceback (most recent call last):
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/flow_engine.py", line 1372, in run_context
+    yield self
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/flow_engine.py", line 2173, in run_flow_sync
+    engine.call_flow_fn()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/flow_engine.py", line 1394, in call_flow_fn
+    result = call_with_parameters(self.flow.fn, self.parameters)
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/utilities/callables/__init__.py", line 404, in call_with_parameters
+    return fn(*args, **kwargs)
+  File "/workspaces/nightly-export-evidence/mock_data/pipelines/pipeline.py", line 658, in weekly_warehouse_client_performance_flow
+    with _weekly_pipeline_run_lock(resolved_week_start) as lock_acquired:
+         ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/codespace/.python/current/lib/python3.14/contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "/workspaces/nightly-export-evidence/mock_data/pipelines/pipeline.py", line 71, in _weekly_pipeline_run_lock
+    _database_url("REPORTING_WRITE_DATABASE_URL"),
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/mock_data/pipelines/pipeline.py", line 60, in _database_url
+    raise RuntimeError(f"Configura {environment_variable} para ejecutar el pipeline.")
+RuntimeError: Configura REPORTING_WRITE_DATABASE_URL para ejecutar el pipeline.
+17:59:26.478 | INFO    | Flow run 'hilarious-badger' - Finished in state Failed('Flow run encountered an exception: RuntimeError: Configura REPORTING_WRITE_DATABASE_URL para ejecutar el pipeline.')
+Traceback (most recent call last):
+  File "/workspaces/nightly-export-evidence/mock_data/pipelines/pipeline.py", line 714, in <module>
+    main()
+    ~~~~^^
+  File "/workspaces/nightly-export-evidence/mock_data/pipelines/pipeline.py", line 707, in main
+    weekly_warehouse_client_performance_flow(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        week_start=arguments.week_start,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        trigger=arguments.trigger,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/flows.py", line 1912, in __call__
+    return run_flow(
+        flow=self,
+    ...<2 lines>...
+        return_type=return_type,
+    )
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/flow_engine.py", line 2332, in run_flow
+    ret_val = run_flow_sync(**kwargs)
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/flow_engine.py", line 2175, in run_flow_sync
+    return engine.state if return_type == "state" else engine.result()
+                                                       ~~~~~~~~~~~~~^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/flow_engine.py", line 817, in result
+    raise self._raised
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/flow_engine.py", line 1372, in run_context
+    yield self
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/flow_engine.py", line 2173, in run_flow_sync
+    engine.call_flow_fn()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/flow_engine.py", line 1394, in call_flow_fn
+    result = call_with_parameters(self.flow.fn, self.parameters)
+  File "/workspaces/nightly-export-evidence/.venv/lib/python3.14/site-packages/prefect/utilities/callables/__init__.py", line 404, in call_with_parameters
+    return fn(*args, **kwargs)
+  File "/workspaces/nightly-export-evidence/mock_data/pipelines/pipeline.py", line 658, in weekly_warehouse_client_performance_flow
+    with _weekly_pipeline_run_lock(resolved_week_start) as lock_acquired:
+         ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/codespace/.python/current/lib/python3.14/contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "/workspaces/nightly-export-evidence/mock_data/pipelines/pipeline.py", line 71, in _weekly_pipeline_run_lock
+    _database_url("REPORTING_WRITE_DATABASE_URL"),
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/mock_data/pipelines/pipeline.py", line 60, in _database_url
+    raise RuntimeError(f"Configura {environment_variable} para ejecutar el pipeline.")
+RuntimeError: Configura REPORTING_WRITE_DATABASE_URL para ejecutar el pipeline.
+17:59:26.501 | WARNING | EventsWorker - Still processing items: 1 items remaining...
+17:59:26.519 | INFO    | prefect - Stopping temporary server on http://127.0.0.1:8848
+2026-11-19 17:59:27,701 job=nightly_export status=ERROR status=failed target_date=2026-11-15 error=CalledProcessError: Command '('/workspaces/nightly-export-evidence/.venv/bin/python', '/workspaces/nightly-export-evidence/mock_data/pipelines/pipeline.py', '--week-start', '2026-11-09', '--trigger', 'scheduled')' returned non-zero exit status 1.
+Traceback (most recent call last):
+  File "/workspaces/nightly-export-evidence/scripts/nightly_export.py", line 151, in main
+    run_pipeline(target_date)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/scripts/nightly_export.py", line 118, in run_pipeline
+    subprocess.run(command, cwd=ROOT, check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/codespace/.python/current/lib/python3.14/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '('/workspaces/nightly-export-evidence/.venv/bin/python', '/workspaces/nightly-export-evidence/mock_data/pipelines/pipeline.py', '--week-start', '2026-11-09', '--trigger', 'scheduled')' returned non-zero exit status 1.
+Traceback (most recent call last):
+  File "/workspaces/nightly-export-evidence/scripts/nightly_export.py", line 184, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/workspaces/nightly-export-evidence/scripts/nightly_export.py", line 151, in main
+    run_pipeline(target_date)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/workspaces/nightly-export-evidence/scripts/nightly_export.py", line 118, in run_pipeline
+    subprocess.run(command, cwd=ROOT, check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/codespace/.python/current/lib/python3.14/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '('/workspaces/nightly-export-evidence/.venv/bin/python', '/workspaces/nightly-export-evidence/mock_data/pipelines/pipeline.py', '--week-start', '2026-11-09', '--trigger', 'scheduled')' returned non-zero exit status 1.
