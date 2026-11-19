@@ -1,0 +1,5 @@
+18:00:28 2026-11-15 failed 95a91dbd CalledProcessError: Command '('/workspaces/nightly-export-evidence/.venv/bin/python', '/workspaces/nightly-export-evidence/mock_data/pipelines/pipeline.py', '--week-start', '2026-11-09', '--trigger', 'scheduled')' returned non-zero exit status 1.
+18:00:28 2026-11-15 completed e5b79487 
+18:00:28 2026-11-15 completed 98e43928 
+18:00:31 2026-11-15 completed 2acd7679 
+18:00:31 2026-11-15 completed 28a0be16 

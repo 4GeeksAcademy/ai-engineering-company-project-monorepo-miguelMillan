@@ -1,0 +1,24 @@
+2026-11-19 18:02:00,025 job=nightly_export status=INFO status=processing event=start target_date=2026-11-14 run_id=dca6f6d0-dfe8-4009-bedd-39110a92fe5e
+2026-11-19 18:02:00,635 job=nightly_export status=INFO status=processing action=snapshot_exported path=/workspaces/nightly-export-evidence/mock_data/raw/telemetry_2026-11-14.csv
+18:02:05.386 | INFO    | prefect - Starting temporary server on http://127.0.0.1:8830
+See https://www.prefect.io/docs/v3/concepts/server#how-to-guides for more information on running a dedicated Prefect server.
+18:02:09.970 | INFO    | Flow run 'messy-mushroom' - Beginning flow run 'messy-mushroom' for flow 'weekly-warehouse-client-performance'
+18:02:11.373 | INFO    | Task run 'record-pipeline-run-4e6' - Finished in state Completed()
+18:02:11.508 | INFO    | Flow run 'exceptional-barracuda' - Beginning subflow run 'exceptional-barracuda' for flow 'extract-weekly-performance'
+18:02:11.515 | INFO    | Task run 'extract-telemetry-events-865' - Finished in state Cached(type=COMPLETED)
+18:02:11.553 | INFO    | Flow run 'exceptional-barracuda' - Finished in state Completed()
+18:02:12.178 | INFO    | Task run 'record-pipeline-run-056' - Finished in state Completed()
+18:02:12.326 | INFO    | Flow run 'cordial-sambar' - Beginning subflow run 'cordial-sambar' for flow 'transform-weekly-performance'
+18:02:12.333 | INFO    | Task run 'prepare-weekly-events-6d6' - Finished in state Completed()
+18:02:12.387 | INFO    | Flow run 'cordial-sambar' - Finished in state Completed()
+18:02:12.950 | INFO    | Task run 'record-pipeline-run-4ed' - Finished in state Completed()
+18:02:13.097 | INFO    | Flow run 'talented-leech' - Beginning subflow run 'talented-leech' for flow 'load-weekly-performance'
+18:02:13.102 | INFO    | Task run 'load-weekly-performance-dfa' - Finished in state Cached(type=COMPLETED)
+18:02:13.141 | INFO    | Flow run 'talented-leech' - Finished in state Completed()
+18:02:13.728 | INFO    | Task run 'record-pipeline-run-f25' - Finished in state Completed()
+18:02:13.903 | INFO    | Flow run 'knowing-gibbon' - Beginning subflow run 'knowing-gibbon' for flow 'export-weekly-evaluation'
+18:02:13.909 | INFO    | Task run 'write-evaluation-snapshot-319' - Finished in state Cached(type=COMPLETED)
+18:02:13.954 | INFO    | Flow run 'knowing-gibbon' - Finished in state Completed()
+18:02:14.072 | INFO    | Flow run 'messy-mushroom' - Finished in state Completed()
+18:02:14.088 | INFO    | prefect - Stopping temporary server on http://127.0.0.1:8830
+2026-11-19 18:02:15,354 job=nightly_export status=INFO status=completed target_date=2026-11-14 run_id=dca6f6d0-dfe8-4009-bedd-39110a92fe5e

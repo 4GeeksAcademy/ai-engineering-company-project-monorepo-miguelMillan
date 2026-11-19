@@ -1,0 +1,5 @@
+# Crontab del job nocturno de TrackFlow (instalar con: crontab scripts/nightly_export.cron.example
+# tras sustituir /workspaces/nightly-export-evidence por la ruta absoluta del checkout).
+# Se ejecuta a diario a las 02:15 hora del host; TARGET_DATE se resuelve en UTC (ayer).
+# El wrapper carga las URLs de BD desde ~/.config/trackflow/nightly-export.env (chmod 600).
+15 2 * * * /workspaces/nightly-export-evidence/scripts/nightly_export_cron.sh >> /workspaces/nightly-export-evidence/nightly-export.log 2>&1

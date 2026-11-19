@@ -53,10 +53,28 @@ script usa `DATABASE_URL`. Las migraciones de telemetría, reporting y
 
 Ejecución manual desde la raíz (con el entorno Python del proyecto instalado):
 
+Entorno reproducible (pyproject raíz, grupos `nightly` y `dev` por defecto;
+incluye el driver `psycopg`, que SQLAlchemy 2.1 usa por defecto para
+`postgresql://`):
+
 ```bash
-python scripts/nightly_export.py
-TARGET_DATE=2026-11-17 python scripts/nightly_export.py
+uv sync
+export DATABASE_URL=...                 # job_runs
+export REPORTING_READ_DATABASE_URL=...  # pipeline: lectura de telemetry_events
+export REPORTING_WRITE_DATABASE_URL=... # pipeline: escritura en reporting.*
+uv run python scripts/nightly_export.py
+TARGET_DATE=2026-11-15 uv run python scripts/nightly_export.py
+uv run pytest tests -q
 ```
+
+El job usa `DATABASE_URL` como respaldo, pero el pipeline exige las dos
+variables `REPORTING_*` de forma explícita; sin ellas la ejecución termina en
+`failed` (ver `docs/pr-evidence/real-run/01-failed-missing-reporting-url.log`).
+
+Migraciones necesarias, en orden: `20261116170800_create_reporting_pipeline_tables.sql`,
+`20261116180000_add_prefect_run_id_and_skipped_status.sql` y
+`20261118100000_create_job_runs.sql`. Evidencia de ejecución real contra
+Supabase en `docs/pr-evidence/real-run/README.md`.
 
 El módulo `services/job_runner.py` mantiene `public.job_runs`. Una fila con
 `status='processing'` actúa como lock: la nueva invocación se registra como
@@ -73,17 +91,39 @@ capturables del runner sí se marcan `failed`.
 
 El disparador elegido es **cron del sistema operativo**, porque el job es un
 proceso batch independiente y no debe depender del ciclo de vida ni del hilo de
-FastAPI. Tras configurar las variables de entorno de conexión en el entorno del
-usuario de cron, instalarlo por ejemplo a las 02:15 hora local con:
+FastAPI.
 
-La entrada de ejemplo está disponible en `scripts/nightly_export.cron.example`.
-El ejemplo no está instalado/configurado en este repositorio: hay que
-incorporarlo al crontab del host, definir allí las variables DB y reemplazar
-las rutas de ejemplo.
+cron arranca con un entorno mínimo, así que se invoca el wrapper
+`scripts/nightly_export_cron.sh`: fija `PATH`, carga las URLs de BD desde un
+archivo **fuera del repo** (`~/.config/trackflow/nightly-export.env`, o el que
+indique `NIGHTLY_EXPORT_ENV_FILE`), valida que estén las tres variables y
+ejecuta `uv run --frozen python scripts/nightly_export.py` bajo `flock` (evita
+solapes en el mismo host; el lock entre hosts sigue siendo `job_runs`).
+
+Instalación en el host (Ubuntu/Debian):
+
+```bash
+sudo apt-get install -y cron && sudo service cron start
+mkdir -p ~/.config/trackflow && chmod 700 ~/.config/trackflow
+cat > ~/.config/trackflow/nightly-export.env <<'ENV'
+DATABASE_URL=postgresql://...
+REPORTING_READ_DATABASE_URL=postgresql://...
+REPORTING_WRITE_DATABASE_URL=postgresql://...
+ENV
+chmod 600 ~/.config/trackflow/nightly-export.env
+sed "s#/ruta/al/monorepo#$(pwd)#g" scripts/nightly_export.cron.example | crontab -
+crontab -l
+```
+
+Entrada instalada (`scripts/nightly_export.cron.example`), a diario a las 02:15
+hora del host:
 
 ```cron
-15 2 * * * cd /ruta/al/monorepo && /ruta/al/monorepo/services/api/.venv/bin/python scripts/nightly_export.py >> /ruta/al/monorepo/nightly-export.log 2>&1
+15 2 * * * /ruta/al/monorepo/scripts/nightly_export_cron.sh >> /ruta/al/monorepo/nightly-export.log 2>&1
 ```
+
+Para comprobar el wrapper sin esperar a las 02:15 (no-op si el día ya está
+completado): `TARGET_DATE=2026-11-15 scripts/nightly_export_cron.sh`.
 
 La fecha objetivo se resuelve en UTC independientemente de la zona horaria de
 cron. La exclusión entre instancias se basa exclusivamente en el estado
