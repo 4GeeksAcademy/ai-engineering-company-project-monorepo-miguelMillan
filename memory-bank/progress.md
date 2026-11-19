@@ -18,7 +18,9 @@
   - Acción correctiva: anclar el total anual al crecimiento de Y−2 → RMSE 39.339 ± 5.007 EUR en CV, mejora en 4 de 5 folds. Añadirlo como feature se probó y no bastó.
 - Reporte `mock_data/eval/evaluation_report.md`: RMSE como métrica de negocio (MSE pedido por el CONTEXT y picos de noviembre–diciembre); recomienda no promover a staging sin la corrección.
 - Tests: `tests/pipelines/test_sales_forecast_evaluation.py` (4 tests: orden cronológico, rechazo de folds barajados o invertidos, sin fuga en el borde del fold, MAE/RMSE). `uv run pytest tests/pipelines/test_sales_forecast*.py -q` → 10 passed.
-- Pendiente: implementar el ancla como opción del entrenamiento, validarla con horizonte de 24 meses y solo después evaluar una vez en 2024–2025. Sin commit.
+- Revisión posterior: el pull no había actualizado la rama, así que se integró `origin/main` (#32–#34). Único conflicto en `progress.md`, resuelto conservando ambas entradas. `uv run pytest tests -q` → 31 passed, también sin variables de BD.
+- CI: el repo no tenía workflows. Añadido `.github/workflows/python-tests.yml` (uv 0.13.9, `uv sync --frozen`, `pytest tests/pipelines -v` y suite `tests/`) para verificar los tests en GitHub Actions.
+- Pendiente: implementar el ancla como opción del entrenamiento, validarla con horizonte de 24 meses y solo después evaluar una vez en 2024–2025.
 
 ## Revisión del PR #31 (tareas asíncronas): demostración real, backoff y latencia del 202, 2026-11-19
 
