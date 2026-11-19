@@ -97,13 +97,67 @@ def test_task_status_reports_lifecycle_states(authenticated_client, monkeypatch)
             assert response.json()["error"] == "La tarea agotó sus reintentos y no pudo completarse."
 
 
-def test_analysis_task_uses_three_exponential_retries():
+def test_analysis_task_uses_three_retries_without_celery_autoretry_jitter():
     from tasks import IncidentAnalysisTask
 
     assert IncidentAnalysisTask.max_retries == 3
-    assert IncidentAnalysisTask.retry_backoff is True
-    assert IncidentAnalysisTask.retry_jitter is True
-    assert IncidentAnalysisTask.autoretry_for == (Exception,)
+    # Celery autoretry + retry_jitter usa randrange(countdown + 1) y puede dar 0 s.
+    assert not getattr(IncidentAnalysisTask, "autoretry_for", ())
+
+
+def test_retry_countdown_has_floor_and_bounded_jitter():
+    from tasks import RETRY_MAX_SECONDS, retry_countdown
+
+    # Peor caso del jitter (rand=0): nunca baja del exponencial base 2, 4, 8 s.
+    assert [retry_countdown(n, rand=lambda: 0.0) for n in range(3)] == [2, 4, 8]
+    # Mejor caso: como mucho un 25 % adicional.
+    assert [retry_countdown(n, rand=lambda: 1.0) for n in range(3)] == [2.5, 5.0, 10.0]
+    assert retry_countdown(20, rand=lambda: 1.0) == RETRY_MAX_SECONDS
+    assert min(retry_countdown(0) for _ in range(1000)) >= 2
+
+
+def test_failure_schedules_retry_with_floor_countdown(monkeypatch):
+    import pytest
+    from celery.exceptions import Retry
+
+    import tasks
+
+    calls = {}
+
+    def failing(_task_id):
+        raise ValueError("CSV inválido")
+
+    def fake_retry(*, exc, countdown):
+        calls.update(exc=exc, countdown=countdown)
+        return Retry(exc=exc, when=countdown)
+
+    monkeypatch.setattr(tasks, "_analyze_stored_csv", failing)
+    monkeypatch.setattr(tasks.analyze_incident_csv, "retry", fake_retry)
+    tasks.analyze_incident_csv.push_request(retries=0)
+    try:
+        with pytest.raises(Retry):
+            tasks.analyze_incident_csv.run(str(uuid4()))
+    finally:
+        tasks.analyze_incident_csv.pop_request()
+    assert 2.0 <= calls["countdown"] <= 2.5
+    assert isinstance(calls["exc"], ValueError)
+
+
+def test_exhausted_retries_reraise_original_error(monkeypatch):
+    import pytest
+
+    import tasks
+
+    def failing(_task_id):
+        raise ValueError("CSV inválido")
+
+    monkeypatch.setattr(tasks, "_analyze_stored_csv", failing)
+    tasks.analyze_incident_csv.push_request(retries=3)
+    try:
+        with pytest.raises(ValueError, match="CSV inválido"):
+            tasks.analyze_incident_csv.run(str(uuid4()))
+    finally:
+        tasks.analyze_incident_csv.pop_request()
 
 
 def test_terminal_failure_is_recorded_in_dead_letter_table(monkeypatch):
@@ -168,3 +222,21 @@ def test_export_returns_csv_for_successful_task(authenticated_client, monkeypatc
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
     assert "total_records,1" in response.text
+
+def test_task_input_skips_fsync_by_default_and_honours_opt_in(monkeypatch, tmp_path):
+    import task_storage
+
+    calls = []
+    monkeypatch.setenv("TASK_INPUT_DIR", str(tmp_path))
+    monkeypatch.setattr(task_storage.os, "fsync", lambda fd: calls.append(fd))
+
+    monkeypatch.delenv("TASK_INPUT_FSYNC", raising=False)
+    first = str(uuid4())
+    task_storage.store_task_input(first, b"a,b\n")
+    assert calls == []
+    assert (tmp_path / f"{first}.csv").read_bytes() == b"a,b\n"
+    assert not list(tmp_path.glob("*.tmp"))
+
+    monkeypatch.setenv("TASK_INPUT_FSYNC", "1")
+    task_storage.store_task_input(str(uuid4()), b"a,b\n")
+    assert len(calls) == 1

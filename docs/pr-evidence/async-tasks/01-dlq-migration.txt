@@ -1,0 +1,9 @@
+antes: public.task_dead_letters = None
+aplicada supabase/migrations/20261118120000_create_task_dead_letters.sql
+después: task_dead_letters
+   task_id uuid NO
+   task_name text NO
+   attempts integer NO
+   error text NO
+   failed_at timestamp with time zone NO
+filas: 0

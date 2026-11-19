@@ -4,6 +4,7 @@ from uuid import UUID
 
 from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 
 from security import get_current_user
@@ -21,8 +22,10 @@ async def _enqueue_csv(request: Request, content: bytes):
         raise HTTPException(status_code=400, detail="Falta el identificador de tarea generado por el gateway.")
     try:
         task_id = str(UUID(task_id))
-        store_task_input(task_id, content)
-        analyze_incident_csv.apply_async(args=[task_id], task_id=task_id)
+        # Escritura en disco y publicación en Redis son bloqueantes: se ejecutan
+        # en el threadpool para no frenar el event loop del resto de peticiones.
+        await run_in_threadpool(store_task_input, task_id, content)
+        await run_in_threadpool(lambda: analyze_incident_csv.apply_async(args=[task_id], task_id=task_id))
     except Exception as error:
         if task_id:
             try:
