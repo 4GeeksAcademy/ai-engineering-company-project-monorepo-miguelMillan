@@ -84,3 +84,15 @@ El área sombreada es el P10–P90 de 500 trayectorias recursivas, una por árbo
 - Solo se usa la serie consolidada, sin separar por mercado. El PSI del mix es una aproximación.
 - La banda de variabilidad no está calibrada. Con solo 24 meses de prueba no se puede validar su cobertura de forma fiable.
 - El crecimiento alterno (alto, bajo) es difícil de aprender con 6 ciclos anuales, y es la principal fuente de error residual.
+
+## Evaluación técnica (validación cruzada temporal y curva de aprendizaje)
+
+```bash
+uv run python scripts/evaluate_sales_forecast.py
+uv run pytest tests/pipelines/test_sales_forecast_evaluation.py -q
+```
+
+- [`evaluate_sales_forecast.py`](evaluate_sales_forecast.py) usa `TimeSeriesSplit(n_splits=5, test_size=12)` solo sobre el entrenamiento 2016–2023. Cada fold valida un año completo, de 2019 a 2023. Las features se recalculan por fold y la validación es recursiva, así que no hay fuga de lags ni rodantes en el borde.
+- MAE y RMSE de entrenamiento y validación, como media ± desviación estándar entre folds. La validación da RMSE 50.898 ± 12.818 EUR (4,89 ± 1,60 %).
+- Curva de aprendizaje en `mock_data/eval/learning_curve.png` (el `data/eval/` del enunciado).
+- Reporte con diagnóstico, métrica de negocio y acción correctiva en [`mock_data/eval/evaluation_report.md`](../mock_data/eval/evaluation_report.md). El diagnóstico es underfitting localizado en el nivel anual, sin overfitting. La acción correctiva ancla el total anual al crecimiento alterno; en CV deja el RMSE en 39.339 ± 5.007 EUR.

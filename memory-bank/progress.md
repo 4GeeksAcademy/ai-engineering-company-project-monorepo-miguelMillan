@@ -1,5 +1,25 @@
 # Progress Log — TrackFlow
 
+## Evaluación técnica del modelo de pronóstico de ventas, 2026-11-19
+
+- Contexto nuevo (evaluación del modelo) archivado en `memory-bank/history/SALES-FORECAST-MODEL-EVALUATION-CONTEXT-2026-11-19.md`. No había copia previa; verificado con `cmp`. `CONTEXT.md` sin modificar. Trabajo en la rama actual `feature/regression-model-eval`.
+- Reproducibilidad confirmada: `train_sales_forecast.py` vuelve a dar RMSE 3,67 %, K2 0,92 y Gini 0,93 en prueba, con diferencias solo de redondeo (decimal 15, por `n_jobs`). Se restauró `metrics.json` para no meter ruido en el diff. Sin dependencias nuevas.
+- Nuevo `scripts/evaluate_sales_forecast.py`:
+  - `TimeSeriesSplit` de 5 folds, ventana expansiva, cada fold valida un año completo de 2019 a 2023; 2024–2025 sin tocar.
+  - Chequeo explícito de orden cronológico.
+  - Sin fuga por fold: imputación y features solo con los meses anteriores al corte, y validación recursiva sin valores reales.
+  - MAE y RMSE de entrenamiento y validación como media ± desviación estándar.
+  - Curva de aprendizaje en `mock_data/eval/learning_curve.png` con el suelo de ruido.
+  - Experimento de acción correctiva.
+- Resultados:
+  - Validación: RMSE 50.898 ± 12.818 EUR (4,89 ± 1,60 %) y MAE 43.149 ± 11.697 EUR.
+  - Entrenamiento: RMSE 2,65 %, frente a un suelo de ruido de 2,57 %.
+  - Diagnóstico: underfitting localizado en el nivel anual, sin overfitting. El sesgo alterna de signo con el crecimiento X±Y.
+  - Acción correctiva: anclar el total anual al crecimiento de Y−2 → RMSE 39.339 ± 5.007 EUR en CV, mejora en 4 de 5 folds. Añadirlo como feature se probó y no bastó.
+- Reporte `mock_data/eval/evaluation_report.md`: RMSE como métrica de negocio (MSE pedido por el CONTEXT y picos de noviembre–diciembre); recomienda no promover a staging sin la corrección.
+- Tests: `tests/pipelines/test_sales_forecast_evaluation.py` (4 tests: orden cronológico, rechazo de folds barajados o invertidos, sin fuga en el borde del fold, MAE/RMSE). `uv run pytest tests/pipelines/test_sales_forecast*.py -q` → 10 passed.
+- Pendiente: implementar el ancla como opción del entrenamiento, validarla con horizonte de 24 meses y solo después evaluar una vez en 2024–2025. Sin commit.
+
 ## Archivo de contexto del modelo de pronóstico de ventas, 2026-11-19
 
 - Archivada copia literal de `CONTEXT.md` en `memory-bank/history/SALES-FORECAST-MODEL-CONTEXT-2026-11-19.md`. Antes se comparó con `cmp -s` contra todos los archivos de `memory-bank/history/`: ninguno era idéntico y no existía copia de este contexto. La copia se verificó con `cmp` (idéntica).
