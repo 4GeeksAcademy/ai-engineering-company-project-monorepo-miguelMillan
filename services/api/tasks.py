@@ -1,3 +1,4 @@
+import random
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,11 +19,26 @@ if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
 
+RETRY_BASE_SECONDS = 2
+RETRY_MAX_SECONDS = 600
+RETRY_JITTER_RATIO = 0.25
+
+
+def retry_countdown(retries: int, rand=random.random) -> float:
+    """Backoff exponencial con suelo garantizado y jitter solo hacia arriba.
+
+    El retry_jitter de Celery usa ``randrange(countdown + 1)``, por lo que el
+    primer reintento podía salir a 0 s. Aquí el retardo nunca baja del valor
+    exponencial base (2 s, 4 s, 8 s...) y el jitter suma como mucho un 25 %
+    adicional para desincronizar workers, con tope en RETRY_MAX_SECONDS.
+    """
+    base = min(RETRY_MAX_SECONDS, RETRY_BASE_SECONDS * (2 ** retries))
+    return min(RETRY_MAX_SECONDS, base + base * RETRY_JITTER_RATIO * rand())
+
+
 class IncidentAnalysisTask(Task):
-    autoretry_for = (Exception,)
-    retry_backoff = True
-    retry_backoff_max = 600
-    retry_jitter = True
+    # Los reintentos se programan explícitamente con retry_countdown(); no se
+    # usa autoretry_for/retry_jitter de Celery para evitar countdowns de 0 s.
     max_retries = 3
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
@@ -65,6 +81,25 @@ class IncidentAnalysisTask(Task):
 @app.task(bind=True, base=IncidentAnalysisTask, name="tasks.analyze_incident_csv")
 def analyze_incident_csv(self, task_id: str) -> dict:
     """Load a task's CSV by ID and return its report and downloadable CSV."""
+    try:
+        return _analyze_stored_csv(task_id)
+    except Exception as error:
+        attempt = self.request.retries + 1
+        if self.request.retries >= self.max_retries:
+            logger.error(
+                "task_id=%s attempt=%s/%s status=exhausted error=%s: %s",
+                task_id, attempt, self.max_retries + 1, type(error).__name__, error,
+            )
+            raise
+        countdown = retry_countdown(self.request.retries)
+        logger.warning(
+            "task_id=%s attempt=%s/%s status=retry countdown=%.2fs error=%s: %s",
+            task_id, attempt, self.max_retries + 1, countdown, type(error).__name__, error,
+        )
+        raise self.retry(exc=error, countdown=countdown)
+
+
+def _analyze_stored_csv(task_id: str) -> dict:
     clean_stale_task_inputs()
     csv_text = load_task_input(task_id)
     if len(csv_text.encode("utf-8")) > 10 * 1024 * 1024:

@@ -1,0 +1,7 @@
+# POST /internal/tasks/analyze (adaptador del gateway) — CSV válido
+{"task_id":"bad2cc3a-dc4d-491f-943b-01179393c937","status_url":"/tasks/bad2cc3a-dc4d-491f-943b-01179393c937"}
+HTTP 202 time_total=0.181764s
+
+# POST /internal/tasks/analyze — CSV con cabecera inválida (fallará en el worker)
+{"task_id":"8f378b2d-e626-4041-95ce-60e72b8c75a3","status_url":"/tasks/8f378b2d-e626-4041-95ce-60e72b8c75a3"}
+HTTP 202 time_total=0.010476s

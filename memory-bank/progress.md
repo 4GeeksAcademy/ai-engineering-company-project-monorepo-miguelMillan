@@ -1,5 +1,28 @@
 # Progress Log — TrackFlow
 
+## Revisión del PR #31 (tareas asíncronas): demostración real, backoff y latencia del 202, 2026-11-19
+
+- Rama `fix/async-tasks-evidence` creada desde `main` en un worktree aparte, porque el PR #31 ya estaba fusionado. Evidencia en `docs/pr-evidence/async-tasks/`.
+- Migración `20261118120000_create_task_dead_letters.sql` aplicada en Supabase; antes la tabla no existía.
+- Servicios levantados por separado, porque compose exige `.env` (ruta protegida, no existe):
+  - Redis 7 en Docker con AOF y `noeviction`.
+  - Worker Celery como proceso aparte.
+  - Flower con basic-auth.
+  - API uvicorn.
+  - Secretos de la demo efímeros, fuera del repositorio.
+- Demo real:
+  - Tarea válida → SUCCESS (100 registros).
+  - CSV con cabecera inválida → 3 reintentos (esperas reales de 2,41 s, 4,10 s y 9,62 s) → FAILURE y fila en `public.task_dead_letters` con `attempts=4` y traceback.
+  - Capturas de Flower con una tarea completada y otra fallida (Retries 3) tomadas con Chromium headless (Playwright, instalado fuera del repositorio).
+- Backoff: se sustituye `autoretry_for` + `retry_jitter` de Celery (`randrange(countdown+1)` podía dar 0 s) por `retry_countdown()`: base 2·2ⁿ s, tope 600 s, jitter de +0–25 %, sin bajar nunca del mínimo. Cada reintento queda en el log con `attempt=N/4 status=retry countdown=…`.
+- Latencia del 202:
+  - Desglose con 10 MB: el `fsync` costaba p50 188 ms (máx. 602 ms); escribir sin él, 14 ms; el multipart, 9 ms.
+  - Cambios: sin `fsync` por defecto (escritura atómica, `TASK_INPUT_FSYNC=1` opcional) y E/S de disco y Redis en el threadpool.
+  - Resultado con 10 MB: p95 de 364 → 147 ms con el worker en el mismo host de 2 vCPU, y 108 ms con el worker en pausa. 30/30 por debajo de 200 ms en ambos.
+  - Límite documentado: la 1.ª tanda tras reiniciar, con la CPU saturada por una cola de 120 tareas de 10 MB, dio 28/30. No se midió el salto del gateway Node.
+- Tests: `uv run --directory services/api pytest -q` → 84 passed (4 nuevos: suelo del backoff, programación del reintento, re-raise al agotar y opción de `fsync`). `README` del API actualizado con el backoff y la latencia medida.
+- Servicios de la demo detenidos y contenedor de Redis eliminado. El log completo del worker (800 KB, incluye el benchmark) no se versiona; queda el extracto de las dos tareas. Comprobado que la evidencia no contiene secretos. Commit, push y PR por petición del desarrollador.
+
 ## Pendientes de revisión del PR #30 (job nocturno): ejecución real, 2026-11-19
 
 - Rama `fix/nightly-export-evidence` creada desde `main` en un worktree aparte, porque el PR #30 ya estaba fusionado.

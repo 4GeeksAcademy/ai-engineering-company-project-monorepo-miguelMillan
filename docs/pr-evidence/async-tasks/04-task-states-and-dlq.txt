@@ -1,0 +1,16 @@
+# Estado en el backend de resultados (misma lógica que GET /tasks/{task_id})
+CSV válido    task_id=bad2cc3a-dc4d-491f-943b-01179393c937 status=success total_records=100
+CSV inválido  task_id=8f378b2d-e626-4041-95ce-60e72b8c75a3 status=failure error=CSVFormatError
+
+# public.task_dead_letters (Supabase)
+task_id=8f378b2d-e626-4041-95ce-60e72b8c75a3
+task_name=tasks.analyze_incident_csv
+attempts=4
+failed_at=2026-11-19 18:19:46.204754Z
+error (primeros 400 caracteres del traceback):
+Traceback (most recent call last):
+  File "/workspaces/async-tasks-evidence/services/api/.venv/lib/python3.14/site-packages/celery/app/trace.py", line 564, in trace_task
+    R = retval = fun(*args, **kwargs)
+                 ~~~^^^^^^^^^^^^^^^^^
+  File "/workspaces/async-tasks-evidence/services/api/.venv/lib/python3.14/site-packages/celery/app/trace.py", line 883, in __protected_call__
+    return 
