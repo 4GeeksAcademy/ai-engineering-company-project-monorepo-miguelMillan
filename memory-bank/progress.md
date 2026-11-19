@@ -6,6 +6,7 @@
 - Pregunta de ejemplo del PR: "¿Qué transportista cubre mejor Aragón rural?". `retrieve` devuelve `carrier-coverage` / España (Zaragoza), score 0.650.
 - **No hay respuesta generada real**: falta el LLM de generación (`LLM_API_URL`, `LLM_API_KEY`, `GENERATION_MODEL`); `query()` lanza RuntimeError y el endpoint responde 503. El PR lo declara explícitamente; no se fabricó ninguna respuesta.
 - Commit y push de la rama `feature/rag-knowledge-base` y PR hacia `main` a petición del desarrollador.
+- El CI del PR #36 falló al instalar: uv eligió Python 3.15 (`requires-python >=3.14`) y `onnxruntime` (dependencia de fastembed) solo tiene wheels cp314. Se fija `.python-version` = 3.14 (la misma que en local); `uv run pytest tests -q` → 52 passed.
 
 ## RAG: fases 5b (Recall@3) y 6 (documento de diseño); embeddings locales, 2026-11-19
 
