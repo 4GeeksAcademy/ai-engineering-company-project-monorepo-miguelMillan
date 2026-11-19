@@ -76,7 +76,7 @@ def test_model_never_sees_test_years():
     pd.testing.assert_frame_equal(x_a, x_b)
     np.testing.assert_array_equal(y_a, y_b)
 
-    model = build_model().set_params(regressor__n_estimators=20)
+    model = build_model().set_params(regressor__n_estimators=20, regressor__n_jobs=1)  # n_jobs=1: suma determinista para comparar exacto
     model.fit(x_a, y_a)
     forecast_a = forecast_recursive(model, train_a, test_a)
     forecast_b = forecast_recursive(model, train_b, test_b)
