@@ -1,5 +1,68 @@
 # Progress Log — TrackFlow
 
+## RAG (Hito 7): verificación del checklist y PR "feat: rag knowledge base", 2026-11-19
+
+- Checklist de entrega verificado contra el código y contra el Qdrant real (contenedor `trackflow-qdrant-dev` reiniciado tras la sesión; el volumen conservaba la colección): 18 puntos de 384 dimensiones con distancia coseno, payload completo, Recall@3 82 % con `min_score` 0.45, `retrieve` en vivo devuelve 0 o 1 resultados según el umbral.
+- Pregunta de ejemplo del PR: "¿Qué transportista cubre mejor Aragón rural?". `retrieve` devuelve `carrier-coverage` / España (Zaragoza), score 0.650.
+- **No hay respuesta generada real**: falta el LLM de generación (`LLM_API_URL`, `LLM_API_KEY`, `GENERATION_MODEL`); `query()` lanza RuntimeError y el endpoint responde 503. El PR lo declara explícitamente; no se fabricó ninguna respuesta.
+- Commit y push de la rama `feature/rag-knowledge-base` y PR hacia `main` a petición del desarrollador.
+
+## RAG: fases 5b (Recall@3) y 6 (documento de diseño); embeddings locales, 2026-11-19
+
+- Decisión del desarrollador: no se usa ningún LLM de 4Geeks.
+  - Embeddings: local con `fastembed` (`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, ONNX/CPU, 384 dimensiones, sin clave). Proveedor OpenAI-compatible opcional con `EMBEDDING_PROVIDER=openai`.
+  - Generación: cualquier API de chat OpenAI-compatible (`LLM_API_URL`, `LLM_API_KEY`, `GENERATION_MODEL`).
+  - Configuración separada (`load_embedding_settings`, `load_generation_settings`); generación falla si reutiliza el modelo de embeddings. Eliminadas las referencias por defecto a 4Geeks.
+  - `uv add fastembed` en la raíz y en `services/api`. Caché del modelo en `.cache/fastembed` (gitignored); en compose, en `backend_data`.
+- Indexación real en el Qdrant de desarrollo: `trackflow_knowledge` con 18 puntos de 384 dimensiones y distancia coseno, idempotente. Todos los chunks quedan ≤ 119 tokens (el límite de MiniLM es 128).
+- `mock_data/eval/test-queries.json`: 17 preguntas in-scope (los 4 documentos; Black Friday y Rebajas) y 6 out-of-scope para calibrar.
+- `scripts/evaluate_rag_retrieval.py` mide Recall@3 sin y con umbral, hace un barrido de `min_score` y escribe `mock_data/eval/rag-retrieval-eval.json`.
+  - Resultado: **Recall@3 82 % (14/17), KPI ≥ 80 % cumplido**.
+  - Umbral calibrado: **`min_score = 0.45`**, el único que cumple el KPI; con el 0.50 provisional bajaba al 76 %. Rechazo out-of-scope: 50 %.
+- `paraphrase-multilingual-mpnet-base-v2` (1 GB) recibió SIGTERM dos veces al cargarse: el codespace tiene unos 2 GB libres. Descartado y documentado.
+- `docs/rag/rag-design.md`: stack, flujo extremo a extremo con diagrama, prompt y reglas del CONTEXT, chunking con tabla de tamaños y tokens, embeddings con justificación, consistencia y calibración, Recall@3 con análisis de fallos, limitaciones y operación.
+- Tests: `tests/pipelines/test_rag_eval.py` (5 nuevos) y 3 nuevos en `test_rag.py`. `uv run pytest tests -q` → 52 passed; API → 90 passed; Jest → 25 passed.
+- Pendiente: configurar el LLM de generación, sin el cual `/knowledge/query` responde 503, y revisar la faithfulness con respuestas reales. Mejoras propuestas: búsqueda híbrida y más preguntas de evaluación. Sin commit.
+
+## RAG y base de conocimiento: fases 3, 4 y 5, 2026-11-19
+
+- Fase 3 (API):
+  - `services/api/routes/knowledge.py` expone `POST /knowledge/query`, autenticado como el resto del backoffice. Cuerpo `{question}` (3–1000 caracteres, campos extra prohibidos); respuesta solo `{answer}`.
+  - Importa y llama a `query()` de `mock_data/pipelines/rag.py`, sin lógica RAG en el router. Configuración ausente → 503; fallo de Qdrant o del LLM → 502, sin filtrar detalles internos. Las puntuaciones solo se registran en el log del servidor.
+  - `uv add qdrant-client openai` en `services/api`.
+  - Compose: el `backend` monta `./mock_data` y `./docs/company-knowledge-base` (solo lectura), recibe `QDRANT_URL=http://qdrant:6333` y depende de `qdrant`.
+- Fase 4 (UI):
+  - Backoffice (React + Vite, no Next.js): página `/knowledge` "Asistente comercial" (`app/knowledge/KnowledgeAssistant.tsx`), enlace en la navegación y `utils/knowledge.ts`.
+  - Estados de carga (botón deshabilitado), error con reintento, respuesta vacía tratada como error y preguntas frecuentes del CONTEXT. Modo claro/oscuro con `dark:` en la página; el shell del backoffice no tiene modo oscuro.
+  - Proxy de Vite limitado a `/knowledge/query`: con el prefijo `/knowledge` la navegación a la página se enviaba al API (502), bug detectado en la prueba con navegador.
+  - Telemetría: `section` = `other`, porque el esquema de eventos tiene un enum cerrado.
+- Fase 5 (tests):
+  - `tests/pipelines/test_rag.py` (13 tests): `retrieve` con cliente Qdrant stub (excluye < `min_score`, devuelve menos de k o ninguno, payload plano, filtro `company`); `query` con `retrieve` y LLM simulados (devuelve la salida del modelo de generación, nunca el chunk crudo, falla en vez de degradar si el modelo responde vacío, sin contexto no llama al LLM); `setup` en `QdrantClient(":memory:")` (idempotencia e IDs estables); chunking que conserva las reglas de negocio.
+  - `services/api/tests/test_knowledge.py` (6) y `uis/backoffice/src/__tests__/knowledge.test.ts` (6).
+- Validación:
+  - `uv run pytest tests -q` → 44 passed. `python -m pytest tests/pipelines/test_rag.py` con el venv del proyecto activado → 13 passed; con el Python del sistema fallan 5 por no tener `qdrant_client` (no se instala con pip).
+  - API → 90 passed. Jest → 25 passed. `tsc -b`, `oxlint` y `vite build` correctos.
+  - UI recorrida con Chromium headless (API interceptado): éxito claro/oscuro, error 503, respuesta vacía y carga. Corregidos el contraste del botón en oscuro y las mayúsculas de la etiqueta.
+- Pendiente: acceso LLM de 4Geeks (`LLM_API_KEY`, `EMBEDDING_MODEL`, `GENERATION_MODEL`) para indexar con embeddings reales, calibrar `RAG_MIN_SCORE`, Recall@3 con `test-queries.json` y `docs/rag/rag-design.md`. Sin commit.
+
+## RAG y base de conocimiento: fases 1 y 2, 2026-11-19
+
+- Contexto nuevo (Hito 7 — RAG) archivado en `memory-bank/history/RAG-KNOWLEDGE-BASE-CONTEXT-2026-11-19.md`, verificado con `cmp`; no había copia previa. Rama `feature/rag-knowledge-base`.
+- Corpus: los cuatro `trackflow-*.es.md` oficiales descargados de `4GeeksAcademy/ai-engineering-syllabus` (`content/contexts/00-general-contexts/trackflow/`, que no estaba en el checkout) a `docs/company-knowledge-base/`.
+- `docker-compose.yml`: servicio `qdrant` (`qdrant/qdrant:v1.19.0`, volumen `qdrant_data`, healthcheck `/readyz`). Compose no se levantó porque exige `.env`; la conectividad se confirmó desde Python contra un contenedor de desarrollo `trackflow-qdrant-dev` en `127.0.0.1:6333`.
+- `uv add`: `qdrant-client`, `openai` (cliente del proxy OpenAI-compatible de 4Geeks) y `python-dotenv`.
+- Fase 1 (`mock_data/process/rag.py`):
+  - Chunking semántico: párrafo = regla; la introducción de una lista se antepone a cada viñeta; los procedimientos numerados quedan en un solo chunk; los bloques país + transportistas también. 18 chunks: SLA 5, devoluciones 5, transportistas 3, tarifas 5.
+  - `embed()` con `EMBEDDING_MODEL`. `load_settings()` falla si coincide con `GENERATION_MODEL`.
+  - `setup()` recrea `trackflow_knowledge` (coseno, dimensión tomada del modelo), con payload según el CONTEXT más `text`. Idempotencia: limpiar y recargar con IDs `uuid5` deterministas.
+- Fase 2 (`mock_data/pipelines/rag.py`):
+  - `retrieve(query, *, k=5, min_score)` filtra por umbral y por `company=trackflow`, y devuelve diccionarios planos.
+  - `generate_answer()` usa `GENERATION_MODEL` con temperatura 0 y un prompt con la voz de vendedor de TrackFlow para el equipo de Miguel Torres, que incluye las reglas del CONTEXT §4/§6 y cita de fuentes. Sin contexto devuelve una respuesta honesta fija, sin llamar al LLM.
+  - `query()` = `generate_answer(question, retrieve(...))`.
+- Verificado contra Qdrant real, con un embedder determinista de prueba porque no hay clave: 18 puntos, segundo `setup()` con los mismos 18 IDs, payloads correctos, `retrieve` con menos de k o ninguno según el umbral. La colección de prueba se borró después. `generate_answer` y `query` se verificaron con un LLM simulado. `uv run pytest tests -q` → 31 passed.
+- Bloqueos: no hay acceso LLM de 4Geeks en el entorno (`LLM_API_KEY`, `EMBEDDING_MODEL` y `GENERATION_MODEL` sin definir), así que no se indexó con embeddings reales. `RAG_MIN_SCORE=0.5` es provisional hasta calibrarlo con el modelo real. `.env` y `.env.example` son rutas protegidas y no se tocaron.
+- Siguientes fases: API, UI, tests, `test-queries.json` con Recall@3 y `rag-design.md`. Sin commit.
+
 ## Evaluación técnica del modelo de pronóstico de ventas, 2026-11-19
 
 - Contexto nuevo (evaluación del modelo) archivado en `memory-bank/history/SALES-FORECAST-MODEL-EVALUATION-CONTEXT-2026-11-19.md`. No había copia previa; verificado con `cmp`. `CONTEXT.md` sin modificar. Trabajo en la rama actual `feature/regression-model-eval`.

@@ -10,3 +10,6 @@ coverage/
 __pycache__/
 *.py[cod]
 nightly-export.log
+
+# Caché de modelos locales (fastembed)
+.cache/

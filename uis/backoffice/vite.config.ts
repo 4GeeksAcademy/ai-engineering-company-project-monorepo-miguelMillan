@@ -32,6 +32,11 @@ export default defineConfig(({ mode }) => {
           target: process.env.API_PROXY_TARGET ?? 'http://localhost:8080',
           changeOrigin: true,
         },
+        // Solo la ruta del API: '/knowledge' a secas es la página del asistente.
+        '/knowledge/query': {
+          target: process.env.AUTH_PROXY_TARGET ?? 'http://127.0.0.1:8081',
+          changeOrigin: true,
+        },
         '/telemetry': {
           target: process.env.AUTH_PROXY_TARGET ?? 'http://127.0.0.1:8081',
           changeOrigin: true,

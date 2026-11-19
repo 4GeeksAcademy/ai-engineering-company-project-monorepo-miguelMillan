@@ -41,8 +41,12 @@ services:
       REDIS_URL: redis://redis:6379/0
       TASKS_INTERNAL_TOKEN: ${TASKS_INTERNAL_TOKEN:?Configura TASKS_INTERNAL_TOKEN en .env}
       TASK_INPUT_DIR: /var/lib/trackflow/task-inputs
+      QDRANT_URL: http://qdrant:6333
+      EMBEDDING_CACHE_DIR: /var/lib/trackflow/fastembed
     depends_on:
       redis:
+        condition: service_healthy
+      qdrant:
         condition: service_healthy
     build:
       context: ./services
@@ -60,6 +64,8 @@ services:
       - ./services/api:/app/services/api
       - ./scripts:/app/scripts:ro
       - ./packages/shared:/app/packages/shared:ro
+      - ./mock_data:/app/mock_data:ro
+      - ./docs/company-knowledge-base:/app/docs/company-knowledge-base:ro
       - backend_data:/var/lib/trackflow
     networks:
       - trackflow
@@ -83,6 +89,22 @@ services:
       - trackflow
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    ports:
+      - "${BIND_ADDRESS:?Configura BIND_ADDRESS en .env}:${QDRANT_PORT:-6333}:6333"
+    expose:
+      - "6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - trackflow
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333 && printf \"GET /readyz HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q \"200 OK\" <&3'"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -137,5 +159,6 @@ networks:
 volumes:
   backend_data:
   redis_data:
+  qdrant_data:
   website_dependencies:
   backoffice_dependencies:
