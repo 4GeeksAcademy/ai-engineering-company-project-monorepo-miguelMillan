@@ -1,0 +1,84 @@
+{
+  "model": "RandomForestRegressor (target: log crecimiento interanual)",
+  "data_path": "mock_data/raw/trackflow_sales.csv",
+  "training_period": [
+    "2016-01-01",
+    "2023-12-01"
+  ],
+  "test_period": [
+    "2024-01-01",
+    "2025-12-01"
+  ],
+  "training_months": 96,
+  "training_rows_with_full_history": 72,
+  "test_months": 24,
+  "imputed_values": {
+    "train": {
+      "revenue_eur": 0,
+      "shipments_processed": 0,
+      "avg_revenue_per_shipment_eur": 0
+    },
+    "test": {
+      "revenue_eur": 0,
+      "shipments_processed": 0,
+      "avg_revenue_per_shipment_eur": 0
+    }
+  },
+  "test_actuals_used_during_forecast": false,
+  "metrics": {
+    "mse_eur2": 2275622853.8407087,
+    "rmse_eur": 47703.48890637569,
+    "mse_pct_of_mean_monthly_revenue": 3.6721174982401315,
+    "mse_normalized_pct": 0.13484446920881363,
+    "mape_pct": 2.9454123703715296,
+    "mean_test_monthly_revenue_eur": 1299073.0533333335,
+    "k2_score": 0.9222567728934491,
+    "gini_normalized": 0.9253099616719869,
+    "psi_yoy_growth_train_vs_test": 0.09206862905561569,
+    "psi_yoy_growth_label": "estable (<0.10)",
+    "psi_avg_revenue_per_shipment_train_vs_test": 0.34657359027997264,
+    "psi_avg_revenue_per_shipment_label": "cambio significativo (>0.25)",
+    "psi_revenue_eur_raw_train_vs_test": 5.235553531228429,
+    "baseline_seasonal_naive_mse_eur2": 15355054004.47933,
+    "baseline_seasonal_naive_mse_pct_of_mean": 9.538763908559886
+  },
+  "pattern_check": {
+    "seasonal_pct_vs_annual_mean": {
+      "01": -2.5,
+      "02": -15.89,
+      "03": -3.8,
+      "04": -2.17,
+      "05": -4.34,
+      "06": -5.05,
+      "07": -3.48,
+      "08": -3.07,
+      "09": -4.84,
+      "10": -4.1,
+      "11": 25.28,
+      "12": 23.96
+    },
+    "annual_growth_pct": {
+      "2017": 9.58,
+      "2018": 1.82,
+      "2019": 9.42,
+      "2020": 2.92,
+      "2021": 8.03,
+      "2022": 2.8,
+      "2023": 10.12,
+      "2024": 3.99,
+      "2025": 7.93
+    }
+  },
+  "feature_importances": {
+    "seasonal_ratio_lag_12": 0.457,
+    "yoy_growth_lag_1": 0.1928,
+    "yoy_growth_trailing_12": 0.1183,
+    "momentum_3_vs_12": 0.0925,
+    "month_cos": 0.0715,
+    "month_sin": 0.0403,
+    "is_black_friday_christmas": 0.0212,
+    "is_february": 0.0064
+  },
+  "variability_band": "P10–P90 de 500 trayectorias recursivas (una por árbol); descriptiva, no un intervalo calibrado",
+  "plot": "reports/sales_forecast/sales_forecast_test_2024_2025.png"
+}

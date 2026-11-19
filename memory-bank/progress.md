@@ -1,5 +1,31 @@
 # Progress Log — TrackFlow
 
+## Archivo de contexto del modelo de pronóstico de ventas, 2026-11-19
+
+- Archivada copia literal de `CONTEXT.md` en `memory-bank/history/SALES-FORECAST-MODEL-CONTEXT-2026-11-19.md`. Antes se comparó con `cmp -s` contra todos los archivos de `memory-bank/history/`: ninguno era idéntico y no existía copia de este contexto. La copia se verificó con `cmp` (idéntica).
+- `CONTEXT.md` sin modificar. Pauta del desarrollador: siempre que el contexto sea nuevo, crear su respaldo en `history/` al trabajar sobre él (sin duplicar si ya existe uno idéntico).
+
+## Modelo de pronóstico de ventas (Random Forest), 2026-11-19
+
+- Reescrito `scripts/train_sales_forecast.py` según el CONTEXT.md de pronóstico de ventas, con datos de `mock_data/raw/trackflow_sales.csv` (equivale a `data/raw/`). Target: `revenue_eur` de `market == "consolidated"`.
+- Nulos: vacíos, no numéricos y valores ≤0 pasan a NaN; los meses faltantes 2016-01..2025-12 se reinsertan; la interpolación temporal se hace por partición después del split. El CSV actual no tiene nulos (0 imputados).
+- Split por año: 2016–2023 train (96 meses) y 2024–2025 test (24 meses). El pronóstico recursivo a 24 meses no consume valores reales de prueba.
+- Escalado: target = log del crecimiento interanual, features como ratios logarítmicos de la serie y `StandardScaler` ajustado solo con train. Se corrige así que RF no extrapole la tendencia (la versión previa en EUR tenía RMSE 10,7 %).
+- Se eligió Random Forest por el tamaño de datos, la explicabilidad y el tiempo de ajuste; está documentado en el docstring y en `scripts/README.sales_forecast.md`.
+- Métricas de test: MSE 2,28e9 EUR², RMSE 3,7 % del ingreso medio, K2 (interpretado como R²) 0,92, Gini normalizado 0,93, PSI del crecimiento interanual 0,09 (estable) y PSI del ingreso por envío 0,35 (posible cambio de mix US/ES, a revisar). La línea base "repetir 2023" tiene RMSE 9,5 %.
+- Visualización `reports/sales_forecast/sales_forecast_test_2024_2025.png` con banda P10–P90 de 500 trayectorias por árbol. También se generan `metrics.json` y `predictions_2024_2025.csv`.
+- Pruebas `tests/pipelines/test_sales_forecast.py` (6): split 8/2, rechazo de datasets que no tienen 10 años, sin fuga (alterar ×50 los años de prueba no cambia train ni pronóstico), causalidad de features, imputación por partición y PSI.
+- `pyproject.toml`: añadido pytest como dev y `pythonpath = ["."]`.
+- Validación: `uv run python scripts/train_sales_forecast.py` correcto; `uv run pytest tests/pipelines/test_sales_forecast.py -q` → 6 passed. `uv run pytest tests` falla al recolectar las pruebas preexistentes de nightly/pipeline porque el entorno uv raíz no tiene `sqlalchemy`; con `python -m pytest` del sistema → 21 passed, sin cambios.
+- Pendiente: decidir si `reports/sales_forecast/` se versiona como evidencia del PR; no se hizo commit.
+
+## Entorno raíz para modelo de ventas, 2026-11-19
+
+- Verificado `uv 0.13.9`; al no existir `pyproject.toml` en la raíz se inicializó el proyecto con `uv init --bare`.
+- Agregadas con `uv add` las dependencias `scikit-learn`, `xgboost`, `pandas` y `matplotlib`; uv creó `.venv` y `uv.lock`.
+- Validación: import de los cuatro paquetes con `uv run` correcto; `git diff --check` limpio. No se instaló con pip ni pipenv.
+- Se conservaron cambios preexistentes del usuario en `CONTEXT.md` y `mock_data/raw/trackflow_sales.csv`. Este cambio solo prepara el entorno, no implementa aún el modelo.
+
 ## Endurecimiento de tareas Celery asíncronas, 2026-11-19
 
 - Cambiado el mensaje Celery para que transporte solo el UUID `task_id`: la API guarda el CSV en `backend_data` y el worker lo carga mediante referencia desde el volumen compartido. El input se elimina tras éxito/fallo terminal y se limpian archivos CSV huérfanos de más de 7 días al arrancar una tarea.
