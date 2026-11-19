@@ -7,6 +7,7 @@
 - **No hay respuesta generada real**: falta el LLM de generación (`LLM_API_URL`, `LLM_API_KEY`, `GENERATION_MODEL`); `query()` lanza RuntimeError y el endpoint responde 503. El PR lo declara explícitamente; no se fabricó ninguna respuesta.
 - Commit y push de la rama `feature/rag-knowledge-base` y PR hacia `main` a petición del desarrollador.
 - El CI del PR #36 falló al instalar: uv eligió Python 3.15 (`requires-python >=3.14`) y `onnxruntime` (dependencia de fastembed) solo tiene wheels cp314. Se fija `.python-version` = 3.14 (la misma que en local); `uv run pytest tests -q` → 52 passed.
+- Segundo CI: el test `test_lag_and_rolling_features_do_not_leak_across_fold_boundary` (hito del pronóstico) es intermitente. El Random Forest con `n_jobs=-1` suma los árboles en orden no determinista en el runner multinúcleo (diferencias en el decimal 15). Se fija `regressor__n_jobs=1` en ese test y en `test_model_never_sees_test_years`, que comparan de forma exacta; no se relaja la comparación. 3 ejecuciones locales seguidas → 52 passed.
 
 ## RAG: fases 5b (Recall@3) y 6 (documento de diseño); embeddings locales, 2026-11-19
 
