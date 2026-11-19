@@ -82,9 +82,13 @@ the host. From the repository root, install/build and start with:
 docker compose up --build
 ```
 
-Subsequent starts: `docker compose up`. For background mode and health checks:
+The backend image also runs the Node gateway and FastAPI. Celery uses a dedicated `celery-worker` service, Redis broker/backend, and Flower on port 5555 (HTTP Basic Auth required via `FLOWER_BASIC_AUTH`). Redis is exposed on 6379 for local development and persists its AOF data in `redis_data`. Set strong, unique `FLOWER_BASIC_AUTH` and `TASKS_INTERNAL_TOKEN` values in the ignored root `.env`.
+
+Before using asynchronous CSV analysis, apply `supabase/migrations/20261118120000_create_task_dead_letters.sql` to the configured PostgreSQL database and provide `FLOWER_BASIC_AUTH` in the ignored root `.env`. For background mode and health checks:
 `docker compose up -d --wait`. Open `http://localhost:3000` (website),
-`http://localhost:3001` (backoffice), and `http://localhost:8081/docs` (API).
+`http://localhost:3001` (backoffice), `http://localhost:8081/docs` (API), and
+`http://localhost:5555` (Flower). Worker logs: `docker compose logs -f celery-worker`.
+Stop just queue observability/processing with `docker compose stop celery-worker flower redis`.
 Both UI servers bind to `0.0.0.0` inside Docker, so Codespaces port forwarding
 works. Host publication defaults to loopback through `BIND_ADDRESS` in `.env`.
 

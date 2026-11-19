@@ -1,5 +1,29 @@
 # Progress Log — TrackFlow
 
+## Endurecimiento de tareas Celery asíncronas, 2026-11-19
+
+- Cambiado el mensaje Celery para que transporte solo el UUID `task_id`: la API guarda el CSV en `backend_data` y el worker lo carga mediante referencia desde el volumen compartido. El input se elimina tras éxito/fallo terminal y se limpian archivos CSV huérfanos de más de 7 días al arrancar una tarea.
+- Extendida la configuración de Celery con entrega persistente y visibilidad Redis; todas las excepciones procesables tienen hasta 3 reintentos con backoff exponencial y jitter (4 intentos incluyendo el original). La DLQ registra en `public.task_dead_letters` el número de reintentos/ejecuciones, traceback y datos de tarea.
+- Normalizado estado `revoked` a `failure`; añadidas pruebas del contrato liviano, almacenamiento por referencia, ciclo de estados, retry config y escritura simulada de DLQ.
+- Validación: `uv run --directory services/api pytest -q tests/test_tasks.py` → 10 passed; suite API completa → 80 passed, 1 warning Starlette/httpx. Python compileall, `node --check services/api/src/server.js` y `git diff --check` pasaron.
+- Compose no pudo validarse/levantarse: el archivo `.env` requerido no está presente; una validación con variables placeholder confirmó que también es requerido el archivo `.env` por `env_file`. No se verificó la tarea con infraestructura real, el objetivo de latencia <200 ms ni Flower con tareas demostrativas. Se aclara en README que el procesamiento no bloquea el POST pero recepción/persistencia del upload escala con tamaño y no permite garantizar <200 ms absoluto.
+- Se conservaron cambios preexistentes del usuario, incluyendo `CONTEXT.md`, README, gateway y la entrada previa del progreso. Pendiente operativo: configurar `.env`, aplicar migración DLQ, levantar Redis/API/worker/Flower y smoke test E2E.
+
+## Análisis de incidencias asíncrono con Celery, 2026-11-18
+
+- Desacoplado `POST /api/incidents/analyze`: el gateway Node conserva su contrato público y delega enqueue a FastAPI; Celery corre `analyze_csv_text()` en un worker aparte, con Redis broker/backend, resultados JSON de 24 h y eventos observables en Flower. Redis en Compose usa AOF, volumen persistente y `noeviction`.
+- Conservadas validaciones de CSV (extensión, UTF-8 y límite 10 MiB), respuesta 202 con `task_id`, polling de estado y exportación CSV vinculada al ID de tarea. La interfaz backoffice consulta estado hasta terminar.
+- Añadidos reintentos con backoff exponencial/jitter solo para excepciones operativas transitorias (`OSError`, `TimeoutError`), y persistencia de fallos terminales con traceback en `public.task_dead_letters`; añadida migración SQL, aún no aplicada a BD.
+- El adaptador privado gateway→FastAPI requiere `TASKS_INTERNAL_TOKEN`, comparado en tiempo constante; el token debe definirse igual en gateway y worker/API mediante `.env`. Flower requiere `FLOWER_BASIC_AUTH`.
+- Verificación: `uv run --directory services/api pytest -q` → 76 passed, 1 warning de deprecación Starlette/httpx; `node --check services/api/src/server.js` y `git diff --check` pasaron. Redis aislado respondió `PONG`, mostró `noeviction` y un worker real conectó, registró `tasks.analyze_incident_csv` y llegó a `ready`; el contenedor de verificación fue eliminado. Build del backoffice pasó antes de los últimos cambios (que no afectan el frontend).
+- No verificados: stack Compose completo/Flower por ausencia del `.env` requerido, ejecución E2E de una tarea con worker vivo ni escritura DLQ en PostgreSQL; no se aplicó migración. Hubo una invocación de pruebas desde raíz que no recogió el entorno correcto; repetida desde el directorio configurado de API con resultado correcto.
+- `CONTEXT.md` queda sin modificar. Siguientes pasos operativos: configurar secretos en `.env`, levantar Compose, aplicar migración en entorno DB autorizado y ejecutar smoke test end-to-end.
+
+## Archivo de contexto del job nocturno, 2026-11-18
+
+- Archivada una copia literal de `CONTEXT.md` en `memory-bank/history/NIGHTLY-EXPORT-CRONJOBS-CONTEXT-2026-11-18.md`, a petición explícita del usuario. Se buscó primero y no existía una copia histórica del contexto de este hito.
+- `CONTEXT.md` permanece sin modificar. No se creó una segunda copia ni se alteró otra entrada histórica.
+
 ## Evidencias para PR del job nocturno, 2026-11-18
 
 - Se generó `docs/pr-evidence/cron-proposal.svg` con la expresión `15 2 * * *`; corresponde a una plantilla de crontab, no a un cron instalado. Se mantiene cron del sistema porque el job es batch standalone, desacoplado de FastAPI.

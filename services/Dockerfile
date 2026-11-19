@@ -7,6 +7,8 @@ COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir uv==0.9.9 \
     && uv pip install --system -r /tmp/requirements.txt
 COPY api/ ./
+COPY api/celery_app.py ./celery_app.py
+COPY api/tasks.py ./tasks.py
 COPY --from=telemetry_schema event-schemas.json /app/docs/telemetry/event-schemas.json
 COPY --from=scripts incidents_analysis.py /app/scripts/incidents_analysis.py
 COPY --from=shared incident_validation.py /app/packages/shared/incident_validation.py

@@ -35,8 +35,15 @@ services:
       retries: 6
 
   backend:
+    image: trackflow-backend:local
     environment:
-        DATABASE_URL: ${DATABASE_URL:?Configura DATABASE_URL en Codespaces}
+      DATABASE_URL: ${DATABASE_URL:?Configura DATABASE_URL en Codespaces}
+      REDIS_URL: redis://redis:6379/0
+      TASKS_INTERNAL_TOKEN: ${TASKS_INTERNAL_TOKEN:?Configura TASKS_INTERNAL_TOKEN en .env}
+      TASK_INPUT_DIR: /var/lib/trackflow/task-inputs
+    depends_on:
+      redis:
+        condition: service_healthy
     build:
       context: ./services
       additional_contexts:
@@ -63,6 +70,65 @@ services:
       start_period: 30s
       retries: 6
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "${BIND_ADDRESS:?Configura BIND_ADDRESS en .env}:6379:6379"
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - trackflow
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  celery-worker:
+    image: trackflow-backend:local
+    command: ["celery", "-A", "celery_app:app", "worker", "--loglevel=INFO"]
+    init: true
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: ${DATABASE_URL:?Configura DATABASE_URL en Codespaces}
+      TASKS_INTERNAL_TOKEN: ${TASKS_INTERNAL_TOKEN:?Configura TASKS_INTERNAL_TOKEN en .env}
+      TASK_INPUT_DIR: /var/lib/trackflow/task-inputs
+    volumes:
+      - ./services/api:/app/services/api
+      - ./scripts:/app/scripts:ro
+      - ./packages/shared:/app/packages/shared:ro
+      - backend_data:/var/lib/trackflow
+    networks:
+      - trackflow
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  flower:
+    image: trackflow-backend:local
+    command: ["celery", "-A", "celery_app:app", "flower", "--address=0.0.0.0", "--port=5555", "--basic-auth=${FLOWER_BASIC_AUTH:?Configura FLOWER_BASIC_AUTH como usuario:contraseña en .env}"]
+    init: true
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "${BIND_ADDRESS:?Configura BIND_ADDRESS en .env}:5555:5555"
+    volumes:
+      - ./services/api:/app/services/api
+    networks:
+      - trackflow
+    depends_on:
+      redis:
+        condition: service_healthy
+      celery-worker:
+        condition: service_started
+
 networks:
   trackflow:
     name: ${DOCKER_NETWORK_NAME:?Configura DOCKER_NETWORK_NAME en .env}
@@ -70,5 +136,6 @@ networks:
 
 volumes:
   backend_data:
+  redis_data:
   website_dependencies:
   backoffice_dependencies:
