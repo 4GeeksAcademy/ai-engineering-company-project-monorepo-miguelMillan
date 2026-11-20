@@ -1,0 +1,103 @@
+{
+  "run_id": "eval-returns-standard-window",
+  "question": "¿Cuál es la ventana de devolución estándar?",
+  "status": "completed",
+  "final_node": "generate",
+  "error_type": null,
+  "started_at": "2026-11-20T08:33:22.229+00:00",
+  "finished_at": "2026-11-20T08:33:32.765+00:00",
+  "steps": [
+    {
+      "run_id": "eval-returns-standard-window",
+      "seq": 0,
+      "kind": "node",
+      "name": "receive_question",
+      "started_at": "2026-11-20T08:33:22.234+00:00",
+      "duration_ms": 0.009,
+      "status": "ok",
+      "output": {
+        "question": "¿Cuál es la ventana de devolución estándar?"
+      }
+    },
+    {
+      "run_id": "eval-returns-standard-window",
+      "seq": 1,
+      "kind": "route",
+      "name": "route_after_receive",
+      "started_at": "2026-11-20T08:33:22.236+00:00",
+      "duration_ms": 0.004,
+      "status": "ok",
+      "output": {
+        "next": "retrieve",
+        "reason": "pregunta válida"
+      }
+    },
+    {
+      "run_id": "eval-returns-standard-window",
+      "seq": 2,
+      "kind": "node",
+      "name": "retrieve",
+      "started_at": "2026-11-20T08:33:22.240+00:00",
+      "duration_ms": 43.791,
+      "status": "ok",
+      "output": {
+        "context": [
+          {
+            "company": "trackflow",
+            "source_document": "returns-policy",
+            "section": "Política de Devoluciones > Ventana de devolución estándar",
+            "language": "es",
+            "chunk_index": 1,
+            "text": "Política de Devoluciones\nVentana de devolución estándar: 30 días desde la entrega, salvo que la marca cliente haya configurado una ventana distinta en su contrato.",
+            "score": 0.5701144
+          }
+        ]
+      }
+    },
+    {
+      "run_id": "eval-returns-standard-window",
+      "seq": 3,
+      "kind": "route",
+      "name": "route_after_retrieve",
+      "started_at": "2026-11-20T08:33:22.288+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "generate",
+        "reason": "hay contexto ≥ min_score"
+      }
+    },
+    {
+      "run_id": "eval-returns-standard-window",
+      "seq": 4,
+      "kind": "node",
+      "name": "generate",
+      "started_at": "2026-11-20T08:33:22.291+00:00",
+      "duration_ms": 10469.903,
+      "status": "ok",
+      "output": {
+        "answer": "La ventana de devolución estándar para TrackFlow es de 30 días desde la entrega, salvo que el cliente haya especificado una ventana diferente en su contrato."
+      }
+    }
+  ],
+  "recorded_with": {
+    "recorded_at": "2026-11-20T08:33:32+00:00",
+    "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "generation_model": "qwen2.5:1.5b",
+    "checkpoints": [
+      [
+        "__start__"
+      ],
+      [
+        "receive_question"
+      ],
+      [
+        "retrieve"
+      ],
+      [
+        "generate"
+      ],
+      []
+    ]
+  }
+}

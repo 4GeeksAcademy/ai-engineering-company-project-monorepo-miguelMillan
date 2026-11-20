@@ -1,0 +1,66 @@
+{
+  "run_id": "eval-empty-question-invalid",
+  "question": "   ",
+  "status": "completed",
+  "final_node": "invalid_question",
+  "error_type": null,
+  "started_at": "2026-11-20T08:34:33.258+00:00",
+  "finished_at": "2026-11-20T08:34:33.273+00:00",
+  "steps": [
+    {
+      "run_id": "eval-empty-question-invalid",
+      "seq": 0,
+      "kind": "node",
+      "name": "receive_question",
+      "started_at": "2026-11-20T08:34:33.265+00:00",
+      "duration_ms": 0.005,
+      "status": "ok",
+      "output": {
+        "question": "",
+        "error": "empty_question"
+      }
+    },
+    {
+      "run_id": "eval-empty-question-invalid",
+      "seq": 1,
+      "kind": "route",
+      "name": "route_after_receive",
+      "started_at": "2026-11-20T08:34:33.267+00:00",
+      "duration_ms": 0.002,
+      "status": "ok",
+      "output": {
+        "next": "invalid_question",
+        "reason": "pregunta vacía o demasiado larga"
+      }
+    },
+    {
+      "run_id": "eval-empty-question-invalid",
+      "seq": 2,
+      "kind": "node",
+      "name": "invalid_question",
+      "started_at": "2026-11-20T08:34:33.269+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "answer": "La pregunta está vacía o no es válida. Escribe una pregunta sobre SLA de entrega, política de devoluciones, cobertura de transportistas o tarifas de almacenamiento de TrackFlow."
+      }
+    }
+  ],
+  "recorded_with": {
+    "recorded_at": "2026-11-20T08:34:33+00:00",
+    "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "generation_model": "qwen2.5:1.5b",
+    "checkpoints": [
+      [
+        "__start__"
+      ],
+      [
+        "receive_question"
+      ],
+      [
+        "invalid_question"
+      ],
+      []
+    ]
+  }
+}

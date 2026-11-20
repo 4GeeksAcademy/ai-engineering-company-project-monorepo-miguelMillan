@@ -1,0 +1,21 @@
+$ uv run pytest tests/pipelines/test_agent_evals.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.14.2, pytest-9.2.0, pluggy-1.7.0 -- /workspaces/ai-engineering-company-project-monorepo-miguelMillan/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /workspaces/ai-engineering-company-project-monorepo-miguelMillan
+configfile: pyproject.toml
+plugins: anyio-4.16.0, langsmith-0.15.1
+collecting ... collected 10 items
+
+tests/pipelines/test_agent_evals.py::test_there_are_at_least_three_evals_including_grounding PASSED [ 10%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[carrier-aragon-rural] PASSED [ 20%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[returns-standard-window] PASSED [ 30%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[storage-discount-needs-approval] PASSED [ 40%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[sla-black-friday-not-guaranteed] PASSED [ 50%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[out-of-domain-no-context] PASSED [ 60%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[empty-question-invalid] PASSED [ 70%]
+tests/pipelines/test_agent_evals.py::test_perfect_trace_with_ungrounded_answer_fails_the_eval PASSED [ 80%]
+tests/pipelines/test_agent_evals.py::test_eval_detects_generation_forced_on_empty_context PASSED [ 90%]
+tests/pipelines/test_agent_evals.py::test_traces_were_recorded_with_real_models_and_checkpoints PASSED [100%]
+
+============================== 10 passed in 0.03s ==============================

@@ -1,0 +1,5 @@
+$ uv run pytest tests -q   (raíz: RAG + grafo + evals + resto)
+76 passed in 5.24s
+
+$ cd services/api && uv run pytest -q
+97 passed in 110.69s (0:01:50)

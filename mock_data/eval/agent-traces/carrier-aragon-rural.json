@@ -1,0 +1,103 @@
+{
+  "run_id": "eval-carrier-aragon-rural",
+  "question": "¿Qué transportista cubre mejor Aragón rural?",
+  "status": "completed",
+  "final_node": "generate",
+  "error_type": null,
+  "started_at": "2026-11-20T08:32:50.964+00:00",
+  "finished_at": "2026-11-20T08:33:22.226+00:00",
+  "steps": [
+    {
+      "run_id": "eval-carrier-aragon-rural",
+      "seq": 0,
+      "kind": "node",
+      "name": "receive_question",
+      "started_at": "2026-11-20T08:32:50.976+00:00",
+      "duration_ms": 0.008,
+      "status": "ok",
+      "output": {
+        "question": "¿Qué transportista cubre mejor Aragón rural?"
+      }
+    },
+    {
+      "run_id": "eval-carrier-aragon-rural",
+      "seq": 1,
+      "kind": "route",
+      "name": "route_after_receive",
+      "started_at": "2026-11-20T08:32:50.977+00:00",
+      "duration_ms": 0.002,
+      "status": "ok",
+      "output": {
+        "next": "retrieve",
+        "reason": "pregunta válida"
+      }
+    },
+    {
+      "run_id": "eval-carrier-aragon-rural",
+      "seq": 2,
+      "kind": "node",
+      "name": "retrieve",
+      "started_at": "2026-11-20T08:32:50.981+00:00",
+      "duration_ms": 4052.477,
+      "status": "ok",
+      "output": {
+        "context": [
+          {
+            "company": "trackflow",
+            "source_document": "carrier-coverage",
+            "section": "Cobertura de Transportistas > España (Zaragoza)",
+            "language": "es",
+            "chunk_index": 1,
+            "text": "Cobertura de Transportistas\nTrackFlow trabaja con transportistas distintos según el país: España (Zaragoza): MRW, SEUR, DHL, y dos transportistas locales de última milla en zona metropolitana de Zaragoza.\n- SEUR: mejor cobertura en zonas rurales de Aragón.\n- MRW: tarifas más competitivas para paquetes pequeños (menores a 2 kg).\n- Transportistas locales: solo disponibles dentro del área metropolitana de Zaragoza, no cubren el resto de España.",
+            "score": 0.65002835
+          }
+        ]
+      }
+    },
+    {
+      "run_id": "eval-carrier-aragon-rural",
+      "seq": 3,
+      "kind": "route",
+      "name": "route_after_retrieve",
+      "started_at": "2026-11-20T08:32:55.036+00:00",
+      "duration_ms": 0.004,
+      "status": "ok",
+      "output": {
+        "next": "generate",
+        "reason": "hay contexto ≥ min_score"
+      }
+    },
+    {
+      "run_id": "eval-carrier-aragon-rural",
+      "seq": 4,
+      "kind": "node",
+      "name": "generate",
+      "started_at": "2026-11-20T08:32:55.040+00:00",
+      "duration_ms": 27182.0,
+      "status": "ok",
+      "output": {
+        "answer": "TrackFlow cubre mejor la cobertura en zonas rurales de Aragón con SEUR. Esta compañía tiene una mejor cobertura en áreas menos urbanas y rurales del estado aragonés, lo que la hace más adecuada para el transporte a estos lugares. Sin embargo, MRW ofrece tarifas más competitivas para paquetes pequeños (menores a 2 kg), lo que podría ser un punto favorable si tu cliente está buscando una opción más económica para sus envíos en Zaragoza."
+      }
+    }
+  ],
+  "recorded_with": {
+    "recorded_at": "2026-11-20T08:33:22+00:00",
+    "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "generation_model": "qwen2.5:1.5b",
+    "checkpoints": [
+      [
+        "__start__"
+      ],
+      [
+        "receive_question"
+      ],
+      [
+        "retrieve"
+      ],
+      [
+        "generate"
+      ],
+      []
+    ]
+  }
+}

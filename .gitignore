@@ -13,3 +13,5 @@ nightly-export.log
 
 # Caché de modelos locales (fastembed)
 .cache/
+# Checkpoints y traces locales del agente LangGraph
+.agent-runs/

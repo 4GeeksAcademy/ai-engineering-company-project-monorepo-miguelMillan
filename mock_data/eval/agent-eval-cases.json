@@ -1,0 +1,73 @@
+{
+  "description": "Evals del agente LangGraph de TrackFlow. Cada caso tiene una pregunta y criterios verificables sobre el TRACE grabado (mock_data/eval/agent-traces/<id>.json), no sobre una ejecución en vivo. Los criterios de anclaje usan datos exactos de los documentos de docs/company-knowledge-base/ (CONTEXT del Hito 7). Para regrabar los traces: uv run python scripts/record_agent_traces.py (requiere Qdrant indexado y el LLM de generación configurado).",
+  "cases": [
+    {
+      "id": "carrier-aragon-rural",
+      "question": "¿Qué transportista cubre mejor Aragón rural?",
+      "criteria": {
+        "status": "completed",
+        "node_order": ["receive_question", "retrieve", "generate"],
+        "final_node": "generate",
+        "retrieved_includes": [{"source_document": "carrier-coverage", "chunk_index": 1}],
+        "answer_contains_all": ["SEUR"]
+      }
+    },
+    {
+      "id": "returns-standard-window",
+      "question": "¿Cuál es la ventana de devolución estándar?",
+      "criteria": {
+        "status": "completed",
+        "node_order": ["receive_question", "retrieve", "generate"],
+        "final_node": "generate",
+        "retrieved_includes": [{"source_document": "returns-policy", "chunk_index": 1}],
+        "answer_contains_all": ["30 días"]
+      }
+    },
+    {
+      "id": "storage-discount-needs-approval",
+      "question": "Un cliente grande pide un descuento en el almacenamiento, ¿se lo puedo ofrecer?",
+      "criteria": {
+        "status": "completed",
+        "final_node": "generate",
+        "retrieved_includes": [{"source_document": "storage-pricing", "chunk_index": 4}],
+        "answer_contains_all": ["Miguel Torres"]
+      }
+    },
+    {
+      "id": "sla-black-friday-not-guaranteed",
+      "question": "¿Podemos garantizar los plazos de entrega durante Black Friday?",
+      "criteria": {
+        "status": "completed",
+        "final_node": "generate",
+        "retrieved_includes": [{"source_document": "sla-delivery", "chunk_index": 4}],
+        "answer_contains_all": ["40%"],
+        "answer_contains_any": ["no garantiza", "no puedo garantizar", "no se garantiza", "no podemos garantizar"]
+      }
+    },
+    {
+      "id": "out-of-domain-no-context",
+      "question": "¿Qué receta lleva una paella valenciana?",
+      "criteria": {
+        "status": "completed",
+        "node_order": ["receive_question", "retrieve", "no_context"],
+        "final_node": "no_context",
+        "nodes_not_executed": ["generate"],
+        "retrieved_count": 0,
+        "route_decisions": {"route_after_retrieve": "no_context"},
+        "answer_contains_all": ["No tengo información suficiente"]
+      }
+    },
+    {
+      "id": "empty-question-invalid",
+      "question": "   ",
+      "criteria": {
+        "status": "completed",
+        "node_order": ["receive_question", "invalid_question"],
+        "final_node": "invalid_question",
+        "nodes_not_executed": ["retrieve", "generate"],
+        "route_decisions": {"route_after_receive": "invalid_question"},
+        "answer_contains_all": ["pregunta está vacía"]
+      }
+    }
+  ]
+}
