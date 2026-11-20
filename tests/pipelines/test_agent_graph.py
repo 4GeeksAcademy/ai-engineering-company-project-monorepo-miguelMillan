@@ -164,9 +164,12 @@ def test_each_transition_is_checkpointed_and_inspectable(tmp_path):
     result = agent.run("¿Qué transportista cubre mejor Aragón rural?")
 
     checkpoints = agent.checkpoints(result.run_id)
-    assert [c["next"] for c in checkpoints] == [["__start__"], ["receive_question"], ["retrieve"], ["generate"], []]
+    assert [c["next"] for c in checkpoints] == [
+        ["__start__"], ["receive_question"], ["plan_sources"], ["retrieve"], ["generate"], [],
+    ]
     assert checkpoints[2]["values"]["question"] == "¿Qué transportista cubre mejor Aragón rural?"
-    assert checkpoints[3]["values"]["context"] == [SEUR_CHUNK]  # estado tras retrieve, antes de generate
+    assert checkpoints[3]["values"]["plan"]["sources"] == ["rag"]
+    assert checkpoints[4]["values"]["context"] == [SEUR_CHUNK]  # estado tras retrieve, antes de generate
     assert checkpoints[-1]["values"]["answer"].startswith("SEUR")
 
     # Persistente: otro proceso (nuevo checkpointer sobre el mismo archivo) puede inspeccionar la corrida.
@@ -182,10 +185,13 @@ def test_trace_records_nodes_in_order_with_outputs_and_routes(tmp_path):
 
     trace = TraceStore(tmp_path / "traces.sqlite").get_trace(result.run_id)  # consultable después de la corrida
     assert trace["status"] == "completed" and trace["final_node"] == "generate"
-    assert executed_nodes(trace) == ["receive_question", "retrieve", "generate"]
+    assert executed_nodes(trace) == ["receive_question", "plan_sources", "retrieve", "generate"]
+    assert trace["sources_used"] == ["rag"]
     assert [(s["kind"], s["name"]) for s in trace["steps"]] == [
         ("node", "receive_question"), ("route", "route_after_receive"),
-        ("node", "retrieve"), ("route", "route_after_retrieve"), ("node", "generate"),
+        ("node", "plan_sources"), ("route", "route_after_plan"),
+        ("node", "retrieve"), ("route", "route_after_retrieve"),
+        ("node", "generate"), ("route", "route_after_generate"),
     ]
     assert node_output(trace, "retrieve")["context"][0]["source_document"] == "carrier-coverage"
     assert node_output(trace, "generate")["answer"] == result.answer

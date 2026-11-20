@@ -21,7 +21,8 @@ def main(argv: list[str]) -> int:
         print(json.dumps(trace, indent=2, ensure_ascii=False))
         return 0
     for run in store.list_runs():
-        print(f"{run['started_at']}  {run['run_id']}  {run['status']:9}  final={run['final_node']}  «{run['question'][:60]}»")
+        sources = " → ".join(json.loads(run["sources_used"])) if run.get("sources_used") else "-"
+        print(f"{run['started_at']}  {run['run_id']}  {run['status']:9}  fuentes={sources:28} final={run['final_node']}  «{run['question'][:60]}»")
     return 0
 
 

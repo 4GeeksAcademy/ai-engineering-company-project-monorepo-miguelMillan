@@ -1,4 +1,4 @@
-"""Endpoint del agente LangGraph de TrackFlow: POST /agent/query.
+"""Endpoint del agente LangGraph de TrackFlow: POST /agent/query (RAG + tools de incidencias e inventario).
 
 Convive con ``POST /knowledge/query`` (RAG directo). No contiene lógica de
 negocio: solo invoca el grafo compilado de ``services/agent/graph.py`` y
@@ -12,7 +12,7 @@ import sys
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from security import get_current_user
@@ -55,9 +55,12 @@ class AgentAnswer(BaseModel):
 
 
 @router.post("/agent/query", response_model=AgentAnswer)
-def ask_agent(payload: AgentQuestion, response: Response, _user=Depends(get_current_user)) -> AgentAnswer:
+def ask_agent(payload: AgentQuestion, request: Request, response: Response, _user=Depends(get_current_user)) -> AgentAnswer:
+    # El JWT ya validado de quien pregunta se reenvía a las tools (incidencias, inventario):
+    # consultan con los permisos del propio account manager. No se guarda en estado ni en traces.
+    scheme, _, token = request.headers.get("authorization", "").partition(" ")
     try:
-        result = get_agent().run(payload.question)
+        result = get_agent().run(payload.question, auth_token=token if scheme.lower() == "bearer" and token else None)
     except AgentRunError as error:
         logger.error("agent run %s failed at node %s: %r", error.run_id, error.node, error.cause)
         headers = {"X-Agent-Run-Id": error.run_id}

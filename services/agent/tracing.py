@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     status      TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
     final_node  TEXT,
     error_type  TEXT,
+    sources_used TEXT,
     started_at  TEXT NOT NULL,
     finished_at TEXT
 );
@@ -59,6 +60,9 @@ class TraceStore:
         self._connection.row_factory = sqlite3.Row
         with self._lock, self._connection:
             self._connection.executescript(SCHEMA)
+            columns = {row[1] for row in self._connection.execute("PRAGMA table_info(agent_runs)")}
+            if "sources_used" not in columns:  # migración de traces de la Parte 1
+                self._connection.execute("ALTER TABLE agent_runs ADD COLUMN sources_used TEXT")
         self._next_seq: dict[str, int] = {}
 
     def start_run(self, run_id: str, question: str) -> None:
@@ -81,11 +85,14 @@ class TraceStore:
                  json.dumps(output, ensure_ascii=False, default=str)),
             )
 
-    def finish_run(self, run_id: str, *, status: str, final_node: str | None, error_type: str | None = None) -> None:
+    def finish_run(self, run_id: str, *, status: str, final_node: str | None, error_type: str | None = None,
+                   sources: list[str] | None = None) -> None:
+        """Cierra la corrida guardando qué fuentes usó y en qué orden (RAG, tools o ambas)."""
         with self._lock, self._connection:
             self._connection.execute(
-                "UPDATE agent_runs SET status = ?, final_node = ?, error_type = ?, finished_at = ? WHERE run_id = ?",
-                (status, final_node, error_type, _now(), run_id),
+                "UPDATE agent_runs SET status = ?, final_node = ?, error_type = ?, sources_used = ?, finished_at = ? "
+                "WHERE run_id = ?",
+                (status, final_node, error_type, json.dumps(sources or []), _now(), run_id),
             )
             self._next_seq.pop(run_id, None)
 
@@ -97,8 +104,10 @@ class TraceStore:
             steps = self._connection.execute(
                 "SELECT * FROM agent_trace_steps WHERE run_id = ? ORDER BY seq", (run_id,)
             ).fetchall()
+        run = dict(run)
+        run["sources_used"] = json.loads(run["sources_used"]) if run.get("sources_used") else []
         return {
-            **dict(run),
+            **run,
             "steps": [{**dict(step), "output": json.loads(step["output"])} for step in steps],
         }
 

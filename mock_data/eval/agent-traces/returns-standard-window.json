@@ -4,15 +4,18 @@
   "status": "completed",
   "final_node": "generate",
   "error_type": null,
-  "started_at": "2026-11-20T08:33:22.229+00:00",
-  "finished_at": "2026-11-20T08:33:32.765+00:00",
+  "sources_used": [
+    "rag"
+  ],
+  "started_at": "2026-11-20T09:04:39.899+00:00",
+  "finished_at": "2026-11-20T09:04:50.555+00:00",
   "steps": [
     {
       "run_id": "eval-returns-standard-window",
       "seq": 0,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-20T08:33:22.234+00:00",
+      "started_at": "2026-11-20T09:04:39.906+00:00",
       "duration_ms": 0.009,
       "status": "ok",
       "output": {
@@ -24,11 +27,11 @@
       "seq": 1,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-20T08:33:22.236+00:00",
-      "duration_ms": 0.004,
+      "started_at": "2026-11-20T09:04:39.907+00:00",
+      "duration_ms": 0.003,
       "status": "ok",
       "output": {
-        "next": "retrieve",
+        "next": "plan_sources",
         "reason": "pregunta válida"
       }
     },
@@ -36,9 +39,41 @@
       "run_id": "eval-returns-standard-window",
       "seq": 2,
       "kind": "node",
+      "name": "plan_sources",
+      "started_at": "2026-11-20T09:04:39.910+00:00",
+      "duration_ms": 0.046,
+      "status": "ok",
+      "output": {
+        "plan": {
+          "sources": [
+            "rag"
+          ],
+          "reasons": [
+            "pregunta de políticas o procedimientos → base de conocimiento (RAG)"
+          ]
+        }
+      }
+    },
+    {
+      "run_id": "eval-returns-standard-window",
+      "seq": 3,
+      "kind": "route",
+      "name": "route_after_plan",
+      "started_at": "2026-11-20T09:04:39.912+00:00",
+      "duration_ms": 0.004,
+      "status": "ok",
+      "output": {
+        "next": "retrieve",
+        "reason": "el plan solo necesita la base de conocimiento"
+      }
+    },
+    {
+      "run_id": "eval-returns-standard-window",
+      "seq": 4,
+      "kind": "node",
       "name": "retrieve",
-      "started_at": "2026-11-20T08:33:22.240+00:00",
-      "duration_ms": 43.791,
+      "started_at": "2026-11-20T09:04:39.915+00:00",
+      "duration_ms": 46.91,
       "status": "ok",
       "output": {
         "context": [
@@ -56,10 +91,10 @@
     },
     {
       "run_id": "eval-returns-standard-window",
-      "seq": 3,
+      "seq": 5,
       "kind": "route",
       "name": "route_after_retrieve",
-      "started_at": "2026-11-20T08:33:22.288+00:00",
+      "started_at": "2026-11-20T09:04:39.966+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {
@@ -69,27 +104,45 @@
     },
     {
       "run_id": "eval-returns-standard-window",
-      "seq": 4,
+      "seq": 6,
       "kind": "node",
       "name": "generate",
-      "started_at": "2026-11-20T08:33:22.291+00:00",
-      "duration_ms": 10469.903,
+      "started_at": "2026-11-20T09:04:39.970+00:00",
+      "duration_ms": 10578.784,
       "status": "ok",
       "output": {
         "answer": "La ventana de devolución estándar para TrackFlow es de 30 días desde la entrega, salvo que el cliente haya especificado una ventana diferente en su contrato."
       }
+    },
+    {
+      "run_id": "eval-returns-standard-window",
+      "seq": 7,
+      "kind": "route",
+      "name": "route_after_generate",
+      "started_at": "2026-11-20T09:04:50.551+00:00",
+      "duration_ms": 0.004,
+      "status": "ok",
+      "output": {
+        "next": "__end__",
+        "reason": "solo RAG: la respuesta generada es la final"
+      }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-20T08:33:32+00:00",
+    "recorded_at": "2026-11-20T09:04:50+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
+    "api_base_url": "http://127.0.0.1:8081",
+    "api_token_configured": true,
     "checkpoints": [
       [
         "__start__"
       ],
       [
         "receive_question"
+      ],
+      [
+        "plan_sources"
       ],
       [
         "retrieve"

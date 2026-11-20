@@ -4,16 +4,19 @@
   "status": "completed",
   "final_node": "generate",
   "error_type": null,
-  "started_at": "2026-11-20T08:34:12.610+00:00",
-  "finished_at": "2026-11-20T08:34:33.182+00:00",
+  "sources_used": [
+    "rag"
+  ],
+  "started_at": "2026-11-20T09:05:30.474+00:00",
+  "finished_at": "2026-11-20T09:05:51.113+00:00",
   "steps": [
     {
       "run_id": "eval-sla-black-friday-not-guaranteed",
       "seq": 0,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-20T08:34:12.617+00:00",
-      "duration_ms": 0.007,
+      "started_at": "2026-11-20T09:05:30.483+00:00",
+      "duration_ms": 0.009,
       "status": "ok",
       "output": {
         "question": "¿Podemos garantizar los plazos de entrega durante Black Friday?"
@@ -24,11 +27,11 @@
       "seq": 1,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-20T08:34:12.618+00:00",
+      "started_at": "2026-11-20T09:05:30.486+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
-        "next": "retrieve",
+        "next": "plan_sources",
         "reason": "pregunta válida"
       }
     },
@@ -36,9 +39,41 @@
       "run_id": "eval-sla-black-friday-not-guaranteed",
       "seq": 2,
       "kind": "node",
+      "name": "plan_sources",
+      "started_at": "2026-11-20T09:05:30.490+00:00",
+      "duration_ms": 0.04,
+      "status": "ok",
+      "output": {
+        "plan": {
+          "sources": [
+            "rag"
+          ],
+          "reasons": [
+            "pregunta de políticas o procedimientos → base de conocimiento (RAG)"
+          ]
+        }
+      }
+    },
+    {
+      "run_id": "eval-sla-black-friday-not-guaranteed",
+      "seq": 3,
+      "kind": "route",
+      "name": "route_after_plan",
+      "started_at": "2026-11-20T09:05:30.491+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "retrieve",
+        "reason": "el plan solo necesita la base de conocimiento"
+      }
+    },
+    {
+      "run_id": "eval-sla-black-friday-not-guaranteed",
+      "seq": 4,
+      "kind": "node",
       "name": "retrieve",
-      "started_at": "2026-11-20T08:34:12.621+00:00",
-      "duration_ms": 53.398,
+      "started_at": "2026-11-20T09:05:30.496+00:00",
+      "duration_ms": 58.25,
       "status": "ok",
       "output": {
         "context": [
@@ -56,10 +91,10 @@
     },
     {
       "run_id": "eval-sla-black-friday-not-guaranteed",
-      "seq": 3,
+      "seq": 5,
       "kind": "route",
       "name": "route_after_retrieve",
-      "started_at": "2026-11-20T08:34:12.677+00:00",
+      "started_at": "2026-11-20T09:05:30.556+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -69,27 +104,45 @@
     },
     {
       "run_id": "eval-sla-black-friday-not-guaranteed",
-      "seq": 4,
+      "seq": 6,
       "kind": "node",
       "name": "generate",
-      "started_at": "2026-11-20T08:34:12.680+00:00",
-      "duration_ms": 20496.716,
+      "started_at": "2026-11-20T09:05:30.562+00:00",
+      "duration_ms": 20545.321,
       "status": "ok",
       "output": {
         "answer": "No puedo garantizar los plazos de entrega durante Black Friday. Según nuestra SLA de Entrega, TrackFlow no garantiza SLA de entrega en esos días de alta demanda declarados (Black Friday, Navidad, Rebajas de enero en España). Los tiempos pueden extenderse hasta un 40% adicional, lo que debe comunicarse proactivamente a los clientes con anticipación."
       }
+    },
+    {
+      "run_id": "eval-sla-black-friday-not-guaranteed",
+      "seq": 7,
+      "kind": "route",
+      "name": "route_after_generate",
+      "started_at": "2026-11-20T09:05:51.109+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "__end__",
+        "reason": "solo RAG: la respuesta generada es la final"
+      }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-20T08:34:33+00:00",
+    "recorded_at": "2026-11-20T09:05:51+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
+    "api_base_url": "http://127.0.0.1:8081",
+    "api_token_configured": true,
     "checkpoints": [
       [
         "__start__"
       ],
       [
         "receive_question"
+      ],
+      [
+        "plan_sources"
       ],
       [
         "retrieve"

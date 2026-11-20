@@ -44,6 +44,7 @@ services:
       QDRANT_URL: http://qdrant:6333
       EMBEDDING_CACHE_DIR: /var/lib/trackflow/fastembed
       AGENT_DATA_DIR: /var/lib/trackflow/agent
+      AGENT_API_BASE_URL: http://127.0.0.1:8081
     depends_on:
       redis:
         condition: service_healthy

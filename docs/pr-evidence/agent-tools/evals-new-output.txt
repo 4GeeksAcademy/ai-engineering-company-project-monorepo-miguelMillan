@@ -1,0 +1,13 @@
+$ uv run pytest tests/pipelines/test_agent_evals.py -v -k "tool or mixed or fallback or routing or returns-standard-window"   (evals nuevos de la Parte 2 + el caso RAG de control)
+collecting ... collected 17 items / 9 deselected / 8 selected
+
+tests/pipelines/test_agent_evals.py::test_routing_evals_cover_tool_only_rag_only_and_fallback PASSED [ 12%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[returns-standard-window] PASSED [ 25%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[tool-ticket-status-by-id] PASSED [ 37%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[tool-ticket-search-open-returns] PASSED [ 50%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[tool-inventory-stock-by-sku] PASSED [ 62%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[mixed-ticket-and-policy] PASSED [ 75%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[fallback-incidents-service-down] PASSED [ 87%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[fallback-ticket-reference-not-uuid] PASSED [100%]
+
+======================= 8 passed, 9 deselected in 0.39s ========================

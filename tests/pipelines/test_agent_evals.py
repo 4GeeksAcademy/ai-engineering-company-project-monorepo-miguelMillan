@@ -18,6 +18,8 @@ from pathlib import Path
 
 import pytest
 
+from services.agent.graph import sources_used
+from services.agent.tools import STATUS_LABELS
 from services.agent.tracing import executed_nodes, node_output
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -45,6 +47,14 @@ def final_answer(trace: dict) -> str:
 def test_there_are_at_least_three_evals_including_grounding():
     assert len(CASES) >= 3
     assert any("answer_contains_all" in case["criteria"] and case["criteria"].get("final_node") == "generate" for case in CASES)
+
+
+def test_routing_evals_cover_tool_only_rag_only_and_fallback():
+    sources = [case["criteria"].get("sources_used") for case in CASES]
+    assert ["incidents"] in sources and ["inventory"] in sources  # se resuelve con una tool, no con el RAG
+    assert ["rag"] in sources  # se resuelve con el RAG, no con una tool
+    assert ["incidents", "rag"] in sources  # ambos, en ese orden
+    assert any(case["criteria"].get("incident_tool_error") == "unavailable" for case in CASES)  # fallback servicio caído
 
 
 def check_case(case: dict, trace: dict) -> list[str]:
@@ -76,8 +86,39 @@ def check_case(case: dict, trace: dict) -> list[str]:
     if "generate" in nodes and not (retrieved and all(c["score"] >= 0.45 for c in retrieved)):
         failures.append("generate se ejecutó sin contexto por encima de min_score")
 
+    # Fuentes usadas y su orden (Parte 2): el trace debe dejar claro si se usó RAG, una tool o ambos.
+    if "sources_used" in criteria:
+        if sources_used(trace) != criteria["sources_used"]:
+            failures.append(f"fuentes {sources_used(trace)} != {criteria['sources_used']}")
+        if trace.get("sources_used") != criteria["sources_used"]:
+            failures.append(f"agent_runs.sources_used {trace.get('sources_used')} != {criteria['sources_used']}")
+
     final = node_output(trace, trace["final_node"]) or {}
     answer = _normalize(final.get("answer", ""))
+    incident = (node_output(trace, "lookup_incidents") or {}).get("incident_result")
+    inventory = (node_output(trace, "lookup_inventory") or {}).get("inventory_result")
+    if criteria.get("incident_tool_ok") and not (incident and incident["ok"]):
+        failures.append(f"la tool de incidencias no respondió OK: {incident and incident.get('error_type')}")
+    if "incident_tool_error" in criteria and (not incident or incident.get("error_type") != criteria["incident_tool_error"]):
+        failures.append(f"se esperaba error {criteria['incident_tool_error']} en la tool de incidencias")
+    if "incident_query" in criteria and incident:
+        sent = {k: v for k, v in incident["query"].items() if v}
+        if sent != criteria["incident_query"]:
+            failures.append(f"filtros enviados {sent} != {criteria['incident_query']}")
+    if criteria.get("answer_reflects_incident_status") and incident and incident["ok"]:
+        live_status = STATUS_LABELS[incident["incidents"][0]["status"]]  # el dato que devolvió el servicio real
+        if _normalize(live_status) not in answer:
+            failures.append(f"la respuesta no refleja el estado real «{live_status}» del ticket")
+    if criteria.get("answer_contains_incident_total") and incident and incident["ok"]:
+        if f"hay {incident['total']} tickets" not in answer:
+            failures.append(f"la respuesta no da el total real ({incident['total']}) de tickets")
+    if criteria.get("inventory_tool_ok") and not (inventory and inventory["ok"]):
+        failures.append(f"la tool de inventario no respondió OK: {inventory and inventory.get('error_type')}")
+    if criteria.get("answer_contains_inventory_stock") and inventory and inventory["ok"]:
+        for item in inventory["items"]:
+            if f"{item['current_stock']} unidades" not in answer:
+                failures.append(f"la respuesta no da el stock real ({item['current_stock']}) de {item['sku']}")
+    failures += [f"la respuesta no debía contener «{f}»" for f in criteria.get("answer_must_not_contain", []) if _normalize(f) in answer]
     failures += [f"la respuesta no menciona «{f}»" for f in criteria.get("answer_contains_all", []) if _normalize(f) not in answer]
     if "answer_contains_any" in criteria and not any(_normalize(f) in answer for f in criteria["answer_contains_any"]):
         failures.append(f"la respuesta no contiene ninguno de {criteria['answer_contains_any']}")

@@ -4,16 +4,19 @@
   "status": "completed",
   "final_node": "generate",
   "error_type": null,
-  "started_at": "2026-11-20T08:32:50.964+00:00",
-  "finished_at": "2026-11-20T08:33:22.226+00:00",
+  "sources_used": [
+    "rag"
+  ],
+  "started_at": "2026-11-20T09:04:10.435+00:00",
+  "finished_at": "2026-11-20T09:04:39.895+00:00",
   "steps": [
     {
       "run_id": "eval-carrier-aragon-rural",
       "seq": 0,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-20T08:32:50.976+00:00",
-      "duration_ms": 0.008,
+      "started_at": "2026-11-20T09:04:10.446+00:00",
+      "duration_ms": 0.007,
       "status": "ok",
       "output": {
         "question": "¿Qué transportista cubre mejor Aragón rural?"
@@ -24,11 +27,11 @@
       "seq": 1,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-20T08:32:50.977+00:00",
+      "started_at": "2026-11-20T09:04:10.448+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
-        "next": "retrieve",
+        "next": "plan_sources",
         "reason": "pregunta válida"
       }
     },
@@ -36,9 +39,41 @@
       "run_id": "eval-carrier-aragon-rural",
       "seq": 2,
       "kind": "node",
+      "name": "plan_sources",
+      "started_at": "2026-11-20T09:04:10.451+00:00",
+      "duration_ms": 0.046,
+      "status": "ok",
+      "output": {
+        "plan": {
+          "sources": [
+            "rag"
+          ],
+          "reasons": [
+            "pregunta de políticas o procedimientos → base de conocimiento (RAG)"
+          ]
+        }
+      }
+    },
+    {
+      "run_id": "eval-carrier-aragon-rural",
+      "seq": 3,
+      "kind": "route",
+      "name": "route_after_plan",
+      "started_at": "2026-11-20T09:04:10.452+00:00",
+      "duration_ms": 0.004,
+      "status": "ok",
+      "output": {
+        "next": "retrieve",
+        "reason": "el plan solo necesita la base de conocimiento"
+      }
+    },
+    {
+      "run_id": "eval-carrier-aragon-rural",
+      "seq": 4,
+      "kind": "node",
       "name": "retrieve",
-      "started_at": "2026-11-20T08:32:50.981+00:00",
-      "duration_ms": 4052.477,
+      "started_at": "2026-11-20T09:04:10.456+00:00",
+      "duration_ms": 2461.02,
       "status": "ok",
       "output": {
         "context": [
@@ -56,11 +91,11 @@
     },
     {
       "run_id": "eval-carrier-aragon-rural",
-      "seq": 3,
+      "seq": 5,
       "kind": "route",
       "name": "route_after_retrieve",
-      "started_at": "2026-11-20T08:32:55.036+00:00",
-      "duration_ms": 0.004,
+      "started_at": "2026-11-20T09:04:12.928+00:00",
+      "duration_ms": 0.003,
       "status": "ok",
       "output": {
         "next": "generate",
@@ -69,27 +104,45 @@
     },
     {
       "run_id": "eval-carrier-aragon-rural",
-      "seq": 4,
+      "seq": 6,
       "kind": "node",
       "name": "generate",
-      "started_at": "2026-11-20T08:32:55.040+00:00",
-      "duration_ms": 27182.0,
+      "started_at": "2026-11-20T09:04:12.958+00:00",
+      "duration_ms": 26931.433,
       "status": "ok",
       "output": {
         "answer": "TrackFlow cubre mejor la cobertura en zonas rurales de Aragón con SEUR. Esta compañía tiene una mejor cobertura en áreas menos urbanas y rurales del estado aragonés, lo que la hace más adecuada para el transporte a estos lugares. Sin embargo, MRW ofrece tarifas más competitivas para paquetes pequeños (menores a 2 kg), lo que podría ser un punto favorable si tu cliente está buscando una opción más económica para sus envíos en Zaragoza."
       }
+    },
+    {
+      "run_id": "eval-carrier-aragon-rural",
+      "seq": 7,
+      "kind": "route",
+      "name": "route_after_generate",
+      "started_at": "2026-11-20T09:04:39.891+00:00",
+      "duration_ms": 0.004,
+      "status": "ok",
+      "output": {
+        "next": "__end__",
+        "reason": "solo RAG: la respuesta generada es la final"
+      }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-20T08:33:22+00:00",
+    "recorded_at": "2026-11-20T09:04:39+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
+    "api_base_url": "http://127.0.0.1:8081",
+    "api_token_configured": true,
     "checkpoints": [
       [
         "__start__"
       ],
       [
         "receive_question"
+      ],
+      [
+        "plan_sources"
       ],
       [
         "retrieve"

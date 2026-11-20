@@ -27,7 +27,7 @@ def test_agent_query_returns_graph_answer_and_run_id(authenticated_client, agent
     assert response.status_code == 200
     assert response.json() == {"answer": "La ventana estándar es de 30 días desde la entrega."}
     trace = instance.traces.get_trace(response.headers["X-Agent-Run-Id"])
-    assert executed_nodes(trace) == ["receive_question", "retrieve", "generate"]
+    assert executed_nodes(trace) == ["receive_question", "plan_sources", "retrieve", "generate"]
 
 
 def test_agent_query_never_exposes_chunks_scores_or_trace(authenticated_client, agent):
@@ -83,3 +83,23 @@ def test_unexpected_node_error_maps_to_502(authenticated_client, agent):
 def test_agent_query_requires_authentication(api_client, agent):
     agent()
     assert api_client.post("/agent/query", json={"question": "¿Ventana?"}).status_code == 401
+
+
+def test_ticket_question_forwards_caller_jwt_to_incidents_tool(authenticated_client, monkeypatch):
+    from services.agent.tools import IncidentToolResult
+
+    seen = {}
+
+    def incidents(query, *, auth_token=None):
+        seen["token"] = auth_token
+        return IncidentToolResult(ok=False, mode="detail", query=query, error_type="not_found")
+
+    instance = KnowledgeAgent(retrieve_fn=lambda q, *, k, min_score: [], generate_fn=lambda q, c: "x",
+                              incidents_fn=incidents, checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"))
+    monkeypatch.setattr("routes.agent.get_agent", lambda: instance)
+    ticket = "8a4f3f2e-6c1d-5b9a-9e2f-0123456789ab"
+    response = authenticated_client.post("/agent/query", json={"question": f"¿En qué estado está el ticket {ticket}?"})
+
+    assert response.status_code == 200
+    assert seen["token"] == authenticated_client.headers["Authorization"].split(" ", 1)[1]
+    assert response.json() == {"answer": f"No encontré ningún ticket con el identificador {ticket} en el gestor de incidencias."}
