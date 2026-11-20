@@ -1,5 +1,5 @@
 {
-  "description": "Evals del agente LangGraph de TrackFlow (Partes 1 y 2). Cada caso tiene una pregunta y criterios verificables sobre el TRACE grabado (mock_data/eval/agent-traces/<id>.json), no sobre una ejecución en vivo. Los criterios de anclaje usan datos exactos de docs/company-knowledge-base/ (RAG) y, para las tools, los datos que devolvió el servicio real en esa corrida (gestor de incidencias GET /api/incidents y gestor de inventario GET /inventory/products). Para regrabar: uv run python scripts/record_agent_traces.py con el API, Qdrant y el LLM en marcha y AGENT_API_TOKEN definido.",
+  "description": "Evals del agente LangGraph de TrackFlow (Partes 1 y 2, y migración a MCP). Cada caso tiene una pregunta y criterios verificables sobre el TRACE grabado (mock_data/eval/agent-traces/<id>.json), no sobre una ejecución en vivo. Los criterios de anclaje usan datos exactos de docs/company-knowledge-base/ (RAG) y, para las tools, los datos que devolvió el servicio real en esa corrida, obtenidos a través del servidor MCP de TrackFlow (tools incidents_get_ticket, incidents_list_tickets e inventory_query_products, que delegan en el Incidents Manager y el inventario). Para regrabar: uv run python scripts/record_agent_traces.py con el API, el servidor MCP, el proveedor OIDC, Qdrant y el LLM en marcha y AGENT_OAUTH_CLIENT_ID/AGENT_OAUTH_CLIENT_SECRET definidos.",
   "cases": [
     {
       "id": "carrier-aragon-rural",
@@ -26,8 +26,8 @@
           "rag"
         ],
         "nodes_not_executed": [
-          "lookup_incidents",
-          "lookup_inventory"
+          "mcp_incidents",
+          "mcp_inventory"
         ]
       }
     },
@@ -56,8 +56,8 @@
           "rag"
         ],
         "nodes_not_executed": [
-          "lookup_incidents",
-          "lookup_inventory"
+          "mcp_incidents",
+          "mcp_inventory"
         ]
       }
     },
@@ -80,8 +80,8 @@
           "rag"
         ],
         "nodes_not_executed": [
-          "lookup_incidents",
-          "lookup_inventory"
+          "mcp_incidents",
+          "mcp_inventory"
         ]
       }
     },
@@ -110,8 +110,8 @@
           "rag"
         ],
         "nodes_not_executed": [
-          "lookup_incidents",
-          "lookup_inventory"
+          "mcp_incidents",
+          "mcp_inventory"
         ]
       }
     },
@@ -129,8 +129,8 @@
         "final_node": "no_context",
         "nodes_not_executed": [
           "generate",
-          "lookup_incidents",
-          "lookup_inventory"
+          "mcp_incidents",
+          "mcp_inventory"
         ],
         "retrieved_count": 0,
         "route_decisions": {
@@ -178,20 +178,21 @@
         "node_order": [
           "receive_question",
           "plan_sources",
-          "lookup_incidents",
+          "mcp_incidents",
           "compose_answer"
         ],
         "final_node": "compose_answer",
         "nodes_not_executed": [
           "retrieve",
           "generate",
-          "lookup_inventory"
+          "mcp_inventory"
         ],
         "incident_tool_ok": true,
         "answer_reflects_incident_status": true,
         "answer_contains_all": [
           "d32a9b66-b81b-5dce-b90f-c4e8bfc27161"
-        ]
+        ],
+        "mcp_tool": "incidents_get_ticket"
       }
     },
     {
@@ -212,7 +213,8 @@
           "status": "open",
           "category": "returns_issue"
         },
-        "answer_contains_incident_total": true
+        "answer_contains_incident_total": true,
+        "mcp_tool": "incidents_list_tickets"
       }
     },
     {
@@ -227,13 +229,14 @@
         "nodes_not_executed": [
           "retrieve",
           "generate",
-          "lookup_incidents"
+          "mcp_incidents"
         ],
         "inventory_tool_ok": true,
         "answer_contains_inventory_stock": true,
         "answer_contains_all": [
           "TEC-EAR-001"
-        ]
+        ],
+        "mcp_tool": "inventory_query_products"
       }
     },
     {
@@ -248,7 +251,7 @@
         "node_order": [
           "receive_question",
           "plan_sources",
-          "lookup_incidents",
+          "mcp_incidents",
           "retrieve",
           "generate",
           "compose_answer"
@@ -264,14 +267,15 @@
         ],
         "answer_contains_all": [
           "30 días"
-        ]
+        ],
+        "mcp_tool": "incidents_get_ticket"
       }
     },
     {
       "id": "fallback-incidents-service-down",
       "question": "¿En qué estado está el ticket d32a9b66-b81b-5dce-b90f-c4e8bfc27161?",
       "record_with_env": {
-        "AGENT_API_BASE_URL": "http://127.0.0.1:9"
+        "MCP_SERVER_URL": "http://127.0.0.1:9/mcp"
       },
       "criteria": {
         "status": "completed",
@@ -292,7 +296,8 @@
           "En curso",
           "Resuelta",
           "Descartada"
-        ]
+        ],
+        "mcp_tool": "incidents_get_ticket"
       }
     },
     {

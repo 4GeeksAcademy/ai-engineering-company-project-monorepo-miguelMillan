@@ -1,4 +1,4 @@
-"""Agente de soporte de TrackFlow como grafo de LangGraph (Partes 1 y 2).
+"""Agente de soporte de TrackFlow como grafo de LangGraph (Partes 1, 2 y migración a MCP).
 
 Parte 1: el RAG de ``mock_data/pipelines/rag.py`` (el ``data/pipelines/`` del
 enunciado) vive en nodos con una sola responsabilidad. El nodo ``retrieve``
@@ -6,27 +6,33 @@ llama a ``retrieve()`` y el nodo ``generate`` llama a
 ``generate_answer(question, context)`` con el contexto ya recuperado; ``query()``
 no se usa.
 
-Parte 2: dos tools de solo lectura sobre los servicios reales
-(``services/agent/tools.py``): ``lookup_incidents`` (gestor de incidencias) y
-``lookup_inventory`` (gestor de inventario). El nodo ``plan_sources`` decide a
-partir de la pregunta si hace falta el RAG, alguna tool o ambos
-(``services/agent/routing.py``), y las aristas condicionales recorren las
-fuentes planificadas en orden: incidencias → inventario → RAG.
+Parte 2: tools de solo lectura sobre los servicios reales. El nodo
+``plan_sources`` decide a partir de la pregunta si hace falta el RAG, alguna
+tool o ambos (``services/agent/routing.py``), y las aristas condicionales
+recorren las fuentes planificadas en orden: incidencias → inventario → RAG.
+
+Migración a MCP: los nodos de tools son ahora CLIENTES del servidor MCP de
+TrackFlow (``mcps/trackflow_mcp``). ``mcp_incidents`` y ``mcp_inventory``
+invocan las tools ``incidents_get_ticket`` / ``incidents_list_tickets`` e
+``inventory_query_products``, cargadas con ``langchain-mcp-adapters``
+(``services/agent/mcp_client.py``) y autenticadas con OAuth 2.1. Sustituyen a
+``lookup_incidents`` / ``lookup_inventory``, que llamaban por HTTP directo a
+``services/api``; esa implementación se eliminó. El enrutamiento no cambia.
 
 Flujo::
 
     START → receive_question ─┬─ inválida → invalid_question → END
-                              └─ válida   → plan_sources ─┬─→ lookup_incidents ─┬─→ lookup_inventory ─┬─→ retrieve
-                                                          ├─→ lookup_inventory  ├─→ retrieve          └─→ compose_answer
-                                                          └─→ retrieve          └─→ compose_answer
+                              └─ válida   → plan_sources ─┬─→ mcp_incidents ─┬─→ mcp_inventory ─┬─→ retrieve
+                                                          ├─→ mcp_inventory  ├─→ retrieve       └─→ compose_answer
+                                                          └─→ retrieve       └─→ compose_answer
     retrieve ─┬─ hay contexto ≥ min_score ─────────→ generate ─┬─ hubo tools → compose_answer → END
               ├─ sin contexto, pero hubo tools ────→ compose_answer         └─ solo RAG ──────────→ END
               └─ sin contexto y sin tools ─────────→ no_context → END
 
 Estado mínimo (``AgentState``): pregunta, plan de fuentes, resultados de cada
 fuente y respuesta. No viaja el historial de conversación ni credenciales: el
-token para las tools se entrega por corrida fuera del estado (no queda en los
-checkpoints).
+access token OAuth del agente vive solo en el cliente MCP (no queda en los
+checkpoints ni en los traces).
 """
 
 from __future__ import annotations
@@ -36,7 +42,6 @@ import logging
 import os
 import sqlite3
 import sys
-import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -63,7 +68,9 @@ from services.agent.tools import (  # noqa: E402
     IncidentToolResult,
     InventoryQuery,
     InventoryToolResult,
+    McpCaller,
     ReadOnlyViolation,
+    default_mcp,
     lookup_incidents,
     lookup_inventory,
 )
@@ -78,7 +85,7 @@ INVALID_QUESTION_ANSWER = (
     "devoluciones, cobertura de transportistas, tarifas de almacenamiento, el estado de un ticket o el stock "
     "de un producto de TrackFlow."
 )
-SOURCE_BY_NODE = {"lookup_incidents": "incidents", "lookup_inventory": "inventory", "retrieve": "rag"}
+SOURCE_BY_NODE = {"mcp_incidents": "incidents", "mcp_inventory": "inventory", "retrieve": "rag"}
 
 
 # --------------------------------------------------------------------------
@@ -132,37 +139,37 @@ def plan_sources(state: AgentState) -> dict[str, Any]:
     return {"plan": plan_question_sources(state["question"])}
 
 
-def make_incidents_node(lookup_fn: Callable[..., IncidentToolResult], credentials: Callable[[str], str | None]):
-    def lookup_incidents_node(state: AgentState, config) -> dict[str, Any]:
-        """Tool de solo lectura: consulta el gestor de incidencias en vivo. Nunca rompe la corrida."""
+def make_incidents_node(lookup_fn: Callable[..., IncidentToolResult], mcp: Callable[[], McpCaller]):
+    def mcp_incidents_node(state: AgentState) -> dict[str, Any]:
+        """Cliente MCP: consulta el Incidents Manager con las tools del servidor MCP. Nunca rompe la corrida."""
         query = IncidentQuery.model_validate(state["plan"].get("incident_query", {}))
         try:
-            result = lookup_fn(query, auth_token=credentials(config["configurable"]["thread_id"]))
+            result = lookup_fn(query, mcp=mcp())
         except ReadOnlyViolation:
             raise
         except Exception:
-            logger.exception("lookup_incidents falló de forma inesperada")
+            logger.exception("mcp_incidents falló de forma inesperada")
             result = IncidentToolResult(ok=False, mode="detail" if query.ticket_id else "list", query=query,
                                         error_type="unavailable")
         return {"incident_result": result.model_dump(mode="json")}
 
-    return lookup_incidents_node
+    return mcp_incidents_node
 
 
-def make_inventory_node(lookup_fn: Callable[..., InventoryToolResult], credentials: Callable[[str], str | None]):
-    def lookup_inventory_node(state: AgentState, config) -> dict[str, Any]:
-        """Tool de solo lectura: consulta el stock en el gestor de inventario en vivo."""
+def make_inventory_node(lookup_fn: Callable[..., InventoryToolResult], mcp: Callable[[], McpCaller]):
+    def mcp_inventory_node(state: AgentState) -> dict[str, Any]:
+        """Cliente MCP: consulta el stock con la tool de inventario (solo lectura) del servidor MCP."""
         query = InventoryQuery.model_validate(state["plan"].get("inventory_query", {}))
         try:
-            result = lookup_fn(query, auth_token=credentials(config["configurable"]["thread_id"]))
+            result = lookup_fn(query, mcp=mcp())
         except ReadOnlyViolation:
             raise
         except Exception:
-            logger.exception("lookup_inventory falló de forma inesperada")
+            logger.exception("mcp_inventory falló de forma inesperada")
             result = InventoryToolResult(ok=False, query=query, error_type="unavailable")
         return {"inventory_result": result.model_dump(mode="json")}
 
-    return lookup_inventory_node
+    return mcp_inventory_node
 
 
 def make_retrieve_node(retrieve_fn: Callable[..., list[dict[str, Any]]]):
@@ -207,8 +214,8 @@ def invalid_question(state: AgentState) -> dict[str, Any]:
 NODE_WRITES: dict[str, frozenset[str]] = {
     "receive_question": frozenset({"question", "error"}),
     "plan_sources": frozenset({"plan"}),
-    "lookup_incidents": frozenset({"incident_result"}),
-    "lookup_inventory": frozenset({"inventory_result"}),
+    "mcp_incidents": frozenset({"incident_result"}),
+    "mcp_inventory": frozenset({"inventory_result"}),
     "retrieve": frozenset({"context"}),
     "generate": frozenset({"answer"}),
     "compose_answer": frozenset({"answer"}),
@@ -224,19 +231,19 @@ def route_after_receive(state: AgentState) -> Literal["invalid_question", "plan_
     return "invalid_question" if state.get("error") else "plan_sources"
 
 
-def route_after_plan(state: AgentState) -> Literal["lookup_incidents", "lookup_inventory", "retrieve"]:
+def route_after_plan(state: AgentState) -> Literal["mcp_incidents", "mcp_inventory", "retrieve"]:
     planned = _planned(state)
     if "incidents" in planned:
-        return "lookup_incidents"
+        return "mcp_incidents"
     if "inventory" in planned:
-        return "lookup_inventory"
+        return "mcp_inventory"
     return "retrieve"
 
 
-def route_after_incidents(state: AgentState) -> Literal["lookup_inventory", "retrieve", "compose_answer"]:
+def route_after_incidents(state: AgentState) -> Literal["mcp_inventory", "retrieve", "compose_answer"]:
     planned = _planned(state)
     if "inventory" in planned:
-        return "lookup_inventory"
+        return "mcp_inventory"
     return "retrieve" if "rag" in planned else "compose_answer"
 
 
@@ -257,10 +264,10 @@ def route_after_generate(state: AgentState) -> Literal["compose_answer", "__end_
 ROUTE_REASONS = {
     ("route_after_receive", "invalid_question"): "pregunta vacía o demasiado larga",
     ("route_after_receive", "plan_sources"): "pregunta válida",
-    ("route_after_plan", "lookup_incidents"): "el plan incluye el gestor de incidencias",
-    ("route_after_plan", "lookup_inventory"): "el plan incluye el gestor de inventario",
+    ("route_after_plan", "mcp_incidents"): "el plan incluye el gestor de incidencias (vía servidor MCP)",
+    ("route_after_plan", "mcp_inventory"): "el plan incluye el gestor de inventario (vía servidor MCP)",
     ("route_after_plan", "retrieve"): "el plan solo necesita la base de conocimiento",
-    ("route_after_incidents", "lookup_inventory"): "falta consultar inventario",
+    ("route_after_incidents", "mcp_inventory"): "falta consultar inventario",
     ("route_after_incidents", "retrieve"): "falta consultar la base de conocimiento",
     ("route_after_incidents", "compose_answer"): "no hay más fuentes planificadas",
     ("route_after_inventory", "retrieve"): "falta consultar la base de conocimiento",
@@ -331,25 +338,21 @@ def _traced_route(fn: Callable, traces: TraceStore | None):
     return wrapper
 
 
-def _no_credentials(run_id: str) -> str | None:
-    return None
-
-
 def build_agent_graph(
     *,
     retrieve_fn: Callable[..., list[dict[str, Any]]] = retrieve,
     generate_fn: Callable[[str, list[dict[str, Any]]], str] = generate_answer,
     incidents_fn: Callable[..., IncidentToolResult] = lookup_incidents,
     inventory_fn: Callable[..., InventoryToolResult] = lookup_inventory,
-    credentials: Callable[[str], str | None] = _no_credentials,
+    mcp: Callable[[], McpCaller] = default_mcp,
     traces: TraceStore | None = None,
 ) -> StateGraph:
     """Define nodos y aristas (sin compilar). Las funciones solo se inyectan en tests."""
     nodes = {
         "receive_question": receive_question,
         "plan_sources": plan_sources,
-        "lookup_incidents": make_incidents_node(incidents_fn, credentials),
-        "lookup_inventory": make_inventory_node(inventory_fn, credentials),
+        "mcp_incidents": make_incidents_node(incidents_fn, mcp),
+        "mcp_inventory": make_inventory_node(inventory_fn, mcp),
         "retrieve": make_retrieve_node(retrieve_fn),
         "generate": make_generate_node(generate_fn),
         "compose_answer": compose_answer,
@@ -365,9 +368,9 @@ def build_agent_graph(
 
     builder.add_edge(START, "receive_question")
     conditional("receive_question", route_after_receive, ["invalid_question", "plan_sources"])
-    conditional("plan_sources", route_after_plan, ["lookup_incidents", "lookup_inventory", "retrieve"])
-    conditional("lookup_incidents", route_after_incidents, ["lookup_inventory", "retrieve", "compose_answer"])
-    conditional("lookup_inventory", route_after_inventory, ["retrieve", "compose_answer"])
+    conditional("plan_sources", route_after_plan, ["mcp_incidents", "mcp_inventory", "retrieve"])
+    conditional("mcp_incidents", route_after_incidents, ["mcp_inventory", "retrieve", "compose_answer"])
+    conditional("mcp_inventory", route_after_inventory, ["retrieve", "compose_answer"])
     conditional("retrieve", route_after_retrieve, ["generate", "compose_answer", "no_context"])
     conditional("generate", route_after_generate, ["compose_answer", END])
     builder.add_edge("compose_answer", END)
@@ -463,31 +466,24 @@ class KnowledgeAgent:
     """Grafo compilado + checkpointer + trace store, listo para servir peticiones."""
 
     def __init__(self, *, data_dir: Path | None = None, retrieve_fn=retrieve, generate_fn=generate_answer,
-                 incidents_fn=lookup_incidents, inventory_fn=lookup_inventory,
+                 incidents_fn=lookup_incidents, inventory_fn=lookup_inventory, mcp: McpCaller | None = None,
                  checkpointer=None, traces: TraceStore | None = None):
         data_dir = data_dir or default_data_dir()
         self.traces = traces or TraceStore(data_dir / "traces.sqlite")
         self.checkpointer = checkpointer or sqlite_checkpointer(data_dir / "checkpoints.sqlite")
-        self._credentials: dict[str, str] = {}
-        self._credentials_lock = threading.Lock()
+        # El cliente MCP se crea al primer uso: las preguntas solo-RAG no necesitan servidor MCP.
+        mcp_provider = (lambda: mcp) if mcp is not None else default_mcp
         self.graph = compile_agent_graph(
             build_agent_graph(retrieve_fn=retrieve_fn, generate_fn=generate_fn, incidents_fn=incidents_fn,
-                              inventory_fn=inventory_fn, credentials=self._credential_for, traces=self.traces),
+                              inventory_fn=inventory_fn, mcp=mcp_provider, traces=self.traces),
             checkpointer=self.checkpointer,
         )
 
-    def _credential_for(self, run_id: str) -> str | None:
-        with self._credentials_lock:
-            return self._credentials.get(run_id)
-
-    def run(self, question: str, *, run_id: str | None = None, auth_token: str | None = None) -> AgentResult:
-        """Ejecuta una corrida. ``auth_token`` (JWT de quien pregunta) solo se usa en las tools y no se persiste."""
+    def run(self, question: str, *, run_id: str | None = None) -> AgentResult:
+        """Ejecuta una corrida. Las tools usan la identidad OAuth del agente ante el servidor MCP."""
         run_id = run_id or str(uuid.uuid4())
         config = {"configurable": {"thread_id": run_id}}
         self.traces.start_run(run_id, question)
-        if auth_token:
-            with self._credentials_lock:
-                self._credentials[run_id] = auth_token
         try:
             state = self.graph.invoke({"question": question}, config, durability="sync")
         except Exception as error:
@@ -496,9 +492,6 @@ class KnowledgeAgent:
             self.traces.finish_run(run_id, status="failed", final_node=failed, error_type=type(error).__name__,
                                    sources=sources_used(trace))
             raise AgentRunError(run_id, failed, error) from error
-        finally:
-            with self._credentials_lock:
-                self._credentials.pop(run_id, None)
         trace = self.traces.get_trace(run_id)
         final_node = next(s["name"] for s in reversed(trace["steps"]) if s["kind"] == "node")
         sources = sources_used(trace)

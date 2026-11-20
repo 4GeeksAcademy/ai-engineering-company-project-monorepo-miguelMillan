@@ -1,44 +1,36 @@
-"""Tools del agente: consultas EN VIVO y de SOLO LECTURA a los servicios de TrackFlow.
+"""Tools del agente: consultas EN VIVO y de SOLO LECTURA a TrackFlow, a través del servidor MCP.
 
-Cada tool hace una sola cosa:
+Desde la migración al servidor MCP (``mcps/trackflow_mcp``), el agente ya no
+llama a ``services/api`` por HTTP: este módulo traduce la consulta planificada
+por el enrutador a una llamada a una tool MCP, mediante el cliente
+``services/agent/mcp_client.py`` (``langchain-mcp-adapters``), y su resultado a
+los contratos que consumen la redacción (``answers.py``) y los evals.
 
-* ``lookup_incidents``: estado de tickets en el gestor de incidencias
-  (``GET /api/incidents/{id}`` o ``GET /api/incidents?status=…``).
-* ``lookup_inventory``: stock por producto en el gestor de inventario
-  (``GET /inventory/products``).
+* ``lookup_incidents``: tool MCP ``incidents_get_ticket`` (por id) o
+  ``incidents_list_tickets`` (con filtros).
+* ``lookup_inventory``: tool MCP ``inventory_query_products`` (``operation='list'``).
 
-Transporte: HTTP al servicio real (``services/api``), nunca datos simulados.
-Las incidencias viven en la TinyDB del servicio y el inventario en Postgres,
-detrás de sus rutas; llamarlas por HTTP reutiliza su validación, su caché y su
-autenticación sin duplicar lógica en el agente.
+No queda ningún otro camino del agente hacia el Incidents Manager. La
+implementación anterior (cliente ``httpx`` directo a ``/api/incidents`` y
+``/inventory/products`` con el JWT del usuario) se eliminó; está en el
+historial de git (PR #38).
 
-Autenticación: ambos routers exigen un JWT de usuario. Se usa, por orden:
-(1) el token de quien llamó a ``POST /agent/query`` (el agente consulta con
-los permisos del propio account manager) y (2) ``AGENT_API_TOKEN`` del entorno
-para scripts y evaluación. Nunca se hardcodea un token.
-
-Solo lectura: el cliente HTTP rechaza en un hook cualquier método distinto de
-GET antes de enviarlo; ninguna tool puede crear, actualizar ni borrar tickets.
-
-Timeout: ``TOOL_TIMEOUT_SECONDS`` = 4 s por llamada (``GET /inventory/products``
-tarda 0,6–1,2 s medido contra Supabase). Si se agota, la tool devuelve
-``error_type="timeout"`` y el grafo responde con honestidad; nunca se cuelga.
+Solo lectura: el cliente MCP solo permite las tools de ``AGENT_ALLOWED_TOOLS`` y
+el token OAuth del agente no tiene ``incidents:write``.
 """
 
 from __future__ import annotations
 
-import os
 import re
 import unicodedata
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Protocol
 from uuid import UUID
 
-import httpx
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field
 
-TOOL_TIMEOUT_SECONDS = 4.0
-DEFAULT_API_BASE_URL = "http://127.0.0.1:8081"
+from services.agent.mcp_client import McpCallResult, ReadOnlyViolation, TrackflowMcpTools  # noqa: F401 (reexport)
+
 MAX_LISTED_INCIDENTS = 50
 
 IncidentStatus = Literal["open", "in_progress", "resolved", "discarded"]
@@ -62,6 +54,10 @@ BRANCH_LABELS = {
     "central": "Central", "la_warehouse": "Los Ángeles — Almacén", "la_office": "Los Ángeles — Oficina",
     "zaragoza_warehouse": "Zaragoza — Almacén", "zaragoza_office": "Zaragoza — Oficina",
 }
+
+
+class McpCaller(Protocol):
+    def call(self, name: str, arguments: dict) -> McpCallResult: ...
 
 
 # --------------------------------------------------------------------------
@@ -102,6 +98,8 @@ class IncidentToolResult(BaseModel):
     incidents: list[IncidentRecord] = Field(default_factory=list)
     total: int = 0
     error_type: ToolErrorType | None = None
+    mcp_tool: str | None = Field(default=None, description="Tool MCP invocada (None si no se llamó al servidor)")
+    mcp_error_code: str | None = Field(default=None, description="Código de error devuelto por el servidor MCP")
 
 
 class InventoryQuery(BaseModel):
@@ -132,79 +130,68 @@ class InventoryToolResult(BaseModel):
     query: InventoryQuery
     items: list[InventoryItem] = Field(default_factory=list)
     error_type: ToolErrorType | None = None
+    mcp_tool: str | None = None
+    mcp_error_code: str | None = None
 
 
 # --------------------------------------------------------------------------
-# Cliente HTTP de solo lectura
+# Tools (vía servidor MCP)
 # --------------------------------------------------------------------------
-class ReadOnlyViolation(RuntimeError):
-    pass
+# Códigos del servidor MCP (mcps/trackflow_mcp/errors.py) y del transporte → error del agente.
+MCP_ERROR_MAP: dict[str, ToolErrorType] = {
+    "NOT_FOUND": "not_found",
+    "VALIDATION_ERROR": "invalid_query",
+    "INSUFFICIENT_SCOPE": "unauthorized",
+    "TOOL_NOT_AVAILABLE": "unauthorized",
+    "BACKEND_AUTH_FAILED": "unavailable",
+    "BACKEND_TIMEOUT": "timeout",
+    "BACKEND_UNAVAILABLE": "unavailable",
+    "timeout": "timeout",
+    "unavailable": "unavailable",
+    "unauthorized": "unauthorized",
+}
 
 
-def _enforce_get(request: httpx.Request) -> None:
-    if request.method != "GET":
-        raise ReadOnlyViolation(f"Las tools del agente son de solo lectura; se bloqueó {request.method} {request.url.path}")
+def _error_type(result: McpCallResult) -> ToolErrorType:
+    return MCP_ERROR_MAP.get(result.error_code or "", "bad_response")
 
 
-def api_base_url() -> str:
-    return (os.environ.get("AGENT_API_BASE_URL") or DEFAULT_API_BASE_URL).rstrip("/")
+_default_mcp: TrackflowMcpTools | None = None
 
 
-def _client(auth_token: str | None, transport: httpx.BaseTransport | None = None) -> httpx.Client:
-    token = auth_token or os.environ.get("AGENT_API_TOKEN") or ""
-    headers = {"Accept": "application/json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    return httpx.Client(
-        base_url=api_base_url(), headers=headers, transport=transport,
-        timeout=httpx.Timeout(TOOL_TIMEOUT_SECONDS), event_hooks={"request": [_enforce_get]},
-    )
+def default_mcp() -> TrackflowMcpTools:
+    """Cliente MCP del proceso (configurado por entorno: MCP_SERVER_URL, OIDC_ISSUER, AGENT_OAUTH_*)."""
+    global _default_mcp
+    if _default_mcp is None:
+        _default_mcp = TrackflowMcpTools()
+    return _default_mcp
 
 
-def _error_type(error: Exception | None = None, response: httpx.Response | None = None) -> ToolErrorType:
-    if isinstance(error, httpx.TimeoutException):
-        return "timeout"
-    if isinstance(error, httpx.TransportError):
-        return "unavailable"
-    if response is not None:
-        if response.status_code == 404:
-            return "not_found"
-        if response.status_code in (401, 403):
-            return "unauthorized"
-        if response.status_code >= 500:
-            return "unavailable"
-    return "bad_response"
-
-
-# --------------------------------------------------------------------------
-# Tools
-# --------------------------------------------------------------------------
-def lookup_incidents(query: IncidentQuery, *, auth_token: str | None = None,
-                     transport: httpx.BaseTransport | None = None) -> IncidentToolResult:
-    """Consulta un ticket por ID o lista tickets filtrados. Solo GET."""
+def lookup_incidents(query: IncidentQuery, *, mcp: McpCaller | None = None) -> IncidentToolResult:
+    """Consulta un ticket por id o lista tickets filtrados, con las tools MCP del Incidents Manager."""
     mode: Literal["detail", "list"] = "detail" if (query.ticket_id or query.raw_ticket_reference) else "list"
     if query.raw_ticket_reference and not query.ticket_id:
         return IncidentToolResult(ok=False, mode=mode, query=query, error_type="invalid_query")
+    mcp = mcp or default_mcp()
+    if mode == "detail":
+        tool, arguments = "incidents_get_ticket", {"incident_id": str(query.ticket_id)}
+    else:
+        tool = "incidents_list_tickets"
+        arguments = {**{k: v for k, v in query.model_dump(include={"status", "category", "origin", "branch"}).items() if v},
+                     "limit": MAX_LISTED_INCIDENTS}
+    result = mcp.call(tool, arguments)
+    if not result.ok:
+        return IncidentToolResult(ok=False, mode=mode, query=query, error_type=_error_type(result),
+                                  mcp_tool=tool, mcp_error_code=result.error_code)
     try:
-        with _client(auth_token, transport) as client:
-            if mode == "detail":
-                response = client.get(f"/api/incidents/{query.ticket_id}")
-            else:
-                params = {k: v for k, v in query.model_dump(include={"status", "category", "origin", "branch"}).items() if v}
-                response = client.get("/api/incidents", params=params)
-    except ReadOnlyViolation:
-        raise
-    except httpx.HTTPError as error:
-        return IncidentToolResult(ok=False, mode=mode, query=query, error_type=_error_type(error))
-    if response.status_code != 200:
-        return IncidentToolResult(ok=False, mode=mode, query=query, error_type=_error_type(response=response))
-    try:
-        payload = response.json()
-        records = [IncidentRecord.model_validate(payload)] if mode == "detail" else [IncidentRecord.model_validate(i) for i in payload]
-    except (ValueError, ValidationError):
-        return IncidentToolResult(ok=False, mode=mode, query=query, error_type="bad_response")
-    records.sort(key=lambda r: (r.updated_at or r.created_at or datetime.min).isoformat(), reverse=True)
-    return IncidentToolResult(ok=True, mode=mode, query=query, incidents=records[:MAX_LISTED_INCIDENTS], total=len(records))
+        if mode == "detail":
+            records, total = [IncidentRecord.model_validate(result.data)], 1
+        else:
+            records = [IncidentRecord.model_validate(row) for row in result.data["incidents"]]
+            total = int(result.data["total"])
+    except (KeyError, TypeError, ValueError):
+        return IncidentToolResult(ok=False, mode=mode, query=query, error_type="bad_response", mcp_tool=tool)
+    return IncidentToolResult(ok=True, mode=mode, query=query, incidents=records, total=total, mcp_tool=tool)
 
 
 def _plain(text: str) -> str:
@@ -222,28 +209,25 @@ def _select_products(products: list[InventoryItem], query: InventoryQuery) -> li
     return [p for score, p in scored if best and score == best]
 
 
-def lookup_inventory(query: InventoryQuery, *, auth_token: str | None = None,
-                     transport: httpx.BaseTransport | None = None) -> InventoryToolResult:
-    """Consulta el stock actual de un producto (por SKU o por nombre). Solo GET."""
+def lookup_inventory(query: InventoryQuery, *, mcp: McpCaller | None = None) -> InventoryToolResult:
+    """Consulta el stock actual de un producto (por SKU o por nombre) con la tool MCP de inventario."""
     if not query.sku and not query.name_terms:
         return InventoryToolResult(ok=False, query=query, error_type="invalid_query")
+    tool = "inventory_query_products"
+    arguments = {"operation": "list", **({"sku": query.sku} if query.sku else {}),
+                 **({"warehouse": query.warehouse} if query.warehouse else {})}
+    result = (mcp or default_mcp()).call(tool, arguments)
+    if not result.ok:
+        return InventoryToolResult(ok=False, query=query, error_type=_error_type(result), mcp_tool=tool,
+                                   mcp_error_code=result.error_code)
     try:
-        with _client(auth_token, transport) as client:
-            response = client.get("/inventory/products")
-    except ReadOnlyViolation:
-        raise
-    except httpx.HTTPError as error:
-        return InventoryToolResult(ok=False, query=query, error_type=_error_type(error))
-    if response.status_code != 200:
-        return InventoryToolResult(ok=False, query=query, error_type=_error_type(response=response))
-    try:
-        products = [InventoryItem.model_validate(p) for p in response.json()]
-    except (ValueError, ValidationError):
-        return InventoryToolResult(ok=False, query=query, error_type="bad_response")
+        products = [InventoryItem.model_validate(p) for p in result.data["products"]]
+    except (KeyError, TypeError, ValueError):
+        return InventoryToolResult(ok=False, query=query, error_type="bad_response", mcp_tool=tool)
     items = _select_products(products, query)
     if not items:
-        return InventoryToolResult(ok=False, query=query, error_type="not_found")
-    return InventoryToolResult(ok=True, query=query, items=items)
+        return InventoryToolResult(ok=False, query=query, error_type="not_found", mcp_tool=tool)
+    return InventoryToolResult(ok=True, query=query, items=items, mcp_tool=tool)
 
 
 SKU_PATTERN = re.compile(r"\b[A-Z]{3}(?:-[A-Z0-9]{1,5}){1,4}\b")

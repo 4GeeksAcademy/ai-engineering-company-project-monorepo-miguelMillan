@@ -1,0 +1,697 @@
+Servidor MCP: https://refactored-space-fishstick-4jj7j9xgqj453pjw-8090.app.github.dev/mcp
+
+### 1. Protected Resource Metadata (GET https://refactored-space-fishstick-4jj7j9xgqj453pjw-8090.app.github.dev/.well-known/oauth-protected-resource/mcp)
+{
+  "resource": "https://refactored-space-fishstick-4jj7j9xgqj453pjw-8090.app.github.dev/mcp",
+  "scopes_supported": [
+    "mcp:access",
+    "incidents:read",
+    "incidents:write",
+    "inventory:read"
+  ],
+  "bearer_methods_supported": [
+    "header"
+  ],
+  "resource_name": "TrackFlow MCP: Incidents Manager e inventario",
+  "resource_documentation": "https://github.com/4GeeksAcademy/ai-engineering-company-project-monorepo-miguelMillan/tree/main/mcps/trackflow_mcp",
+  "authorization_servers": [
+    "http://localhost:8180/realms/trackflow"
+  ]
+}
+
+### 1. initialize → serverInfo
+{
+  "name": "trackflow-mcp",
+  "version": "1.0.0"
+}
+
+### 1/5. tools/list (trackflow-ops-console): nombre, descripción, esquema de entrada y salida, anotaciones
+[
+  {
+    "name": "incidents_get_ticket",
+    "title": "Consultar un ticket",
+    "description": "Devuelve un ticket del Incidents Manager por su id (UUID): estado actual (status), título, descripción, categoría, origen, sede y fechas. Usa esta tool para conocer el estado de un ticket. Requiere el scope incidents:read. Errores: NOT_FOUND si el id no existe, VALIDATION_ERROR si no es un UUID.",
+    "inputSchema.properties": {
+      "incident_id": {
+        "description": "Id del ticket (UUID), p. ej. d32a9b66-b81b-5dce-b90f-c4e8bfc27161",
+        "type": "string"
+      }
+    },
+    "inputSchema.required": [
+      "incident_id"
+    ],
+    "outputSchema.properties": [
+      "branch",
+      "category",
+      "created_at",
+      "description",
+      "id",
+      "origin",
+      "status",
+      "title",
+      "updated_at"
+    ],
+    "annotations": {
+      "readOnlyHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "incidents_list_tickets",
+    "title": "Buscar tickets",
+    "description": "Lista tickets del Incidents Manager filtrando por estado, categoría, origen y/o sede (todos opcionales; se combinan con AND). Devuelve el total y hasta `limit` tickets. Requiere el scope incidents:read.",
+    "inputSchema.properties": {
+      "status": {
+        "anyOf": [
+          {
+            "enum": [
+              "open",
+              "in_progress",
+              "resolved",
+              "discarded"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Estado del ticket"
+      },
+      "category": {
+        "anyOf": [
+          {
+            "enum": [
+              "lost_parcel",
+              "delivery_failure",
+              "inventory_discrepancy",
+              "carrier_issue",
+              "returns_issue",
+              "warehouse_incident",
+              "system_failure",
+              "client_complaint",
+              "other"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Categoría de la incidencia"
+      },
+      "origin": {
+        "anyOf": [
+          {
+            "enum": [
+              "customer",
+              "branch",
+              "internal"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Quién la originó"
+      },
+      "branch": {
+        "anyOf": [
+          {
+            "enum": [
+              "central",
+              "la_warehouse",
+              "la_office",
+              "zaragoza_warehouse",
+              "zaragoza_office"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Sede afectada"
+      },
+      "limit": {
+        "description": "Máximo de tickets devueltos",
+        "type": "integer"
+      }
+    },
+    "inputSchema.required": [],
+    "outputSchema.properties": [
+      "filters",
+      "incidents",
+      "returned",
+      "total"
+    ],
+    "annotations": {
+      "readOnlyHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "incidents_create_ticket",
+    "title": "Crear un ticket",
+    "description": "Crea un ticket en el Incidents Manager (POST /api/incidents). El ticket nace en estado 'open' y devuelve su id. No es idempotente: cada llamada crea un ticket nuevo. Requiere el scope incidents:write.",
+    "inputSchema.properties": {
+      "title": {
+        "description": "Resumen corto de la incidencia",
+        "type": "string"
+      },
+      "description": {
+        "description": "Detalle de lo ocurrido",
+        "type": "string"
+      },
+      "category": {
+        "description": "Categoría de la incidencia",
+        "enum": [
+          "lost_parcel",
+          "delivery_failure",
+          "inventory_discrepancy",
+          "carrier_issue",
+          "returns_issue",
+          "warehouse_incident",
+          "system_failure",
+          "client_complaint",
+          "other"
+        ],
+        "type": "string"
+      },
+      "origin": {
+        "description": "customer (cliente), branch (sede) o internal",
+        "enum": [
+          "customer",
+          "branch",
+          "internal"
+        ],
+        "type": "string"
+      },
+      "branch": {
+        "description": "Sede afectada",
+        "enum": [
+          "central",
+          "la_warehouse",
+          "la_office",
+          "zaragoza_warehouse",
+          "zaragoza_office"
+        ],
+        "type": "string"
+      }
+    },
+    "inputSchema.required": [
+      "title",
+      "description",
+      "category",
+      "origin",
+      "branch"
+    ],
+    "outputSchema.properties": [
+      "created_at",
+      "id",
+      "status",
+      "updated_at"
+    ],
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "incidents_update_ticket_status",
+    "title": "Cambiar el estado de un ticket",
+    "description": "Cambia el estado de un ticket mediante el endpoint de ciclo de vida del Incidents Manager (PATCH /api/incidents/{id}/status). Transiciones válidas: open → in_progress | discarded; in_progress → resolved | discarded; resolved y discarded son finales. Una transición no permitida devuelve INVALID_STATUS_TRANSITION con los estados posibles. Requiere el scope incidents:write.",
+    "inputSchema.properties": {
+      "incident_id": {
+        "description": "Id del ticket (UUID)",
+        "type": "string"
+      },
+      "status": {
+        "description": "Nuevo estado",
+        "enum": [
+          "open",
+          "in_progress",
+          "resolved",
+          "discarded"
+        ],
+        "type": "string"
+      }
+    },
+    "inputSchema.required": [
+      "incident_id",
+      "status"
+    ],
+    "outputSchema.properties": [
+      "id",
+      "previous_status",
+      "status",
+      "updated_at"
+    ],
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "inventory_query_products",
+    "title": "Consultar inventario (solo lectura)",
+    "description": "Consulta productos (SKU) del inventario y su stock actual. SOLO LECTURA. operation='list' (por defecto) lista productos con filtros opcionales sku, warehouse, category y below_minimum_only; operation='get' devuelve un producto por product_id. Cualquier otra operación (update, set_stock, adjust, delete, create…) o argumentos de escritura (current_stock, quantity, minimum_stock…) se rechazan con INVENTORY_READ_ONLY. Requiere el scope inventory:read.",
+    "inputSchema.properties": {
+      "operation": {
+        "description": "'list' o 'get'. Solo operaciones de lectura.",
+        "type": "string"
+      },
+      "product_id": {
+        "anyOf": [
+          {
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Id del producto (obligatorio con operation='get')"
+      },
+      "sku": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Código SKU exacto, p. ej. FAS-LA-001"
+      },
+      "warehouse": {
+        "anyOf": [
+          {
+            "enum": [
+              "LA",
+              "ZGZ"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Almacén: LA (Los Ángeles) o ZGZ (Zaragoza)"
+      },
+      "category": {
+        "anyOf": [
+          {
+            "enum": [
+              "fashion",
+              "electronics",
+              "cosmetics"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Categoría del producto"
+      },
+      "below_minimum_only": {
+        "description": "Solo productos por debajo de su stock mínimo",
+        "type": "boolean"
+      }
+    },
+    "inputSchema.required": [],
+    "outputSchema.properties": [
+      "operation",
+      "products",
+      "total"
+    ],
+    "annotations": {
+      "readOnlyHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  }
+]
+
+### 2. tools/list sin token
+{
+  "http_status": 401,
+  "body": {
+    "error": "missing_auth_header",
+    "error_description": "Missing `Authorization` header. Please provide a valid bearer token."
+  },
+  "www-authenticate": "Bearer error=\"missing_auth_header\", error_description=\"Missing `Authorization` header. Please provide a valid bearer token.\", resource_metadata=\"https://refactored-space-fishstick-4jj7j9xgqj453pjw-8090.app.github.dev/.well-known/oauth-protected-resource/mcp\""
+}
+
+### 2. tools/call sin token
+{
+  "http_status": 401,
+  "body": {
+    "error": "missing_auth_header",
+    "error_description": "Missing `Authorization` header. Please provide a valid bearer token."
+  },
+  "www-authenticate": "Bearer error=\"missing_auth_header\", error_description=\"Missing `Authorization` header. Please provide a valid bearer token.\", resource_metadata=\"https://refactored-space-fishstick-4jj7j9xgqj453pjw-8090.app.github.dev/.well-known/oauth-protected-resource/mcp\""
+}
+
+### 2. tools/list token basura
+{
+  "http_status": 401,
+  "body": {
+    "error": "invalid_token",
+    "error_description": "The provided token is invalid or malformed."
+  },
+  "www-authenticate": "Bearer error=\"invalid_token\", error_description=\"The provided token is invalid or malformed.\", resource_metadata=\"https://refactored-space-fishstick-4jj7j9xgqj453pjw-8090.app.github.dev/.well-known/oauth-protected-resource/mcp\""
+}
+
+### 2. tools/call token basura
+{
+  "http_status": 401,
+  "body": {
+    "error": "invalid_token",
+    "error_description": "The provided token is invalid or malformed."
+  },
+  "www-authenticate": "Bearer error=\"invalid_token\", error_description=\"The provided token is invalid or malformed.\", resource_metadata=\"https://refactored-space-fishstick-4jj7j9xgqj453pjw-8090.app.github.dev/.well-known/oauth-protected-resource/mcp\""
+}
+
+### 3. incidents_create_ticket → POST /api/incidents
+{
+  "OK": {
+    "id": "c5f670bf-f624-4edb-998b-51554af50ce1",
+    "status": "open",
+    "created_at": "2026-11-20T09:59:04.618316Z",
+    "updated_at": "2026-11-20T09:59:04.618316Z"
+  }
+}
+
+### 3. incidents_update_ticket_status open→in_progress → PATCH /api/incidents/{id}/status
+{
+  "OK": {
+    "id": "c5f670bf-f624-4edb-998b-51554af50ce1",
+    "previous_status": "open",
+    "status": "in_progress",
+    "updated_at": "2026-11-20T09:59:05.394620Z"
+  }
+}
+
+### 3. incidents_get_ticket (consulta del estado)
+{
+  "OK": {
+    "id": "c5f670bf-f624-4edb-998b-51554af50ce1",
+    "title": "Verificación MCP: etiqueta ilegible en recepción",
+    "category": "warehouse_incident",
+    "status": "in_progress",
+    "origin": "internal",
+    "branch": "la_warehouse",
+    "description": "Ticket creado desde el servidor MCP para verificar el checklist.",
+    "created_at": "2026-11-20T09:59:04.618316Z",
+    "updated_at": "2026-11-20T09:59:05.394620Z"
+  }
+}
+
+### 3. incidents_list_tickets status=open, category=returns_issue, limit=2
+{
+  "OK": {
+    "total": 6,
+    "returned": 2,
+    "filters": {
+      "status": "open",
+      "category": "returns_issue"
+    },
+    "incidents": [
+      {
+        "id": "d32a9b66-b81b-5dce-b90f-c4e8bfc27161",
+        "title": "Return requested within 14-day window, awaiting approval",
+        "category": "returns_issue",
+        "status": "open",
+        "origin": "customer",
+        "branch": "zaragoza_office"
+      },
+      {
+        "id": "3bbeaf68-0ede-5923-8f14-0190895851fd",
+        "title": "Client initiating bulk return of unsold season stock",
+        "category": "returns_issue",
+        "status": "open",
+        "origin": "customer",
+        "branch": "zaragoza_office"
+      }
+    ]
+  }
+}
+
+### 4. inventory_query_products list ZGZ
+{
+  "OK": {
+    "operation": "list",
+    "total": 4,
+    "products": [
+      {
+        "id": 2,
+        "sku": "CLT-SNK-W-42-Z",
+        "name": "Zapatilla blanca clásica - Talla 42",
+        "client_name": "PureStep Footwear",
+        "client_id": "purestep_footwear",
+        "category": "fashion",
+        "warehouse": "ZGZ",
+        "current_stock": 52,
+        "minimum_stock": null,
+        "below_minimum": false
+      },
+      {
+        "id": 4,
+        "sku": "CSM-SRM-030",
+        "name": "Sérum facial hidratante 30ml",
+        "client_name": "GlowLab Cosmetics",
+        "client_id": "glowlab_cosmetics",
+        "category": "cosmetics",
+        "warehouse": "ZGZ",
+        "current_stock": 108,
+        "minimum_stock": null,
+        "below_minimum": false
+      },
+      {
+        "id": 6,
+        "sku": "TEC-CHG-065",
+        "name": "Cargador rápido USB-C 65W",
+        "client_name": "SoundWave Electronics",
+        "client_id": "soundwave_electronics",
+        "category": "electronics",
+        "warehouse": "ZGZ",
+        "current_stock": 36,
+        "minimum_stock": null,
+        "below_minimum": false
+      },
+      {
+        "id": 7,
+        "sku": "URB-JKT-001",
+        "name": "Chaqueta impermeable ligera",
+        "client_name": "UrbanThread",
+        "client_id": "urbanthread",
+        "category": "fashion",
+        "warehouse": "ZGZ",
+        "current_stock": 27,
+        "minimum_stock": null,
+        "below_minimum": false
+      }
+    ]
+  }
+}
+
+### 4. inventory_query_products get product_id=1
+{
+  "OK": {
+    "operation": "get",
+    "total": 1,
+    "products": [
+      {
+        "id": 1,
+        "sku": "CLT-SNK-W-42",
+        "name": "Zapatilla blanca clásica - Talla 42",
+        "client_name": "PureStep Footwear",
+        "client_id": "purestep_footwear",
+        "category": "fashion",
+        "warehouse": "LA",
+        "current_stock": 58,
+        "minimum_stock": 60,
+        "below_minimum": true
+      }
+    ]
+  }
+}
+
+### 4. intento de escritura inventory_query_products {'operation': 'update', 'product_id': 1, 'current_stock': 999} (token con TODOS los scopes)
+{
+  "ERROR": {
+    "code": "INVENTORY_READ_ONLY",
+    "message": "El inventario es de solo lectura en este servidor MCP; la modificación se ha rechazado. Los movimientos de stock se registran en TrackFlow como entradas o salidas de inventario.",
+    "details": {
+      "tool": "inventory_query_products",
+      "reason": "La operación 'update' no está permitida: solo se admiten ['get', 'list'].",
+      "allowed_operations": [
+        "get",
+        "list"
+      ]
+    }
+  }
+}
+
+### 4. intento de escritura inventory_query_products {'operation': 'get', 'product_id': 1, 'minimum_stock': 1} (token con TODOS los scopes)
+{
+  "ERROR": {
+    "code": "INVENTORY_READ_ONLY",
+    "message": "El inventario es de solo lectura en este servidor MCP; la modificación se ha rechazado. Los movimientos de stock se registran en TrackFlow como entradas o salidas de inventario.",
+    "details": {
+      "tool": "inventory_query_products",
+      "reason": "Los campos ['minimum_stock'] modificarían el inventario y no se aceptan.",
+      "allowed_operations": [
+        "get",
+        "list"
+      ]
+    }
+  }
+}
+
+### 4. intento de escritura inventory_update_stock {'product_id': 1, 'current_stock': 0} (token con TODOS los scopes)
+{
+  "ERROR": {
+    "code": "INVENTORY_READ_ONLY",
+    "message": "El inventario es de solo lectura en este servidor MCP; la modificación se ha rechazado. Los movimientos de stock se registran en TrackFlow como entradas o salidas de inventario.",
+    "details": {
+      "tool": "inventory_update_stock",
+      "reason": "La tool 'inventory_update_stock' no existe: el inventario no expone ninguna operación de escritura.",
+      "allowed_operations": [
+        "get",
+        "list"
+      ]
+    }
+  }
+}
+
+### 4. stock tras los intentos (sin cambios)
+{
+  "OK": {
+    "operation": "get",
+    "total": 1,
+    "products": [
+      {
+        "id": 1,
+        "sku": "CLT-SNK-W-42",
+        "name": "Zapatilla blanca clásica - Talla 42",
+        "client_name": "PureStep Footwear",
+        "client_id": "purestep_footwear",
+        "category": "fashion",
+        "warehouse": "LA",
+        "current_stock": 58,
+        "minimum_stock": 60,
+        "below_minimum": true
+      }
+    ]
+  }
+}
+
+### 6. autenticación: token con firma alterada
+{
+  "http_status": 401,
+  "error": "invalid_token"
+}
+
+### 6. autorización: trackflow-inventory-viewer llama incidents_get_ticket
+{
+  "ERROR": {
+    "code": "INSUFFICIENT_SCOPE",
+    "message": "El access token no incluye el scope 'incidents:read' que exige la tool 'incidents_get_ticket'.",
+    "details": {
+      "tool": "incidents_get_ticket",
+      "required_scope": "incidents:read",
+      "granted_scopes": [
+        "inventory:read",
+        "mcp:access"
+      ]
+    }
+  }
+}
+
+### 6. autorización: trackflow-agent intenta incidents_update_ticket_status
+{
+  "ERROR": {
+    "code": "INSUFFICIENT_SCOPE",
+    "message": "El access token no incluye el scope 'incidents:write' que exige la tool 'incidents_update_ticket_status'.",
+    "details": {
+      "tool": "incidents_update_ticket_status",
+      "required_scope": "incidents:write",
+      "granted_scopes": [
+        "incidents:read",
+        "inventory:read",
+        "mcp:access"
+      ]
+    }
+  }
+}
+
+### 6. validación: incident_id no UUID
+{
+  "ERROR": {
+    "code": "VALIDATION_ERROR",
+    "message": "Argumentos inválidos para 'incidents_get_ticket'.",
+    "details": {
+      "errors": [
+        {
+          "field": "incident_id",
+          "message": "Input should be a valid UUID, invalid length: found 3"
+        }
+      ]
+    }
+  }
+}
+
+### 6. validación: status fuera de dominio
+{
+  "ERROR": {
+    "code": "VALIDATION_ERROR",
+    "message": "Argumentos inválidos para 'incidents_list_tickets'.",
+    "details": {
+      "errors": [
+        {
+          "field": "status",
+          "message": "Input should be 'open', 'in_progress', 'resolved' or 'discarded'"
+        }
+      ]
+    }
+  }
+}
+
+### 6. ciclo de vida: in_progress → open
+{
+  "ERROR": {
+    "code": "INVALID_STATUS_TRANSITION",
+    "message": "El Incidents Manager no permite pasar de 'in_progress' a 'open'.",
+    "details": {
+      "current_status": "in_progress",
+      "requested_status": "open",
+      "allowed": [
+        "resolved",
+        "discarded"
+      ],
+      "backend_detail": {
+        "field": "status",
+        "message": "No se permite pasar de in_progress a open. Los estados resolved y discarded son finales."
+      }
+    }
+  }
+}
+
+### 6. no encontrado
+{
+  "ERROR": {
+    "code": "NOT_FOUND",
+    "message": "No existe ningún ticket con id 00000000-0000-4000-8000-000000000000.",
+    "details": {}
+  }
+}

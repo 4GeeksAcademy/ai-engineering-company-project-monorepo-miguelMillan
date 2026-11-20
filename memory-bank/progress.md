@@ -1,5 +1,36 @@
 # Progress Log — TrackFlow
 
+## Servidor MCP (mcps/trackflow_mcp) + migración del agente a cliente MCP, 2026-11-20
+
+- Contexto nuevo archivado en `memory-bank/history/MCP-SERVER-CONTEXT-2026-11-20.md` (verificado con `cmp`). Rama `feature/mcp-server` desde `main` (#38 fusionado).
+- Dependencias con `uv add` (raíz y `services/api`): `fastmcp` 3.4.11, `mcp` 1.30, `mcpauth==0.2.0b1` y `langchain-mcp-adapters` 0.3.2.
+  - `langchain-mcp-adapters` exige `mcp<2`, por eso fastmcp 3.x.
+  - `mcpauth` 0.1.1 no tiene Protected Resource Metadata; 0.2.0b1 sí.
+  - `services/requirements.txt` regenerado con `uv export`.
+- Servidor (`mcps/trackflow_mcp/`):
+  - Transporte: Streamable HTTP stateless.
+  - OAuth con MCP Auth en modo resource server: PRM (RFC 9728) y JWT validado contra el JWKS del proveedor (emisor, `aud` = recurso, `required_scopes=["mcp:access"]`). No se usa la auth integrada de FastMCP.
+  - 5 tools con los campos y valores del backend: `incidents_get_ticket`, `incidents_list_tickets`, `incidents_create_ticket`, `incidents_update_ticket_status` (con `PATCH /api/incidents/{id}/status`) e `inventory_query_products`.
+  - Scopes por tool; `tools/list` filtrado por scope.
+  - Inventario de solo lectura en 4 capas: sin scope de escritura, tool de lectura, rechazo explícito `INVENTORY_READ_ONLY` y cliente HTTP GET-only.
+  - Códigos de error distintos para autenticación (401/403 de mcpauth), autorización (`INSUFFICIENT_SCOPE`) y validación (`VALIDATION_ERROR`), además de `INVALID_STATUS_TRANSITION`, `NOT_FOUND` y `BACKEND_*`.
+  - Auditoría JSON por invocación: tool, cliente, resultado y duración, sin tokens.
+  - CORS y hosts permitidos opcionales.
+  - Hacia el backend usa una cuenta de servicio; el token OAuth del cliente no se reenvía.
+- Proveedor OIDC de desarrollo: Keycloak 26 (contenedor `trackflow-keycloak-dev`), configurado con `mcps/trackflow_mcp/dev/keycloak_setup.py` (realm `trackflow`; clientes `trackflow-agent`, `trackflow-ops-console` y `trackflow-inventory-viewer`). Los secretos solo están en el scratchpad.
+- Agente:
+  - Los nodos `mcp_incidents` y `mcp_inventory` sustituyen a `lookup_*`; usan `services/agent/mcp_client.py` (MultiServerMCPClient, OAuth `client_credentials`, lista blanca de tools de lectura, timeout de 8 s).
+  - Se eliminó la llamada HTTP directa y desaparecen `AGENT_API_BASE_URL` y `AGENT_API_TOKEN`. El endpoint ya no reenvía el JWT del usuario.
+  - Enrutamiento idéntico.
+- Compose: servicio `mcp` opcional (perfil `mcp`) y variables del agente. Solo se validó el YAML: `docker compose config` necesita `.env`, que no existe en el Codespace (ruta protegida, no se creó). La imagen no se construyó.
+- Validación:
+  - `uv run pytest tests -q` → 171 passed. Incluye `tests/mcp_server`: OAuth con un proveedor OIDC local de claves RSA, scopes, discovery, solo lectura, errores, auditoría, CORS, contratos frente a los modelos del backend y agente → adapters → MCP.
+  - `services/api` → 101 passed. Incluye la integración del servidor MCP con el Incidents Manager y el inventario reales.
+  - Evals regrabados con los servicios reales a través del servidor MCP → 17 passed. La primera grabación falló en generación porque Ollama se quedó sin memoria al ejecutar tests a la vez; un caso RAG se regrabó solo (el script admite ids).
+- Codespaces: puerto 8090 **público**; la verificación del checklist contra la URL pública pasa (`docs/pr-evidence/mcp-server/`).
+- Bloqueo: la sesión en la web de MCP Playground la tiene que hacer el desarrollador, porque el asistente no tiene navegador. Los pasos están en las evidencias.
+- Sin commit.
+
 ## Agente LangGraph (Parte 2): tools de incidencias e inventario, 2026-11-20
 
 - Contexto nuevo archivado en `memory-bank/history/LANGGRAPH-EXTERNAL-TOOLS-CONTEXT-2026-11-20.md` (verificado con `cmp`). Rama `feature/langgraph-external-tools`, al día con `main` (#37 fusionado).

@@ -55,6 +55,10 @@ def test_routing_evals_cover_tool_only_rag_only_and_fallback():
     assert ["rag"] in sources  # se resuelve con el RAG, no con una tool
     assert ["incidents", "rag"] in sources  # ambos, en ese orden
     assert any(case["criteria"].get("incident_tool_error") == "unavailable" for case in CASES)  # fallback servicio caído
+    # Tras la migración, todo caso que usa una tool exige que pasara por el servidor MCP
+    for case in CASES:
+        if set(case["criteria"].get("sources_used") or []) & {"incidents", "inventory"} and case["criteria"].get("incident_tool_error") != "invalid_query":
+            assert case["criteria"].get("mcp_tool"), case["id"]
 
 
 def check_case(case: dict, trace: dict) -> list[str]:
@@ -95,8 +99,13 @@ def check_case(case: dict, trace: dict) -> list[str]:
 
     final = node_output(trace, trace["final_node"]) or {}
     answer = _normalize(final.get("answer", ""))
-    incident = (node_output(trace, "lookup_incidents") or {}).get("incident_result")
-    inventory = (node_output(trace, "lookup_inventory") or {}).get("inventory_result")
+    incident = (node_output(trace, "mcp_incidents") or {}).get("incident_result")
+    inventory = (node_output(trace, "mcp_inventory") or {}).get("inventory_result")
+    # Migración a MCP: la consulta debe haber pasado por la tool MCP esperada (nodo cliente MCP).
+    if "mcp_tool" in criteria:
+        used = [r.get("mcp_tool") for r in (incident, inventory) if r]
+        if criteria["mcp_tool"] not in used:
+            failures.append(f"tool MCP usada {used} != {criteria['mcp_tool']}")
     if criteria.get("incident_tool_ok") and not (incident and incident["ok"]):
         failures.append(f"la tool de incidencias no respondió OK: {incident and incident.get('error_type')}")
     if "incident_tool_error" in criteria and (not incident or incident.get("error_type") != criteria["incident_tool_error"]):
