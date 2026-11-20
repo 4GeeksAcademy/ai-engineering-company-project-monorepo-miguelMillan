@@ -1,5 +1,7 @@
 """POST /agent/query: solo invoca el grafo compilado y traduce su resultado a HTTP."""
 
+import json
+
 import pytest
 
 import routes.agent  # noqa: F401  (añade la raíz del repo a sys.path, como en producción)
@@ -85,21 +87,26 @@ def test_agent_query_requires_authentication(api_client, agent):
     assert api_client.post("/agent/query", json={"question": "¿Ventana?"}).status_code == 401
 
 
-def test_ticket_question_forwards_caller_jwt_to_incidents_tool(authenticated_client, monkeypatch):
-    from services.agent.tools import IncidentToolResult
+def test_ticket_question_uses_the_mcp_client_and_never_forwards_the_caller_jwt(authenticated_client, monkeypatch):
+    """Tras la migración a MCP, el JWT de quien pregunta solo autoriza /agent/query: no llega a las tools."""
+    from services.agent.mcp_client import McpCallResult
 
-    seen = {}
+    class RecordingMcp:
+        calls = []
 
-    def incidents(query, *, auth_token=None):
-        seen["token"] = auth_token
-        return IncidentToolResult(ok=False, mode="detail", query=query, error_type="not_found")
+        def call(self, name, arguments):
+            self.calls.append((name, arguments))
+            return McpCallResult(ok=False, error_code="NOT_FOUND", error_message="x")
 
-    instance = KnowledgeAgent(retrieve_fn=lambda q, *, k, min_score: [], generate_fn=lambda q, c: "x",
-                              incidents_fn=incidents, checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"))
+    mcp = RecordingMcp()
+    instance = KnowledgeAgent(retrieve_fn=lambda q, *, k, min_score: [], generate_fn=lambda q, c: "x", mcp=mcp,
+                              checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"))
     monkeypatch.setattr("routes.agent.get_agent", lambda: instance)
     ticket = "8a4f3f2e-6c1d-5b9a-9e2f-0123456789ab"
     response = authenticated_client.post("/agent/query", json={"question": f"¿En qué estado está el ticket {ticket}?"})
 
     assert response.status_code == 200
-    assert seen["token"] == authenticated_client.headers["Authorization"].split(" ", 1)[1]
+    assert mcp.calls == [("incidents_get_ticket", {"incident_id": ticket})]
+    caller_jwt = authenticated_client.headers["Authorization"].split(" ", 1)[1]
+    assert caller_jwt not in json.dumps(mcp.calls)
     assert response.json() == {"answer": f"No encontré ningún ticket con el identificador {ticket} en el gestor de incidencias."}

@@ -1,21 +1,28 @@
-"""Pruebas deterministas de las tools (Parte 2), del enrutamiento y del grafo con tools.
+"""Pruebas deterministas de las tools del agente (cliente MCP), del enrutamiento y del grafo con tools.
 
-Las tools se prueban contra ``httpx.MockTransport`` (y un servidor HTTP local
-lento para el timeout real); la evidencia contra los servicios reales está en
-los evals (``test_agent_evals.py``), grabados con el API en marcha.
+Desde la migración, las tools del agente invocan el servidor MCP de TrackFlow
+(``services/agent/mcp_client.py`` + ``langchain-mcp-adapters``). Aquí se prueban
+con un doble del cliente MCP (``FakeMcp``), que registra qué tool MCP y con
+qué argumentos se invoca, y con servidores HTTP reales lentos o caídos para el
+timeout y la indisponibilidad. La pila completa (agente → adapters → servidor
+MCP con OAuth) está en ``tests/mcp_server/test_agent_via_mcp.py``, y la evidencia
+contra los servicios reales está en los evals.
 """
 
 import json
+import re
+import socket
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from uuid import uuid4
 
-import httpx
 import pytest
 
-import services.agent.tools as tools
+import services.agent.mcp_client as mcp_client
 from services.agent.graph import KnowledgeAgent, sqlite_checkpointer, sources_used
+from services.agent.mcp_client import McpCallResult, TrackflowMcpTools
 from services.agent.routing import plan_sources
 from services.agent.tools import (
     IncidentQuery,
@@ -27,6 +34,7 @@ from services.agent.tools import (
 )
 from services.agent.tracing import TraceStore, executed_nodes, node_output
 
+ROOT = Path(__file__).resolve().parents[2]
 TICKET_ID = "8a4f3f2e-6c1d-5b9a-9e2f-0123456789ab"
 INCIDENT = {
     "id": TICKET_ID, "title": "Paquete no entregado en Zaragoza", "category": "lost_parcel", "status": "in_progress",
@@ -35,72 +43,87 @@ INCIDENT = {
 }
 PRODUCTS = [
     {"id": 3, "name": "Auriculares inalámbricos Pro", "sku": "TEC-EAR-001", "client_name": "SoundCo", "client_id": "c-1",
-     "category": "electronics", "warehouse": "LA", "current_stock": 74, "minimum_stock": 20},
+     "category": "electronics", "warehouse": "LA", "current_stock": 74, "minimum_stock": 20, "below_minimum": False},
     {"id": 4, "name": "Sérum facial hidratante 30ml", "sku": "CSM-SRM-030", "client_name": "GlowLab", "client_id": "c-2",
-     "category": "cosmetics", "warehouse": "ZGZ", "current_stock": 9, "minimum_stock": 15},
+     "category": "cosmetics", "warehouse": "ZGZ", "current_stock": 9, "minimum_stock": 15, "below_minimum": True},
 ]
 
 
-def transport(handler):
-    calls = []
+class FakeMcp:
+    """Doble del cliente MCP: respuestas por nombre de tool y registro de cada llamada."""
 
-    def wrapped(request: httpx.Request) -> httpx.Response:
-        calls.append(request)
-        return handler(request)
+    def __init__(self, **responses):
+        self.responses = responses
+        self.calls = []
 
-    return httpx.MockTransport(wrapped), calls
+    def call(self, name, arguments):
+        self.calls.append((name, arguments))
+        response = self.responses[name]
+        return response(arguments) if callable(response) else response
+
+
+def ok(data):
+    return McpCallResult(ok=True, data=data)
+
+
+def mcp_error(code):
+    return McpCallResult(ok=False, error_code=code, error_message="x")
+
+
+def products_mcp():
+    return FakeMcp(inventory_query_products=lambda args: ok(
+        {"operation": "list", "total": 2, "products": [p for p in PRODUCTS if not args.get("sku") or p["sku"] == args["sku"]]}))
 
 
 # --------------------------------------------------------------------------
-# Tool de incidencias
+# Tool de incidencias → tools MCP del Incidents Manager
 # --------------------------------------------------------------------------
-def test_incident_detail_is_read_with_get_and_caller_token():
-    mock, calls = transport(lambda r: httpx.Response(200, json=INCIDENT))
-    result = lookup_incidents(IncidentQuery(ticket_id=TICKET_ID), auth_token="jwt-del-usuario", transport=mock)
+def test_incident_detail_uses_mcp_get_ticket_tool():
+    mcp = FakeMcp(incidents_get_ticket=ok(INCIDENT))
+    result = lookup_incidents(IncidentQuery(ticket_id=TICKET_ID), mcp=mcp)
 
-    assert result.ok and result.mode == "detail"
+    assert result.ok and result.mode == "detail" and result.mcp_tool == "incidents_get_ticket"
     assert result.incidents[0].status == "in_progress" and result.incidents[0].branch == "zaragoza_office"
-    assert [(c.method, c.url.path) for c in calls] == [("GET", f"/api/incidents/{TICKET_ID}")]
-    assert calls[0].headers["Authorization"] == "Bearer jwt-del-usuario"
+    assert mcp.calls == [("incidents_get_ticket", {"incident_id": TICKET_ID})]
     assert "description" not in result.model_dump()["incidents"][0]  # contrato tipado: solo los campos declarados
 
 
-def test_incident_search_passes_filters_as_query_params(monkeypatch):
-    monkeypatch.setenv("AGENT_API_TOKEN", "token-de-servicio-desde-entorno")
-    mock, calls = transport(lambda r: httpx.Response(200, json=[INCIDENT, {**INCIDENT, "id": str(uuid4()), "status": "open"}]))
-    result = lookup_incidents(IncidentQuery(status="open", category="returns_issue"), transport=mock)
+def test_incident_search_passes_filters_to_mcp_list_tool():
+    rows = [INCIDENT, {**INCIDENT, "id": str(uuid4()), "status": "open"}]
+    mcp = FakeMcp(incidents_list_tickets=ok({"total": 7, "returned": 2, "filters": {}, "incidents": rows}))
+    result = lookup_incidents(IncidentQuery(status="open", category="returns_issue"), mcp=mcp)
 
-    assert result.ok and result.mode == "list" and result.total == 2
-    assert dict(calls[0].url.params) == {"status": "open", "category": "returns_issue"}
-    assert calls[0].headers["Authorization"] == "Bearer token-de-servicio-desde-entorno"
-
-
-@pytest.mark.parametrize("status,error", [(404, "not_found"), (401, "unauthorized"), (500, "unavailable")])
-def test_incident_http_errors_become_typed_errors(status, error):
-    mock, _ = transport(lambda r: httpx.Response(status, json={"detail": "x"}))
-    result = lookup_incidents(IncidentQuery(ticket_id=TICKET_ID), transport=mock)
-    assert (result.ok, result.error_type, result.incidents) == (False, error, [])
+    assert result.ok and result.mode == "list" and result.total == 7 and len(result.incidents) == 2
+    assert mcp.calls == [("incidents_list_tickets", {"status": "open", "category": "returns_issue", "limit": 50})]
 
 
-def test_incident_connection_error_is_unavailable_not_exception():
-    def refuse(request):
-        raise httpx.ConnectError("connection refused")
-
-    mock, _ = transport(refuse)
-    assert lookup_incidents(IncidentQuery(ticket_id=TICKET_ID), transport=mock).error_type == "unavailable"
-
-
-def test_non_uuid_ticket_reference_is_rejected_without_calling_the_service():
-    mock, calls = transport(lambda r: httpx.Response(200, json=INCIDENT))
-    result = lookup_incidents(IncidentQuery(raw_ticket_reference="482"), transport=mock)
-    assert (result.ok, result.error_type, calls) == (False, "invalid_query", [])
+@pytest.mark.parametrize("code,error", [
+    ("NOT_FOUND", "not_found"), ("INSUFFICIENT_SCOPE", "unauthorized"), ("VALIDATION_ERROR", "invalid_query"),
+    ("BACKEND_TIMEOUT", "timeout"), ("BACKEND_UNAVAILABLE", "unavailable"), ("timeout", "timeout"),
+    ("unavailable", "unavailable"), ("unauthorized", "unauthorized"), ("ALGO_NUEVO", "bad_response"),
+])
+def test_mcp_error_codes_become_typed_agent_errors(code, error):
+    result = lookup_incidents(IncidentQuery(ticket_id=TICKET_ID), mcp=FakeMcp(incidents_get_ticket=mcp_error(code)))
+    assert (result.ok, result.error_type, result.mcp_error_code, result.incidents) == (False, error, code, [])
 
 
-def test_timeout_is_explicit_numeric_and_does_not_hang(monkeypatch):
-    assert tools.TOOL_TIMEOUT_SECONDS == 4.0
+def test_non_uuid_ticket_reference_is_rejected_without_calling_the_mcp_server():
+    mcp = FakeMcp()
+    result = lookup_incidents(IncidentQuery(raw_ticket_reference="482"), mcp=mcp)
+    assert (result.ok, result.error_type, mcp.calls) == (False, "invalid_query", [])
+
+
+def _closed_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
+def test_mcp_timeout_is_explicit_numeric_and_does_not_hang():
+    assert mcp_client.TOOL_TIMEOUT_SECONDS == 8.0
 
     class Slow(BaseHTTPRequestHandler):
-        def do_GET(self):
+        def do_POST(self):
             time.sleep(1.5)
             self.send_response(200)
             self.end_headers()
@@ -111,61 +134,74 @@ def test_timeout_is_explicit_numeric_and_does_not_hang(monkeypatch):
     server = ThreadingHTTPServer(("127.0.0.1", 0), Slow)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
-        monkeypatch.setenv("AGENT_API_BASE_URL", f"http://127.0.0.1:{server.server_address[1]}")
-        monkeypatch.setattr(tools, "TOOL_TIMEOUT_SECONDS", 0.3)
+        client = TrackflowMcpTools(f"http://127.0.0.1:{server.server_address[1]}/mcp", timeout=0.3)
         started = time.perf_counter()
-        result = lookup_incidents(IncidentQuery(ticket_id=TICKET_ID))
+        result = lookup_incidents(IncidentQuery(ticket_id=TICKET_ID), mcp=client)
         elapsed = time.perf_counter() - started
     finally:
         server.shutdown()
     assert result.error_type == "timeout"
-    assert elapsed < 1.0  # cortó en el timeout, no esperó la respuesta lenta
+    assert elapsed < 1.4  # cortó en el timeout, no esperó la respuesta lenta
 
 
-def test_tools_are_read_only_writes_are_blocked_before_sending():
-    mock, calls = transport(lambda r: httpx.Response(200, json={}))
-    with tools._client("jwt", mock) as client:
-        for method in ("POST", "PATCH", "PUT", "DELETE"):
-            with pytest.raises(ReadOnlyViolation):
-                client.request(method, f"/api/incidents/{TICKET_ID}/status", json={"status": "resolved"})
-    assert calls == []  # ninguna escritura llegó al servicio
+def test_mcp_server_down_is_unavailable_not_exception():
+    client = TrackflowMcpTools(f"http://127.0.0.1:{_closed_port()}/mcp", timeout=3)
+    assert lookup_incidents(IncidentQuery(ticket_id=TICKET_ID), mcp=client).error_type == "unavailable"
 
 
-def test_no_hardcoded_token_without_env_or_caller(monkeypatch):
-    monkeypatch.delenv("AGENT_API_TOKEN", raising=False)
-    mock, calls = transport(lambda r: httpx.Response(401, json={"detail": "x"}))
-    assert lookup_incidents(IncidentQuery(ticket_id=TICKET_ID), transport=mock).error_type == "unauthorized"
-    assert "Authorization" not in calls[0].headers
+@pytest.mark.parametrize("tool", ["incidents_create_ticket", "incidents_update_ticket_status", "inventory_update_stock"])
+def test_agent_mcp_client_only_invokes_read_tools(tool):
+    client = TrackflowMcpTools(f"http://127.0.0.1:{_closed_port()}/mcp", timeout=1)
+    with pytest.raises(ReadOnlyViolation):
+        client.call(tool, {"incident_id": TICKET_ID, "status": "resolved"})
+
+
+def test_no_hardcoded_credentials_oauth_comes_only_from_env(monkeypatch):
+    monkeypatch.delenv("AGENT_OAUTH_CLIENT_ID", raising=False)
+    monkeypatch.delenv("AGENT_OAUTH_CLIENT_SECRET", raising=False)
+    assert mcp_client.auth_from_env() is None
+    monkeypatch.setenv("AGENT_OAUTH_CLIENT_ID", "trackflow-agent")
+    monkeypatch.setenv("AGENT_OAUTH_CLIENT_SECRET", "secreto-de-entorno")
+    auth = mcp_client.auth_from_env()
+    assert auth.client_id == "trackflow-agent" and auth.issuer.endswith("/realms/trackflow")
+
+
+def test_agent_has_a_single_path_to_the_incidents_manager():
+    """Ningún módulo del agente llama ya por HTTP a /api/incidents ni a /inventory: solo al servidor MCP."""
+    direct_call = re.compile(r"""\.(get|post|patch|put|delete|request)\(\s*(["'](GET|POST|PATCH|PUT|DELETE)["'],\s*)?f?["']/(api|inventory)""")
+    for path in (ROOT / "services" / "agent").glob("*.py"):
+        code = path.read_text(encoding="utf-8")
+        assert not direct_call.search(code), path
+        assert "AGENT_API_TOKEN" not in code and "AGENT_API_BASE_URL" not in code, path
+    assert "import httpx" not in (ROOT / "services/agent/tools.py").read_text(encoding="utf-8")
 
 
 # --------------------------------------------------------------------------
-# Tool de inventario
+# Tool de inventario → tool MCP de inventario (solo lectura)
 # --------------------------------------------------------------------------
-def test_inventory_by_sku_reads_get_inventory_products():
-    mock, calls = transport(lambda r: httpx.Response(200, json=PRODUCTS))
-    result = lookup_inventory(InventoryQuery(sku="tec-ear-001"), auth_token="jwt", transport=mock)
+def test_inventory_by_sku_uses_mcp_read_only_tool():
+    mcp = products_mcp()
+    result = lookup_inventory(InventoryQuery(sku="TEC-EAR-001"), mcp=mcp)
 
     assert result.ok and [(i.sku, i.current_stock) for i in result.items] == [("TEC-EAR-001", 74)]
-    assert [(c.method, c.url.path) for c in calls] == [("GET", "/inventory/products")]
+    assert mcp.calls == [("inventory_query_products", {"operation": "list", "sku": "TEC-EAR-001"})]
 
 
 def test_inventory_by_name_ignores_accents_and_respects_warehouse():
-    mock, _ = transport(lambda r: httpx.Response(200, json=PRODUCTS))
-    assert lookup_inventory(InventoryQuery(name_terms=["serum", "hidratante"]), transport=mock).items[0].sku == "CSM-SRM-030"
-    assert lookup_inventory(InventoryQuery(name_terms=["serum"], warehouse="LA"), transport=mock).error_type == "not_found"
+    assert lookup_inventory(InventoryQuery(name_terms=["serum", "hidratante"]), mcp=products_mcp()).items[0].sku == "CSM-SRM-030"
+    assert lookup_inventory(InventoryQuery(name_terms=["serum"], warehouse="LA"), mcp=products_mcp()).error_type == "not_found"
 
 
 def test_inventory_failure_is_typed():
-    mock, _ = transport(lambda r: httpx.Response(503, json={}))
-    assert lookup_inventory(InventoryQuery(sku="TEC-EAR-001"), transport=mock).error_type == "unavailable"
+    mcp = FakeMcp(inventory_query_products=mcp_error("BACKEND_UNAVAILABLE"))
+    assert lookup_inventory(InventoryQuery(sku="TEC-EAR-001"), mcp=mcp).error_type == "unavailable"
 
 
 # --------------------------------------------------------------------------
 # Enrutamiento automático (sin que el usuario indique la fuente)
 # --------------------------------------------------------------------------
 def test_every_rag_eval_question_still_routes_only_to_rag():
-    from pathlib import Path
-    queries = json.loads((Path(__file__).resolve().parents[2] / "mock_data/eval/test-queries.json").read_text(encoding="utf-8"))
+    queries = json.loads((ROOT / "mock_data/eval/test-queries.json").read_text(encoding="utf-8"))
     for case in queries["in_scope"] + queries["out_of_scope"]:
         assert plan_sources(case["question"])["sources"] == ["rag"], case["id"]
 
@@ -198,17 +234,14 @@ class Sources:
         self.incident_result = incident_result
         self.chunks = chunks or []
         self.calls = []
-        self.tokens = []
 
-    def incidents(self, query, *, auth_token=None):
+    def incidents(self, query, *, mcp=None):
         self.calls.append("incidents")
-        self.tokens.append(auth_token)
         return self.incident_result or IncidentToolResult(ok=True, mode="detail", query=query, incidents=[INCIDENT], total=1)
 
-    def inventory(self, query, *, auth_token=None):
+    def inventory(self, query, *, mcp=None):
         self.calls.append("inventory")
-        mock, _ = transport(lambda r: httpx.Response(200, json=PRODUCTS))
-        return lookup_inventory(query, transport=mock)
+        return lookup_inventory(query, mcp=products_mcp())
 
     def retrieve(self, question, *, k, min_score):
         self.calls.append("rag")
@@ -222,19 +255,18 @@ class Sources:
 def agent_for(sources, tmp_path=None):
     return KnowledgeAgent(retrieve_fn=sources.retrieve, generate_fn=sources.generate, incidents_fn=sources.incidents,
                           inventory_fn=sources.inventory,
-                          checkpointer=sqlite_checkpointer(tmp_path / "cp.sqlite" if tmp_path else ":memory:"),
+                          mcp=FakeMcp(), checkpointer=sqlite_checkpointer(tmp_path / "cp.sqlite" if tmp_path else ":memory:"),
                           traces=TraceStore(":memory:"))
 
 
 def test_ticket_question_uses_only_the_incidents_tool():
     src = Sources()
     agent = agent_for(src)
-    result = agent.run(f"¿En qué estado está el ticket {TICKET_ID}?", auth_token="jwt")
+    result = agent.run(f"¿En qué estado está el ticket {TICKET_ID}?")
 
     assert src.calls == ["incidents"] and result.sources == ["incidents"]
-    assert executed_nodes(agent.traces.get_trace(result.run_id)) == ["receive_question", "plan_sources", "lookup_incidents", "compose_answer"]
+    assert executed_nodes(agent.traces.get_trace(result.run_id)) == ["receive_question", "plan_sources", "mcp_incidents", "compose_answer"]
     assert "**En curso**" in result.answer and TICKET_ID in result.answer
-    assert src.tokens == ["jwt"]
 
 
 def test_policy_question_uses_only_rag():
@@ -269,15 +301,15 @@ def test_tool_failure_falls_back_honestly_and_never_invents_a_status():
 
 
 def test_unexpected_tool_exception_does_not_break_the_run():
-    def boom(query, *, auth_token=None):
+    def boom(query, *, mcp=None):
         raise ValueError("respuesta corrupta")
 
     src = Sources()
     agent = KnowledgeAgent(retrieve_fn=src.retrieve, generate_fn=src.generate, incidents_fn=boom, inventory_fn=src.inventory,
-                           checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"))
+                           mcp=FakeMcp(), checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"))
     result = agent.run(f"¿En qué estado está el ticket {TICKET_ID}?")
     assert "No pude confirmar" in result.answer
-    assert node_output(agent.traces.get_trace(result.run_id), "lookup_incidents")["incident_result"]["error_type"] == "unavailable"
+    assert node_output(agent.traces.get_trace(result.run_id), "mcp_incidents")["incident_result"]["error_type"] == "unavailable"
 
 
 def test_inventory_question_answers_with_live_stock():
@@ -287,15 +319,17 @@ def test_inventory_question_answers_with_live_stock():
     assert "9 unidades en stock" in result.answer and "POR DEBAJO DEL MÍNIMO" in result.answer
 
 
-def test_caller_token_is_not_persisted_in_checkpoints_or_trace(tmp_path):
-    src = Sources()
-    agent = agent_for(src, tmp_path)
-    result = agent.run(f"¿En qué estado está el ticket {TICKET_ID}?", auth_token="jwt-secreto-del-usuario")
+def test_tool_nodes_call_the_real_lookup_through_the_injected_mcp_client(tmp_path):
+    """Sin dobles de lookup: el nodo mcp_incidents usa lookup_incidents → cliente MCP inyectado."""
+    mcp = FakeMcp(incidents_get_ticket=ok(INCIDENT))
+    agent = KnowledgeAgent(retrieve_fn=lambda *a, **k: [], generate_fn=lambda q, c: "", mcp=mcp,
+                           checkpointer=sqlite_checkpointer(tmp_path / "cp.sqlite"), traces=TraceStore(":memory:"))
+    result = agent.run(f"¿En qué estado está el ticket {TICKET_ID}?")
 
-    assert src.tokens == ["jwt-secreto-del-usuario"]
-    assert "jwt-secreto-del-usuario" not in (tmp_path / "cp.sqlite").read_bytes().decode("latin-1")
-    assert "jwt-secreto-del-usuario" not in json.dumps(agent.traces.get_trace(result.run_id))
-    assert agent._credentials == {}  # se descarta al terminar la corrida
+    assert mcp.calls == [("incidents_get_ticket", {"incident_id": TICKET_ID})]
+    output = node_output(agent.traces.get_trace(result.run_id), "mcp_incidents")["incident_result"]
+    assert output["mcp_tool"] == "incidents_get_ticket" and output["ok"] is True
+    assert "**En curso**" in result.answer
 
 
 def test_mixed_question_sends_only_the_policy_clause_to_rag_preserving_accents():
@@ -312,6 +346,6 @@ def test_rag_and_generation_use_the_policy_subquestion_in_mixed_runs():
     agent = KnowledgeAgent(retrieve_fn=lambda q, *, k, min_score: seen.append(("retrieve", q)) or src.chunks,
                            generate_fn=lambda q, c: seen.append(("generate", q)) or "30 días.",
                            incidents_fn=src.incidents, inventory_fn=src.inventory,
-                           checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"))
+                           mcp=FakeMcp(), checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"))
     agent.run(f"¿En qué estado está el ticket {TICKET_ID} y cuál es la ventana de devolución estándar?")
     assert seen == [("retrieve", "¿Cuál es la ventana de devolución estándar?"), ("generate", "¿Cuál es la ventana de devolución estándar?")]

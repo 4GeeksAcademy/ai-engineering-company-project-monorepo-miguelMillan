@@ -44,7 +44,11 @@ services:
       QDRANT_URL: http://qdrant:6333
       EMBEDDING_CACHE_DIR: /var/lib/trackflow/fastembed
       AGENT_DATA_DIR: /var/lib/trackflow/agent
-      AGENT_API_BASE_URL: http://127.0.0.1:8081
+      # El agente usa las tools a través del servidor MCP (servicio `mcp`), con OAuth client_credentials.
+      MCP_SERVER_URL: ${MCP_SERVER_URL:-http://mcp:8090/mcp}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      AGENT_OAUTH_CLIENT_ID: ${AGENT_OAUTH_CLIENT_ID:-}
+      AGENT_OAUTH_CLIENT_SECRET: ${AGENT_OAUTH_CLIENT_SECRET:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -78,6 +82,32 @@ services:
       timeout: 10s
       start_period: 30s
       retries: 6
+
+  mcp:
+    # Servidor MCP de TrackFlow (mcps/trackflow_mcp). Opcional: `docker compose --profile mcp up`.
+    # Necesita un proveedor OAuth 2.1/OIDC (OIDC_ISSUER) y la cuenta de servicio del backend.
+    profiles: ["mcp"]
+    image: trackflow-backend:local
+    working_dir: /app
+    command: ["python", "-m", "mcps.trackflow_mcp.server"]
+    environment:
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "8090"
+      MCP_RESOURCE_URL: ${MCP_RESOURCE_URL:-http://mcp:8090/mcp}
+      MCP_ALLOWED_HOSTS: mcp
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      TRACKFLOW_API_BASE_URL: http://backend:8081
+      MCP_BACKEND_EMAIL: ${MCP_BACKEND_EMAIL:-}
+      MCP_BACKEND_PASSWORD: ${MCP_BACKEND_PASSWORD:-}
+    volumes:
+      - ./mcps:/app/mcps:ro
+    ports:
+      - "${BIND_ADDRESS}:${MCP_PORT:-8090}:8090"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - trackflow
 
   redis:
     image: redis:7-alpine

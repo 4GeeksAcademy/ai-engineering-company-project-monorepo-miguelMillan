@@ -7,15 +7,15 @@
   "sources_used": [
     "rag"
   ],
-  "started_at": "2026-11-20T09:05:51.116+00:00",
-  "finished_at": "2026-11-20T09:05:51.195+00:00",
+  "started_at": "2026-11-20T09:56:51.151+00:00",
+  "finished_at": "2026-11-20T09:56:53.113+00:00",
   "steps": [
     {
       "run_id": "eval-out-of-domain-no-context",
       "seq": 0,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-20T09:05:51.122+00:00",
+      "started_at": "2026-11-20T09:56:51.170+00:00",
       "duration_ms": 0.006,
       "status": "ok",
       "output": {
@@ -27,7 +27,7 @@
       "seq": 1,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-20T09:05:51.123+00:00",
+      "started_at": "2026-11-20T09:56:51.172+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -40,8 +40,8 @@
       "seq": 2,
       "kind": "node",
       "name": "plan_sources",
-      "started_at": "2026-11-20T09:05:51.126+00:00",
-      "duration_ms": 0.039,
+      "started_at": "2026-11-20T09:56:51.175+00:00",
+      "duration_ms": 11.872,
       "status": "ok",
       "output": {
         "plan": {
@@ -59,8 +59,8 @@
       "seq": 3,
       "kind": "route",
       "name": "route_after_plan",
-      "started_at": "2026-11-20T09:05:51.128+00:00",
-      "duration_ms": 0.004,
+      "started_at": "2026-11-20T09:56:51.188+00:00",
+      "duration_ms": 0.003,
       "status": "ok",
       "output": {
         "next": "retrieve",
@@ -72,8 +72,8 @@
       "seq": 4,
       "kind": "node",
       "name": "retrieve",
-      "started_at": "2026-11-20T09:05:51.132+00:00",
-      "duration_ms": 50.036,
+      "started_at": "2026-11-20T09:56:51.192+00:00",
+      "duration_ms": 1910.752,
       "status": "ok",
       "output": {
         "context": []
@@ -84,7 +84,7 @@
       "seq": 5,
       "kind": "route",
       "name": "route_after_retrieve",
-      "started_at": "2026-11-20T09:05:51.184+00:00",
+      "started_at": "2026-11-20T09:56:53.105+00:00",
       "duration_ms": 0.004,
       "status": "ok",
       "output": {
@@ -97,7 +97,7 @@
       "seq": 6,
       "kind": "node",
       "name": "no_context",
-      "started_at": "2026-11-20T09:05:51.188+00:00",
+      "started_at": "2026-11-20T09:56:53.109+00:00",
       "duration_ms": 0.004,
       "status": "ok",
       "output": {
@@ -106,11 +106,11 @@
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-20T09:05:51+00:00",
+    "recorded_at": "2026-11-20T09:56:53+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
-    "api_base_url": "http://127.0.0.1:8081",
-    "api_token_configured": true,
+    "mcp_server_url": "http://127.0.0.1:8090/mcp",
+    "oauth_client_id": "trackflow-agent",
     "checkpoints": [
       [
         "__start__"

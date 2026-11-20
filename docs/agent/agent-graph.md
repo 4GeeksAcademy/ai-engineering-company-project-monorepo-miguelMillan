@@ -1,4 +1,4 @@
-# Agente de soporte de TrackFlow con LangGraph (Partes 1 y 2)
+# Agente de soporte de TrackFlow con LangGraph (Partes 1 y 2, y migración a MCP)
 
 **Para quién:** desarrolladores que mantengan el agente o le añadan capacidades en la Parte 2.
 **Qué cambia respecto al RAG del Hito 7:** el comportamiento es el mismo: mismos `retrieve()` y `generate_answer()` de `mock_data/pipelines/rag.py` (el `data/pipelines/` del enunciado), misma colección `trackflow_knowledge` y mismo umbral. La diferencia es que el flujo ya no es una caja negra: es un grafo compilado con estado explícito, checkpoints y un trace consultable de cada corrida.
@@ -14,21 +14,21 @@
 
 ## Grafo
 
-Generado desde `compile_agent_graph(build_agent_graph()).get_graph()`. Las líneas discontinuas son aristas condicionales. La Parte 2 añade `plan_sources`, las tools `lookup_incidents` y `lookup_inventory`, y `compose_answer` (ver [Parte 2](#parte-2-tools-de-incidencias-e-inventario)).
+Generado desde `compile_agent_graph(build_agent_graph()).get_graph()`. Las líneas discontinuas son aristas condicionales. La Parte 2 añade `plan_sources`, los nodos de tools y `compose_answer` (ver [Parte 2](#parte-2-tools-de-incidencias-e-inventario)). Desde la [migración a MCP](#migración-a-mcp-el-agente-como-cliente-del-servidor-mcp), los nodos de tools son **clientes del servidor MCP**: `mcp_incidents` y `mcp_inventory`.
 
 ```mermaid
 graph TD;
 	__start__([__start__]) --> receive_question;
 	receive_question -.->|inválida| invalid_question;
 	receive_question -.->|válida| plan_sources;
-	plan_sources -.->|plan incluye incidencias| lookup_incidents;
-	plan_sources -.->|plan incluye inventario| lookup_inventory;
+	plan_sources -.->|plan incluye incidencias| mcp_incidents;
+	plan_sources -.->|plan incluye inventario| mcp_inventory;
 	plan_sources -.->|solo RAG| retrieve;
-	lookup_incidents -.->|falta inventario| lookup_inventory;
-	lookup_incidents -.->|falta RAG| retrieve;
-	lookup_incidents -.->|nada más| compose_answer;
-	lookup_inventory -.->|falta RAG| retrieve;
-	lookup_inventory -.->|nada más| compose_answer;
+	mcp_incidents -.->|falta inventario| mcp_inventory;
+	mcp_incidents -.->|falta RAG| retrieve;
+	mcp_incidents -.->|nada más| compose_answer;
+	mcp_inventory -.->|falta RAG| retrieve;
+	mcp_inventory -.->|nada más| compose_answer;
 	retrieve -.->|contexto ≥ min_score| generate;
 	retrieve -.->|sin contexto, hubo tools| compose_answer;
 	retrieve -.->|sin contexto ni tools| no_context;
@@ -142,6 +142,8 @@ Los datos de negocio sí salen anclados. Con el LLM de producción elegido hay q
 
 Los datos operativos (estado de un ticket, stock de un producto) **no** se indexan en el RAG, porque cambian en tiempo real. El agente los consulta en vivo con dos tools de **solo lectura**, cada una con una sola responsabilidad (`services/agent/tools.py`).
 
+> **Actualizado con la migración a MCP.** El transporte y la autenticación que se describen debajo (HTTP directo a `services/api` con el JWT del usuario o `AGENT_API_TOKEN`) eran los de la Parte 2 y **ya no existen**. Hoy `lookup_incidents` y `lookup_inventory` invocan las tools del servidor MCP desde los nodos `mcp_incidents` y `mcp_inventory`. Ver [Migración a MCP](#migración-a-mcp-el-agente-como-cliente-del-servidor-mcp). Contratos, enrutamiento, fallback y redacción siguen igual; el timeout pasa a 8 s por llamada MCP.
+
 | Tool | Servicio real | Entrada tipada | Salida tipada |
 |---|---|---|---|
 | `lookup_incidents` | Gestor de incidencias: `GET /api/incidents/{id}` o `GET /api/incidents?status=&category=&origin=&branch=` | `IncidentQuery`: `ticket_id` (UUID) o filtros `status`, `category`, `origin`, `branch` | `IncidentToolResult`: `ok`, `mode` (`detail`/`list`), `incidents[]` (`id`, `title`, `status`, `category`, `origin`, `branch`, `created_at`, `updated_at`), `total`, `error_type` |
@@ -190,7 +192,7 @@ Una excepción inesperada dentro de la tool también se convierte en `unavailabl
 
 ### Trace
 
-Cada corrida guarda `sources_used`, las fuentes en orden (`["incidents", "rag"]`), en `agent_runs`, y los nodos `lookup_*` con su resultado tipado en `agent_trace_steps`. `python -m services.agent.inspect` lista las corridas con sus fuentes.
+Cada corrida guarda `sources_used`, las fuentes en orden (`["incidents", "rag"]`), en `agent_runs`, y los nodos de tools (`mcp_incidents`, `mcp_inventory`) con su resultado tipado en `agent_trace_steps`, que incluye la tool MCP invocada (`mcp_tool`). `python -m services.agent.inspect` lista las corridas con sus fuentes.
 
 ### Evals nuevos (contra traces grabados con los servicios reales)
 
@@ -201,8 +203,36 @@ Cada corrida guarda `sources_used`, las fuentes en orden (`["incidents", "rag"]`
 | `tool-inventory-stock-by-sku` | TEC-EAR-001 → solo `inventory`; la respuesta da el stock real (74) |
 | `returns-standard-window` y el resto de casos de la Parte 1 | Solo `rag`; ninguna tool se ejecuta |
 | `mixed-ticket-and-policy` | `incidents` → `rag`, en ese orden; estado real del ticket y "30 días" |
-| `fallback-incidents-service-down` | Grabado con el gestor de incidencias realmente caído (puerto cerrado) → `error_type=unavailable`, respuesta honesta, **sin ningún estado** |
+| `fallback-incidents-service-down` | Grabado con el servidor MCP realmente caído (puerto cerrado) → `error_type=unavailable`, respuesta honesta, **sin ningún estado** |
 | `fallback-ticket-reference-not-uuid` | "ticket 482" → `invalid_query`, sin estado inventado |
+
+## Migración a MCP: el agente como cliente del servidor MCP
+
+El servidor MCP de TrackFlow (`mcps/trackflow_mcp`, documentado en su [README](../../mcps/trackflow_mcp/README.md)) expone el Incidents Manager y el inventario a cualquier cliente MCP autorizado con OAuth 2.1. El agente es ahora uno de esos clientes.
+
+| Antes (Parte 2) | Ahora |
+|---|---|
+| Nodos `lookup_incidents` / `lookup_inventory` → `httpx` → `GET /api/incidents…`, `GET /inventory/products` | Nodos `mcp_incidents` / `mcp_inventory` → `langchain-mcp-adapters` (`MultiServerMCPClient`, Streamable HTTP) → tools MCP `incidents_get_ticket`, `incidents_list_tickets`, `inventory_query_products` → servidor MCP → `services/api` |
+| JWT del usuario reenviado, o `AGENT_API_TOKEN` | OAuth 2.1 `client_credentials` como `trackflow-agent` (`AGENT_OAUTH_CLIENT_ID` / `AGENT_OAUTH_CLIENT_SECRET`, `OIDC_ISSUER`). Scopes: `mcp:access incidents:read inventory:read`. El JWT del usuario solo autoriza `POST /agent/query` y ya no se reenvía |
+| Hook GET-only en el cliente HTTP | Lista blanca de tools de lectura en el cliente MCP (`ReadOnlyViolation`) **y** un token sin `incidents:write`. Si el agente intentara escribir, el servidor respondería `INSUFFICIENT_SCOPE` |
+| `TOOL_TIMEOUT_SECONDS = 4.0` por petición HTTP | `TOOL_TIMEOUT_SECONDS = 8.0` por llamada MCP, que incluye discovery, sesión e invocación: medido de 30 a 220 ms por llamada y unos 870 ms para el inventario contra Supabase |
+
+**Un solo camino hacia el Incidents Manager.** La implementación HTTP directa se **eliminó** de `services/agent/tools.py`; queda solo en el historial de git, en el PR #38. Desaparecen `AGENT_API_BASE_URL` y `AGENT_API_TOKEN`. Un test (`test_agent_has_a_single_path_to_the_incidents_manager`) falla si algún módulo del agente vuelve a llamar a `/api/incidents` o `/inventory` por HTTP.
+
+**Enrutamiento idéntico.** `plan_sources`, las aristas condicionales, el orden incidencias → inventario → RAG, `rag_question` y `compose_answer` no cambian. Solo cambia el nodo que ejecuta cada tool. Lo comprueban:
+- los tests de enrutamiento existentes;
+- `tests/mcp_server/test_agent_via_mcp.py`, con la pila completa: agente → adapters → servidor MCP con OAuth → backend;
+- los evals, regrabados con los servicios reales a través del servidor MCP. Exigen además la tool MCP usada (`mcp_tool`).
+
+**Errores del servidor MCP → fallback del agente.**
+
+| Código del servidor MCP / transporte | `error_type` del agente |
+|---|---|
+| `NOT_FOUND` | `not_found` |
+| `VALIDATION_ERROR` | `invalid_query` |
+| `INSUFFICIENT_SCOPE`, HTTP 401/403 de MCP Auth | `unauthorized` |
+| `BACKEND_TIMEOUT`, timeout del cliente MCP | `timeout` |
+| `BACKEND_UNAVAILABLE`, `BACKEND_AUTH_FAILED`, servidor MCP caído | `unavailable` |
 
 ### Cómo levantarlo en local
 
@@ -211,8 +241,9 @@ Cada corrida guarda `sources_used`, las fuentes en orden (`["incidents", "rag"]`
 cd services/api && uv run python ../../scripts/seed_incidents.py --db /ruta/incidents-dev.json
 # 2. API real sobre esa TinyDB (el inventario sale de Postgres/Supabase con DATABASE_URL)
 SUPPLIERS_DB_PATH=/ruta/incidents-dev.json SECRET_KEY=... uv run uvicorn main:app --port 8081
-# 3. Cuenta de servicio para scripts y evals (POST /users + POST /auth/login) → AGENT_API_TOKEN
-# 4. Regrabar traces y pasar los evals
-AGENT_API_TOKEN=... LLM_API_URL=... GENERATION_MODEL=... uv run python scripts/record_agent_traces.py
+# 3. Proveedor OIDC + servidor MCP (ver mcps/trackflow_mcp/README.md)
+# 4. Regrabar traces (el agente va por el servidor MCP) y pasar los evals
+OIDC_ISSUER=... MCP_SERVER_URL=http://127.0.0.1:8090/mcp AGENT_OAUTH_CLIENT_ID=trackflow-agent AGENT_OAUTH_CLIENT_SECRET=... \
+  LLM_API_URL=... GENERATION_MODEL=... uv run python scripts/record_agent_traces.py
 uv run pytest tests/pipelines/test_agent_evals.py
 ```

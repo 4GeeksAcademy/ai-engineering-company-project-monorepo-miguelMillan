@@ -1,0 +1,15 @@
+{
+  "mcp_server_url": "https://refactored-space-fishstick-4jj7j9xgqj453pjw-8090.app.github.dev/mcp",
+  "run_id": "2132f150-5709-41f0-ad6c-d1417592df59",
+  "sources": [
+    "incidents"
+  ],
+  "nodes": [
+    "receive_question",
+    "plan_sources",
+    "mcp_incidents",
+    "compose_answer"
+  ],
+  "mcp_tool": "incidents_get_ticket",
+  "answer": "El ticket d32a9b66-b81b-5dce-b90f-c4e8bfc27161 («Return requested within 14-day window, awaiting approval») está en estado **Abierta**. Categoría: Problema de devolución; origen: Cliente; sede: Zaragoza — Oficina. Creado el 08/01/2024, última actualización el 08/01/2024. (Fuente: gestor de incidencias, consulta en vivo.)"
+}

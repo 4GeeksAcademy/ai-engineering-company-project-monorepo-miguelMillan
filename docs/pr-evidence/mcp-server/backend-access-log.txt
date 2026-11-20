@@ -1,0 +1,12 @@
+127.0.0.1:52848 - "POST /api/incidents HTTP/1.1" 201 Created
+127.0.0.1:52852 - "GET /api/incidents/c5f670bf-f624-4edb-998b-51554af50ce1 HTTP/1.1" 200 OK
+127.0.0.1:52860 - "PATCH /api/incidents/c5f670bf-f624-4edb-998b-51554af50ce1/status HTTP/1.1" 200 OK
+127.0.0.1:52870 - "GET /api/incidents/c5f670bf-f624-4edb-998b-51554af50ce1 HTTP/1.1" 200 OK
+127.0.0.1:52878 - "GET /api/incidents?status=open&category=returns_issue HTTP/1.1" 200 OK
+127.0.0.1:52880 - "GET /inventory/products HTTP/1.1" 200 OK
+127.0.0.1:52886 - "GET /inventory/products/1 HTTP/1.1" 200 OK
+127.0.0.1:52902 - "GET /inventory/products/1 HTTP/1.1" 200 OK
+127.0.0.1:52916 - "GET /api/incidents/c5f670bf-f624-4edb-998b-51554af50ce1 HTTP/1.1" 200 OK
+127.0.0.1:52930 - "PATCH /api/incidents/c5f670bf-f624-4edb-998b-51554af50ce1/status HTTP/1.1" 400 Bad Request
+127.0.0.1:52940 - "GET /api/incidents/00000000-0000-4000-8000-000000000000 HTTP/1.1" 404 Not Found
+127.0.0.1:43788 - "GET /api/incidents/d32a9b66-b81b-5dce-b90f-c4e8bfc27161 HTTP/1.1" 200 OK
