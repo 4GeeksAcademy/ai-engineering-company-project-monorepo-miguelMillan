@@ -73,7 +73,7 @@ def test_chronology_check_rejects_shuffled_or_overlapping_folds():
 
 def test_lag_and_rolling_features_do_not_leak_across_fold_boundary(monkeypatch):
     """Alterar por completo el fold de validación no cambia nada de lo que el modelo ve."""
-    smaller = evaluation.build_model().set_params(regressor__n_estimators=20)
+    smaller = evaluation.build_model().set_params(regressor__n_estimators=20, regressor__n_jobs=1)  # n_jobs=1: suma determinista para comparar exacto
     monkeypatch.setattr(evaluation, "build_model", lambda: smaller)
 
     train, _ = split_train_test(synthetic_sales())

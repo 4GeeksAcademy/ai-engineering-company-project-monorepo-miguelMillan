@@ -1,0 +1,3 @@
+2026-11-20T08:36:16.562+00:00  fbaafe5f-7913-4439-b138-763ba4bd2615  completed  final=invalid_question  «»
+2026-11-20T08:36:16.481+00:00  ca74e0e4-bcf4-4cff-8d54-9c8208e6e383  completed  final=no_context  «¿Qué receta lleva una paella valenciana?»
+2026-11-20T08:35:56.182+00:00  01d087ec-93af-4ba9-a654-1f8f2ce976d9  completed  final=generate  «¿Cuál es la ventana de devolución estándar?»

@@ -1,0 +1,130 @@
+{
+  "run_id": "eval-storage-discount-needs-approval",
+  "question": "Un cliente grande pide un descuento en el almacenamiento, ¿se lo puedo ofrecer?",
+  "status": "completed",
+  "final_node": "generate",
+  "error_type": null,
+  "started_at": "2026-11-20T08:33:32.767+00:00",
+  "finished_at": "2026-11-20T08:34:12.608+00:00",
+  "steps": [
+    {
+      "run_id": "eval-storage-discount-needs-approval",
+      "seq": 0,
+      "kind": "node",
+      "name": "receive_question",
+      "started_at": "2026-11-20T08:33:32.773+00:00",
+      "duration_ms": 0.008,
+      "status": "ok",
+      "output": {
+        "question": "Un cliente grande pide un descuento en el almacenamiento, ¿se lo puedo ofrecer?"
+      }
+    },
+    {
+      "run_id": "eval-storage-discount-needs-approval",
+      "seq": 1,
+      "kind": "route",
+      "name": "route_after_receive",
+      "started_at": "2026-11-20T08:33:32.774+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "retrieve",
+        "reason": "pregunta válida"
+      }
+    },
+    {
+      "run_id": "eval-storage-discount-needs-approval",
+      "seq": 2,
+      "kind": "node",
+      "name": "retrieve",
+      "started_at": "2026-11-20T08:33:32.780+00:00",
+      "duration_ms": 50.098,
+      "status": "ok",
+      "output": {
+        "context": [
+          {
+            "company": "trackflow",
+            "source_document": "storage-pricing",
+            "section": "Tarifas de Almacenamiento > Clientes con más de 50 metros cúbicos de volumen promedio mensual p…",
+            "language": "es",
+            "chunk_index": 4,
+            "text": "Tarifas de Almacenamiento\nClientes con más de 50 metros cúbicos de volumen promedio mensual pueden negociar una tarifa preferencial, pero esa negociación siempre debe pasar por Miguel Torres — un account manager no puede ofrecer descuentos de almacenamiento por su cuenta.",
+            "score": 0.5910294
+          },
+          {
+            "company": "trackflow",
+            "source_document": "storage-pricing",
+            "section": "Tarifas de Almacenamiento > Inventario con más de 180 días sin movimiento (sin ventas ni salida…",
+            "language": "es",
+            "chunk_index": 2,
+            "text": "Tarifas de Almacenamiento\nTrackFlow cobra almacenamiento a las marcas cliente según volumen ocupado, no según número de unidades:\n- Inventario con más de 180 días sin movimiento (sin ventas ni salidas) paga una tarifa de \"inventario de larga duración\" del 150% sobre la tarifa estándar, a partir del día 181.",
+            "score": 0.5437851
+          },
+          {
+            "company": "trackflow",
+            "source_document": "storage-pricing",
+            "section": "Tarifas de Almacenamiento > Los primeros 30 días de cualquier producto nuevo en inventario no g…",
+            "language": "es",
+            "chunk_index": 1,
+            "text": "Tarifas de Almacenamiento\nTrackFlow cobra almacenamiento a las marcas cliente según volumen ocupado, no según número de unidades:\n- Los primeros 30 días de cualquier producto nuevo en inventario no generan cargo de almacenamiento (periodo de gracia).",
+            "score": 0.53597665
+          },
+          {
+            "company": "trackflow",
+            "source_document": "storage-pricing",
+            "section": "Tarifas de Almacenamiento > Tarifa estándar",
+            "language": "es",
+            "chunk_index": 0,
+            "text": "Tarifas de Almacenamiento\nTrackFlow cobra almacenamiento a las marcas cliente según volumen ocupado, no según número de unidades:\n- Tarifa estándar: 18 USD por metro cúbico al mes (Los Ángeles) o 16 EUR por metro cúbico al mes (Zaragoza).",
+            "score": 0.45957118
+          }
+        ]
+      }
+    },
+    {
+      "run_id": "eval-storage-discount-needs-approval",
+      "seq": 3,
+      "kind": "route",
+      "name": "route_after_retrieve",
+      "started_at": "2026-11-20T08:33:32.832+00:00",
+      "duration_ms": 0.002,
+      "status": "ok",
+      "output": {
+        "next": "generate",
+        "reason": "hay contexto ≥ min_score"
+      }
+    },
+    {
+      "run_id": "eval-storage-discount-needs-approval",
+      "seq": 4,
+      "kind": "node",
+      "name": "generate",
+      "started_at": "2026-11-20T08:33:32.836+00:00",
+      "duration_ms": 39766.991,
+      "status": "ok",
+      "output": {
+        "answer": "No tengo información suficiente en la base de conocimiento para poder ofrecerle un descuento en el almacenamiento a este cliente. Según las políticas establecidas por Miguel Torres, solo se pueden negociar descuentos con él a través de una transacción entre tú y él directamente."
+      }
+    }
+  ],
+  "recorded_with": {
+    "recorded_at": "2026-11-20T08:34:12+00:00",
+    "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "generation_model": "qwen2.5:1.5b",
+    "checkpoints": [
+      [
+        "__start__"
+      ],
+      [
+        "receive_question"
+      ],
+      [
+        "retrieve"
+      ],
+      [
+        "generate"
+      ],
+      []
+    ]
+  }
+}

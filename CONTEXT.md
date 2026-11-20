@@ -1,96 +1,15 @@
-# BRIEFING — TrackFlow
+Ya construiste las cuatro funciones de tu sistema RAG (setup, embed, retrieve, query) y las expusiste como un endpoint de FastAPI. Funciona, pero es una caja negra: recibe una pregunta y devuelve una respuesta, sin que nadie —ni tú— pueda ver qué decisiones tomó en el camino.
 
-## Hito 7 — RAG y Base de Conocimiento
+Tu tech lead abrió un ticket con un requisito claro: antes de agregar cualquier capacidad nueva al agente (Parte 2 de este mismo proyecto), el flujo de razonamiento tiene que quedar explícito como un grafo, con estado, nodos y transiciones que se puedan trazar y evaluar de forma independiente.
 
----
+Nota del tech lead: "No quiero que reescribas la lógica del RAG desde cero — el retrieve y el embed que ya tienes funcionan. Lo que quiero es que ese mismo comportamiento viva dentro de un grafo de LangGraph, con nodos con una sola responsabilidad, y que cada corrida quede trazada. Si no puedo ver por qué el agente respondió lo que respondió, no puedo confiar en él en producción."
 
-## 1. Introducción
+Tres cosas quedan implícitas en ese ticket y son fáciles de pasar por alto: (1) el grafo debe compilarse antes de cualquier ejecución, para detectar errores estructurales en tiempo de build y no en producción; (2) el estado que viaja entre nodos debe ser mínimo y explícito, no el historial completo de la conversación; y (3) cada corrida debe producir un trace consultable, no solo una respuesta final.
 
-Miguel Torres (Director Comercial) tiene 8 personas entre account managers y business development que responden constantemente las mismas preguntas de marcas prospecto y clientes actuales: qué SLA de entrega manejan, cómo funciona la política de devoluciones, qué transportistas cubren cada zona, cómo se calculan las tarifas de almacenamiento.
+Conocimiento complementario: del loop ingenuo al grafo
+Un agente "ingenuo" es simplemente un while en Python: llamas al modelo, si pide una tool la ejecutas, le devuelves el resultado, y repites. Funciona para prototipos, pero no escala: no hay forma de pausar, retomar, trazar un paso específico o testear un nodo de forma aislada.
 
-El **ticket** que el equipo comercial trasladó a tecnología pide un asistente que cualquier account manager pueda usar **como lo haría un vendedor de TrackFlow** en una llamada con un cliente: con datos exactos y sin prometer condiciones que no existen en los acuerdos estándar.
+LangGraph formaliza ese mismo loop como una máquina de estados: cada paso es un nodo, cada decisión sobre a dónde ir después es una arista (edge), y el conjunto compilado es el grafo. Esto es lo que te permite, en la Parte 2, agregar una tool nueva sin tocar el resto del flujo: solo agregas un nodo y una arista condicional que decide cuándo usarla.
 
-Tu base de conocimiento debe construirse a partir de los documentos fuente de la sección 2.
-
----
-
-## 2. Documentos Fuente para la Base de Conocimiento
-
-Usa los siguientes documentos fuente como base de tu base de conocimiento. Cópialos desde [`00-general-contexts/trackflow/`](../00-general-contexts/trackflow/) a `docs/company-knowledge-base/` en tu monorepo. Cada uno se entrega como un archivo independiente para que lo cargues directamente en tu pipeline de chunking.
-
-| Archivo                                                                                                 | Contenido                   |
-| ------------------------------------------------------------------------------------------------------- | --------------------------- |
-| [`trackflow-sla-delivery.es.md`](../00-general-contexts/trackflow/trackflow-sla-delivery.es.md)         | SLA de Entrega              |
-| [`trackflow-returns-policy.es.md`](../00-general-contexts/trackflow/trackflow-returns-policy.es.md)     | Política de Devoluciones    |
-| [`trackflow-carrier-coverage.es.md`](../00-general-contexts/trackflow/trackflow-carrier-coverage.es.md) | Cobertura de Transportistas |
-| [`trackflow-storage-pricing.es.md`](../00-general-contexts/trackflow/trackflow-storage-pricing.es.md)   | Tarifas de Almacenamiento   |
-
----
-
-**Nombre de la colección Qdrant:** `trackflow_knowledge` — usa este nombre exacto en `setup()`.
-
-## 3. Estructura de Datos de Dominio
-
-```json
-{
-  "id": "uuid-del-chunk",
-  "vector": [
-    /* embedding */
-  ],
-  "payload": {
-    "company": "trackflow",
-    "source_document": "sla-delivery | returns-policy | carrier-coverage | storage-pricing",
-    "section": "título o subtítulo de la sección de origen",
-    "language": "es",
-    "chunk_index": 0,
-    "text": "cuerpo del chunk usado para armar el prompt"
-  }
-}
-```
-
----
-
-## 4. KPIs y Umbrales de la Respuesta
-
-- **Recall@3**: al menos el 80% de las preguntas de prueba deben tener el
-  chunk correcto entre los 3 primeros resultados recuperados.
-- **Faithfulness**: ningún porcentaje, tarifa o plazo en la respuesta puede
-  diferir de los chunks recuperados.
-- Preguntas sobre descuentos de almacenamiento o excepciones de
-  transportista fuera de lo documentado deben responder que requieren
-  aprobación, nunca inventar una condición.
-
----
-
-- **Umbral mínimo de similitud**: define un umbral y documenta por qué lo
-  elegiste; si ningún chunk lo supera, la respuesta debe decir explícitamente
-  que no hay información suficiente — nunca inventes datos.
-
-## 5. Instrucciones de Datos Semilla
-
-- Indexa los cuatro documentos fuente completos de la sección 2.
-- Cada documento debe producir al menos 3 chunks.
-- Crea `data/eval/test-queries.json` con al menos 8 preguntas cubriendo los
-  cuatro documentos, incluyendo al menos una sobre picos de demanda
-  (Black Friday / Rebajas).
-
----
-
-## 6. Restricciones de Negocio
-
-- Nunca se debe prometer un SLA de entrega durante fechas de alta demanda
-  declaradas — debe seguirse la advertencia de `trackflow-sla-delivery.es.md`.
-- Las devoluciones internacionales nunca deben describirse como
-  "automáticas" — deben remitirse siempre a gestión manual.
-- Ningún descuento de almacenamiento puede ofrecerse sin mencionar que
-  requiere aprobación de Miguel Torres.
-
----
-
-## 7. Entregables Esperados
-
-- Base de conocimiento indexada en Qdrant con los cuatro documentos fuente.
-- Endpoint FastAPI que responde preguntas como "¿cuál es la ventana de
-  devolución estándar?" o "¿qué transportista cubre mejor Aragón rural?"
-  con una respuesta generada y trazable a la fuente.
-- Interfaz mínima de consulta funcionando contra ese endpoint.
+Instala la dependencia con uv add langgraph (nunca uses pip install ni pipenv).
+Ubica tu código RAG existente: tus funciones setup, embed, retrieve y query en data/pipelines/, y el endpoint que las expone en services/.

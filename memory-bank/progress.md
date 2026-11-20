@@ -1,5 +1,29 @@
 # Progress Log — TrackFlow
 
+## Agente LangGraph (Parte 1): grafo, checkpointing, tracing, evals y endpoint, 2026-11-20
+
+- Contexto nuevo archivado en `memory-bank/history/LANGGRAPH-AGENT-CONTEXT-2026-11-20.md` (verificado con `cmp`). Rama `feature/langgraph-agent-base`.
+- Arrastres del PR #36:
+  - Se fusionó antes del commit `6d1c011` (tests del pronóstico deterministas), así que `main` tenía un test intermitente: traído con cherry-pick.
+  - `services/requirements.txt`, desde el que se construye la imagen del backend, no incluía `qdrant-client`, `openai` ni `fastembed`. Regenerado con `uv export` desde `services/api` (ya con `langgraph`); onnxruntime 1.32 tiene wheel cp312 para la imagen Python 3.12.
+- `uv add langgraph langgraph-checkpoint-sqlite` en la raíz y en `services/api` (langgraph 1.2.24).
+- `services/agent/graph.py`:
+  - Estado mínimo `AgentState` (`question`, `context`, `answer`, `error`), sin historial de conversación.
+  - Nodos `receive_question`, `retrieve` (llama a `retrieve()`), `generate` (llama a `generate_answer(question, context)`; no se usa `query()`), `no_context` e `invalid_question`.
+  - Dos aristas condicionales.
+  - `validate_structure()` cubre lo que `StateGraph.compile()` no detecta (comprobado: nodo huérfano, nodo sin salida y claves fuera del estado compilan sin error en LangGraph); además, verificación en ejecución de las claves que escribe cada nodo.
+  - `SqliteSaver` con `durability="sync"`: un checkpoint por transición.
+- `services/agent/tracing.py`: trace persistente en SQLite (nodos y decisiones de aristas en orden, con salida y duración; corridas fallidas con nodo y tipo de error). Consulta con `python -m services.agent.inspect`.
+- Endpoint `POST /agent/query`: solo invoca el grafo; el grafo se compila al importar el router; devuelve 200, 422 (pregunta inválida), 503 o 502 sin stack trace; `X-Agent-Run-Id` en la cabecera. Compose: monta `services/agent` y usa `AGENT_DATA_DIR` en `backend_data`.
+- LLM de generación para desarrollo y evals: Ollama 0.12.6 + `qwen2.5:1.5b` en el contenedor `trackflow-ollama-dev`, con API OpenAI-compatible; no cambia la configuración de producción. Los contenedores de desarrollo `trackflow-qdrant-dev` y `trackflow-ollama-dev` quedan con `--restart unless-stopped` (Qdrant se había parado dos veces).
+- Evals contra traces:
+  - `mock_data/eval/agent-eval-cases.json` con 6 casos, 4 de ellos de anclaje: SEUR, 30 días, Miguel Torres, Black Friday no garantizado + 40%.
+  - `scripts/record_agent_traces.py` graba los traces con el grafo real en `mock_data/eval/agent-traces/`.
+  - `tests/pipelines/test_agent_evals.py`: 10 passed, incluido que un trace perfecto con respuesta sin anclaje falla.
+- E2E del endpoint con el grafo real (TestClient, usuario temporal): política → 200 "30 días", fuera de dominio → 200 respuesta honesta, vacía → 422; traces consultables después.
+- Validación: `uv run pytest tests -q` → 76 passed (RAG intacto); `services/api` → 97 passed.
+- Limitación: `qwen2.5:1.5b` no añadió la línea `Fuente:` en ninguna respuesta y tarda 10–60 s en CPU. Documentado en `docs/agent/agent-graph.md`. Sin commit.
+
 ## RAG (Hito 7): verificación del checklist y PR "feat: rag knowledge base", 2026-11-19
 
 - Checklist de entrega verificado contra el código y contra el Qdrant real (contenedor `trackflow-qdrant-dev` reiniciado tras la sesión; el volumen conservaba la colección): 18 puntos de 384 dimensiones con distancia coseno, payload completo, Recall@3 82 % con `min_score` 0.45, `retrieve` en vivo devuelve 0 o 1 resultados según el umbral.
@@ -7,6 +31,7 @@
 - **No hay respuesta generada real**: falta el LLM de generación (`LLM_API_URL`, `LLM_API_KEY`, `GENERATION_MODEL`); `query()` lanza RuntimeError y el endpoint responde 503. El PR lo declara explícitamente; no se fabricó ninguna respuesta.
 - Commit y push de la rama `feature/rag-knowledge-base` y PR hacia `main` a petición del desarrollador.
 - El CI del PR #36 falló al instalar: uv eligió Python 3.15 (`requires-python >=3.14`) y `onnxruntime` (dependencia de fastembed) solo tiene wheels cp314. Se fija `.python-version` = 3.14 (la misma que en local); `uv run pytest tests -q` → 52 passed.
+- Segundo CI: el test `test_lag_and_rolling_features_do_not_leak_across_fold_boundary` (hito del pronóstico) es intermitente. El Random Forest con `n_jobs=-1` suma los árboles en orden no determinista en el runner multinúcleo (diferencias en el decimal 15). Se fija `regressor__n_jobs=1` en ese test y en `test_model_never_sees_test_years`, que comparan de forma exacta; no se relaja la comparación. 3 ejecuciones locales seguidas → 52 passed.
 
 ## RAG: fases 5b (Recall@3) y 6 (documento de diseño); embeddings locales, 2026-11-19
 

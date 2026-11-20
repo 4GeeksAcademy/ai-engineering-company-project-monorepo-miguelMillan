@@ -1,0 +1,93 @@
+{
+  "run_id": "eval-out-of-domain-no-context",
+  "question": "¿Qué receta lleva una paella valenciana?",
+  "status": "completed",
+  "final_node": "no_context",
+  "error_type": null,
+  "started_at": "2026-11-20T08:34:33.184+00:00",
+  "finished_at": "2026-11-20T08:34:33.255+00:00",
+  "steps": [
+    {
+      "run_id": "eval-out-of-domain-no-context",
+      "seq": 0,
+      "kind": "node",
+      "name": "receive_question",
+      "started_at": "2026-11-20T08:34:33.190+00:00",
+      "duration_ms": 0.006,
+      "status": "ok",
+      "output": {
+        "question": "¿Qué receta lleva una paella valenciana?"
+      }
+    },
+    {
+      "run_id": "eval-out-of-domain-no-context",
+      "seq": 1,
+      "kind": "route",
+      "name": "route_after_receive",
+      "started_at": "2026-11-20T08:34:33.191+00:00",
+      "duration_ms": 0.002,
+      "status": "ok",
+      "output": {
+        "next": "retrieve",
+        "reason": "pregunta válida"
+      }
+    },
+    {
+      "run_id": "eval-out-of-domain-no-context",
+      "seq": 2,
+      "kind": "node",
+      "name": "retrieve",
+      "started_at": "2026-11-20T08:34:33.195+00:00",
+      "duration_ms": 50.501,
+      "status": "ok",
+      "output": {
+        "context": []
+      }
+    },
+    {
+      "run_id": "eval-out-of-domain-no-context",
+      "seq": 3,
+      "kind": "route",
+      "name": "route_after_retrieve",
+      "started_at": "2026-11-20T08:34:33.248+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "no_context",
+        "reason": "ningún chunk supera min_score"
+      }
+    },
+    {
+      "run_id": "eval-out-of-domain-no-context",
+      "seq": 4,
+      "kind": "node",
+      "name": "no_context",
+      "started_at": "2026-11-20T08:34:33.251+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "answer": "No tengo información suficiente en la base de conocimiento de TrackFlow para responder a esa pregunta con datos exactos. Para no comprometer condiciones que no están en los acuerdos estándar, consúltalo con el área responsable antes de responder al cliente."
+      }
+    }
+  ],
+  "recorded_with": {
+    "recorded_at": "2026-11-20T08:34:33+00:00",
+    "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "generation_model": "qwen2.5:1.5b",
+    "checkpoints": [
+      [
+        "__start__"
+      ],
+      [
+        "receive_question"
+      ],
+      [
+        "retrieve"
+      ],
+      [
+        "no_context"
+      ],
+      []
+    ]
+  }
+}
