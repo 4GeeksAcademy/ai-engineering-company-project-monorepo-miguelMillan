@@ -1,38 +1,45 @@
-"""Agente de conocimiento de TrackFlow como grafo de LangGraph (Parte 1).
+"""Agente de soporte de TrackFlow como grafo de LangGraph (Partes 1 y 2).
 
-Reutiliza sin duplicar el RAG de ``mock_data/pipelines/rag.py`` (el
-``data/pipelines/`` del enunciado):
+Parte 1: el RAG de ``mock_data/pipelines/rag.py`` (el ``data/pipelines/`` del
+enunciado) vive en nodos con una sola responsabilidad. El nodo ``retrieve``
+llama a ``retrieve()`` y el nodo ``generate`` llama a
+``generate_answer(question, context)`` con el contexto ya recuperado; ``query()``
+no se usa.
 
-* el nodo ``retrieve`` llama a ``retrieve()``;
-* el nodo ``generate`` llama a ``generate_answer(question, context)`` con el
-  contexto que ``retrieve`` ya produjo. ``query()`` (retrieve + generación en
-  bloque) NO se usa: el flujo queda explícito y la recuperación nunca se repite.
+Parte 2: dos tools de solo lectura sobre los servicios reales
+(``services/agent/tools.py``): ``lookup_incidents`` (gestor de incidencias) y
+``lookup_inventory`` (gestor de inventario). El nodo ``plan_sources`` decide a
+partir de la pregunta si hace falta el RAG, alguna tool o ambos
+(``services/agent/routing.py``), y las aristas condicionales recorren las
+fuentes planificadas en orden: incidencias → inventario → RAG.
 
 Flujo::
 
-    START → receive_question ─┬─ pregunta inválida ──→ invalid_question → END
-                              └─ pregunta válida ────→ retrieve ─┬─ sin contexto ≥ min_score → no_context → END
-                                                                 └─ con contexto ─────────────→ generate  → END
+    START → receive_question ─┬─ inválida → invalid_question → END
+                              └─ válida   → plan_sources ─┬─→ lookup_incidents ─┬─→ lookup_inventory ─┬─→ retrieve
+                                                          ├─→ lookup_inventory  ├─→ retrieve          └─→ compose_answer
+                                                          └─→ retrieve          └─→ compose_answer
+    retrieve ─┬─ hay contexto ≥ min_score ─────────→ generate ─┬─ hubo tools → compose_answer → END
+              ├─ sin contexto, pero hubo tools ────→ compose_answer         └─ solo RAG ──────────→ END
+              └─ sin contexto y sin tools ─────────→ no_context → END
 
-Estado mínimo (``AgentState``): ``question``, ``context``, ``answer`` y
-``error``. No viaja el historial de la conversación: el asistente comercial
-responde preguntas independientes sobre los acuerdos estándar y ningún nodo
-lo necesita para decidir el siguiente paso.
-
-El grafo se compila (con validación estructural propia, ver
-``validate_structure``) antes de cualquier ejecución. Cada superpaso queda
-guardado por el checkpointer (``thread_id`` = ``run_id``), y cada nodo y cada
-decisión de arista quedan en un trace persistente (``services/agent/tracing.py``).
+Estado mínimo (``AgentState``): pregunta, plan de fuentes, resultados de cada
+fuente y respuesta. No viaja el historial de conversación ni credenciales: el
+token para las tools se entrega por corrida fuera del estado (no queda en los
+checkpoints).
 """
 
 from __future__ import annotations
 
+import inspect
+import logging
 import os
 import sqlite3
 import sys
+import threading
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Literal, NotRequired, TypedDict, get_type_hints
 
@@ -49,21 +56,36 @@ from mock_data.pipelines.rag import (  # noqa: E402
     generate_answer,
     retrieve,
 )
+from services.agent import answers  # noqa: E402
+from services.agent.routing import SourcePlan, plan_sources as plan_question_sources  # noqa: E402
+from services.agent.tools import (  # noqa: E402
+    IncidentQuery,
+    IncidentToolResult,
+    InventoryQuery,
+    InventoryToolResult,
+    ReadOnlyViolation,
+    lookup_incidents,
+    lookup_inventory,
+)
 from services.agent.tracing import TraceStore, _now  # noqa: E402
+
+logger = logging.getLogger("trackflow.agent")
 
 QUESTION_MIN_LENGTH = 3
 QUESTION_MAX_LENGTH = 1000
 INVALID_QUESTION_ANSWER = (
     "La pregunta está vacía o no es válida. Escribe una pregunta sobre SLA de entrega, política de "
-    "devoluciones, cobertura de transportistas o tarifas de almacenamiento de TrackFlow."
+    "devoluciones, cobertura de transportistas, tarifas de almacenamiento, el estado de un ticket o el stock "
+    "de un producto de TrackFlow."
 )
+SOURCE_BY_NODE = {"lookup_incidents": "incidents", "lookup_inventory": "inventory", "retrieve": "rag"}
 
 
 # --------------------------------------------------------------------------
 # Estado
 # --------------------------------------------------------------------------
 class RetrievedChunk(TypedDict):
-    """Payload que devuelve ``retrieve()`` (campos del CONTEXT + ``score``)."""
+    """Payload que devuelve ``retrieve()`` (campos del CONTEXT del Hito 7 + ``score``)."""
 
     company: str
     source_document: str
@@ -76,9 +98,20 @@ class RetrievedChunk(TypedDict):
 
 class AgentState(TypedDict):
     question: str
+    error: NotRequired[Literal["empty_question", "question_too_long"]]
+    plan: NotRequired[SourcePlan]
+    incident_result: NotRequired[dict[str, Any]]   # IncidentToolResult serializado
+    inventory_result: NotRequired[dict[str, Any]]  # InventoryToolResult serializado
     context: NotRequired[list[RetrievedChunk]]
     answer: NotRequired[str]
-    error: NotRequired[Literal["empty_question", "question_too_long"]]
+
+
+def _has_tool_results(state: AgentState) -> bool:
+    return "incident_result" in state or "inventory_result" in state
+
+
+def _planned(state: AgentState) -> list[str]:
+    return state.get("plan", {}).get("sources", [])
 
 
 # --------------------------------------------------------------------------
@@ -94,12 +127,52 @@ def receive_question(state: AgentState) -> dict[str, Any]:
     return {"question": question}
 
 
+def plan_sources(state: AgentState) -> dict[str, Any]:
+    """Decide qué fuentes necesita la pregunta (RAG, tools o ambas) y con qué parámetros."""
+    return {"plan": plan_question_sources(state["question"])}
+
+
+def make_incidents_node(lookup_fn: Callable[..., IncidentToolResult], credentials: Callable[[str], str | None]):
+    def lookup_incidents_node(state: AgentState, config) -> dict[str, Any]:
+        """Tool de solo lectura: consulta el gestor de incidencias en vivo. Nunca rompe la corrida."""
+        query = IncidentQuery.model_validate(state["plan"].get("incident_query", {}))
+        try:
+            result = lookup_fn(query, auth_token=credentials(config["configurable"]["thread_id"]))
+        except ReadOnlyViolation:
+            raise
+        except Exception:
+            logger.exception("lookup_incidents falló de forma inesperada")
+            result = IncidentToolResult(ok=False, mode="detail" if query.ticket_id else "list", query=query,
+                                        error_type="unavailable")
+        return {"incident_result": result.model_dump(mode="json")}
+
+    return lookup_incidents_node
+
+
+def make_inventory_node(lookup_fn: Callable[..., InventoryToolResult], credentials: Callable[[str], str | None]):
+    def lookup_inventory_node(state: AgentState, config) -> dict[str, Any]:
+        """Tool de solo lectura: consulta el stock en el gestor de inventario en vivo."""
+        query = InventoryQuery.model_validate(state["plan"].get("inventory_query", {}))
+        try:
+            result = lookup_fn(query, auth_token=credentials(config["configurable"]["thread_id"]))
+        except ReadOnlyViolation:
+            raise
+        except Exception:
+            logger.exception("lookup_inventory falló de forma inesperada")
+            result = InventoryToolResult(ok=False, query=query, error_type="unavailable")
+        return {"inventory_result": result.model_dump(mode="json")}
+
+    return lookup_inventory_node
+
+
 def make_retrieve_node(retrieve_fn: Callable[..., list[dict[str, Any]]]):
     def retrieve_node(state: AgentState) -> dict[str, Any]:
         """Recupera chunks de ``trackflow_knowledge`` con el umbral calibrado."""
         top_k = int(os.environ.get("RAG_TOP_K", DEFAULT_TOP_K))
         min_score = float(os.environ.get("RAG_MIN_SCORE", DEFAULT_MIN_SCORE))
-        return {"context": retrieve_fn(state["question"], k=top_k, min_score=min_score)}
+        # En preguntas mixtas (tool + RAG) se busca solo con la parte de política.
+        question = state.get("plan", {}).get("rag_question") or state["question"]
+        return {"context": retrieve_fn(question, k=top_k, min_score=min_score)}
 
     return retrieve_node
 
@@ -107,9 +180,18 @@ def make_retrieve_node(retrieve_fn: Callable[..., list[dict[str, Any]]]):
 def make_generate_node(generate_fn: Callable[[str, list[dict[str, Any]]], str]):
     def generate_node(state: AgentState) -> dict[str, Any]:
         """Genera la respuesta SOLO a partir del contexto ya recuperado."""
-        return {"answer": generate_fn(state["question"], state["context"])}
+        question = state.get("plan", {}).get("rag_question") or state["question"]
+        return {"answer": generate_fn(question, state["context"])}
 
     return generate_node
+
+
+def compose_answer(state: AgentState) -> dict[str, Any]:
+    """Une, en orden de ejecución, los resultados de las tools (texto determinista) y la parte del RAG."""
+    return {"answer": answers.compose(
+        state.get("incident_result"), state.get("inventory_result"),
+        rag_answer=state.get("answer"), rag_planned="rag" in _planned(state), no_context_answer=NO_CONTEXT_ANSWER,
+    )}
 
 
 def no_context(state: AgentState) -> dict[str, Any]:
@@ -124,8 +206,12 @@ def invalid_question(state: AgentState) -> dict[str, Any]:
 # Claves del estado que cada nodo puede escribir (se valida al compilar y al ejecutar).
 NODE_WRITES: dict[str, frozenset[str]] = {
     "receive_question": frozenset({"question", "error"}),
+    "plan_sources": frozenset({"plan"}),
+    "lookup_incidents": frozenset({"incident_result"}),
+    "lookup_inventory": frozenset({"inventory_result"}),
     "retrieve": frozenset({"context"}),
     "generate": frozenset({"answer"}),
+    "compose_answer": frozenset({"answer"}),
     "no_context": frozenset({"answer"}),
     "invalid_question": frozenset({"answer"}),
 }
@@ -134,19 +220,56 @@ NODE_WRITES: dict[str, frozenset[str]] = {
 # --------------------------------------------------------------------------
 # Aristas condicionales
 # --------------------------------------------------------------------------
-def route_after_receive(state: AgentState) -> Literal["invalid_question", "retrieve"]:
-    return "invalid_question" if state.get("error") else "retrieve"
+def route_after_receive(state: AgentState) -> Literal["invalid_question", "plan_sources"]:
+    return "invalid_question" if state.get("error") else "plan_sources"
 
 
-def route_after_retrieve(state: AgentState) -> Literal["generate", "no_context"]:
-    return "generate" if state.get("context") else "no_context"
+def route_after_plan(state: AgentState) -> Literal["lookup_incidents", "lookup_inventory", "retrieve"]:
+    planned = _planned(state)
+    if "incidents" in planned:
+        return "lookup_incidents"
+    if "inventory" in planned:
+        return "lookup_inventory"
+    return "retrieve"
+
+
+def route_after_incidents(state: AgentState) -> Literal["lookup_inventory", "retrieve", "compose_answer"]:
+    planned = _planned(state)
+    if "inventory" in planned:
+        return "lookup_inventory"
+    return "retrieve" if "rag" in planned else "compose_answer"
+
+
+def route_after_inventory(state: AgentState) -> Literal["retrieve", "compose_answer"]:
+    return "retrieve" if "rag" in _planned(state) else "compose_answer"
+
+
+def route_after_retrieve(state: AgentState) -> Literal["generate", "compose_answer", "no_context"]:
+    if state.get("context"):
+        return "generate"
+    return "compose_answer" if _has_tool_results(state) else "no_context"
+
+
+def route_after_generate(state: AgentState) -> Literal["compose_answer", "__end__"]:
+    return "compose_answer" if _has_tool_results(state) else END
 
 
 ROUTE_REASONS = {
     ("route_after_receive", "invalid_question"): "pregunta vacía o demasiado larga",
-    ("route_after_receive", "retrieve"): "pregunta válida",
+    ("route_after_receive", "plan_sources"): "pregunta válida",
+    ("route_after_plan", "lookup_incidents"): "el plan incluye el gestor de incidencias",
+    ("route_after_plan", "lookup_inventory"): "el plan incluye el gestor de inventario",
+    ("route_after_plan", "retrieve"): "el plan solo necesita la base de conocimiento",
+    ("route_after_incidents", "lookup_inventory"): "falta consultar inventario",
+    ("route_after_incidents", "retrieve"): "falta consultar la base de conocimiento",
+    ("route_after_incidents", "compose_answer"): "no hay más fuentes planificadas",
+    ("route_after_inventory", "retrieve"): "falta consultar la base de conocimiento",
+    ("route_after_inventory", "compose_answer"): "no hay más fuentes planificadas",
     ("route_after_retrieve", "generate"): "hay contexto ≥ min_score",
+    ("route_after_retrieve", "compose_answer"): "sin contexto ≥ min_score; se responde con las tools",
     ("route_after_retrieve", "no_context"): "ningún chunk supera min_score",
+    ("route_after_generate", "compose_answer"): "hay resultados de tools que combinar",
+    ("route_after_generate", END): "solo RAG: la respuesta generada es la final",
 }
 
 
@@ -169,12 +292,13 @@ class AgentRunError(RuntimeError):
 
 def _traced_node(name: str, fn: Callable, traces: TraceStore | None):
     allowed = NODE_WRITES[name]
+    takes_config = len(inspect.signature(fn).parameters) >= 2
 
     def wrapper(state: AgentState, config) -> dict[str, Any]:
         run_id = config["configurable"]["thread_id"]
         started_at, started = _now(), time.perf_counter()
         try:
-            update = fn(state)
+            update = fn(state, config) if takes_config else fn(state)
             unexpected = set(update) - allowed
             if unexpected:
                 raise AgentGraphStructureError(f"El nodo '{name}' escribió claves no declaradas: {sorted(unexpected)}")
@@ -207,33 +331,46 @@ def _traced_route(fn: Callable, traces: TraceStore | None):
     return wrapper
 
 
+def _no_credentials(run_id: str) -> str | None:
+    return None
+
+
 def build_agent_graph(
     *,
     retrieve_fn: Callable[..., list[dict[str, Any]]] = retrieve,
     generate_fn: Callable[[str, list[dict[str, Any]]], str] = generate_answer,
+    incidents_fn: Callable[..., IncidentToolResult] = lookup_incidents,
+    inventory_fn: Callable[..., InventoryToolResult] = lookup_inventory,
+    credentials: Callable[[str], str | None] = _no_credentials,
     traces: TraceStore | None = None,
 ) -> StateGraph:
-    """Define nodos y aristas (sin compilar). ``retrieve_fn``/``generate_fn`` solo se inyectan en tests."""
+    """Define nodos y aristas (sin compilar). Las funciones solo se inyectan en tests."""
     nodes = {
         "receive_question": receive_question,
+        "plan_sources": plan_sources,
+        "lookup_incidents": make_incidents_node(incidents_fn, credentials),
+        "lookup_inventory": make_inventory_node(inventory_fn, credentials),
         "retrieve": make_retrieve_node(retrieve_fn),
         "generate": make_generate_node(generate_fn),
+        "compose_answer": compose_answer,
         "no_context": no_context,
         "invalid_question": invalid_question,
     }
     builder = StateGraph(AgentState)
     for name, fn in nodes.items():
         builder.add_node(name, _traced_node(name, fn, traces))
+
+    def conditional(source: str, route: Callable, destinations: list[str]) -> None:
+        builder.add_conditional_edges(source, _traced_route(route, traces), {d: d for d in destinations})
+
     builder.add_edge(START, "receive_question")
-    builder.add_conditional_edges(
-        "receive_question", _traced_route(route_after_receive, traces),
-        {"invalid_question": "invalid_question", "retrieve": "retrieve"},
-    )
-    builder.add_conditional_edges(
-        "retrieve", _traced_route(route_after_retrieve, traces),
-        {"generate": "generate", "no_context": "no_context"},
-    )
-    builder.add_edge("generate", END)
+    conditional("receive_question", route_after_receive, ["invalid_question", "plan_sources"])
+    conditional("plan_sources", route_after_plan, ["lookup_incidents", "lookup_inventory", "retrieve"])
+    conditional("lookup_incidents", route_after_incidents, ["lookup_inventory", "retrieve", "compose_answer"])
+    conditional("lookup_inventory", route_after_inventory, ["retrieve", "compose_answer"])
+    conditional("retrieve", route_after_retrieve, ["generate", "compose_answer", "no_context"])
+    conditional("generate", route_after_generate, ["compose_answer", END])
+    builder.add_edge("compose_answer", END)
     builder.add_edge("no_context", END)
     builder.add_edge("invalid_question", END)
     return builder
@@ -307,6 +444,11 @@ def sqlite_checkpointer(path: Path | str):
     return SqliteSaver(sqlite3.connect(str(path), check_same_thread=False))
 
 
+def sources_used(trace: dict[str, Any]) -> list[str]:
+    """Fuentes consultadas en una corrida, en orden: 'incidents', 'inventory', 'rag'."""
+    return [SOURCE_BY_NODE[s["name"]] for s in trace["steps"] if s["kind"] == "node" and s["name"] in SOURCE_BY_NODE]
+
+
 @dataclass
 class AgentResult:
     run_id: str
@@ -314,41 +456,55 @@ class AgentResult:
     final_node: str
     error: str | None
     context_count: int
+    sources: list[str] = field(default_factory=list)
 
 
 class KnowledgeAgent:
     """Grafo compilado + checkpointer + trace store, listo para servir peticiones."""
 
     def __init__(self, *, data_dir: Path | None = None, retrieve_fn=retrieve, generate_fn=generate_answer,
+                 incidents_fn=lookup_incidents, inventory_fn=lookup_inventory,
                  checkpointer=None, traces: TraceStore | None = None):
         data_dir = data_dir or default_data_dir()
         self.traces = traces or TraceStore(data_dir / "traces.sqlite")
         self.checkpointer = checkpointer or sqlite_checkpointer(data_dir / "checkpoints.sqlite")
+        self._credentials: dict[str, str] = {}
+        self._credentials_lock = threading.Lock()
         self.graph = compile_agent_graph(
-            build_agent_graph(retrieve_fn=retrieve_fn, generate_fn=generate_fn, traces=self.traces),
+            build_agent_graph(retrieve_fn=retrieve_fn, generate_fn=generate_fn, incidents_fn=incidents_fn,
+                              inventory_fn=inventory_fn, credentials=self._credential_for, traces=self.traces),
             checkpointer=self.checkpointer,
         )
 
-    def run(self, question: str, *, run_id: str | None = None) -> AgentResult:
+    def _credential_for(self, run_id: str) -> str | None:
+        with self._credentials_lock:
+            return self._credentials.get(run_id)
+
+    def run(self, question: str, *, run_id: str | None = None, auth_token: str | None = None) -> AgentResult:
+        """Ejecuta una corrida. ``auth_token`` (JWT de quien pregunta) solo se usa en las tools y no se persiste."""
         run_id = run_id or str(uuid.uuid4())
         config = {"configurable": {"thread_id": run_id}}
         self.traces.start_run(run_id, question)
+        if auth_token:
+            with self._credentials_lock:
+                self._credentials[run_id] = auth_token
         try:
             state = self.graph.invoke({"question": question}, config, durability="sync")
         except Exception as error:
             trace = self.traces.get_trace(run_id) or {"steps": []}
             failed = next((s["name"] for s in reversed(trace["steps"]) if s["status"] == "error"), None)
-            self.traces.finish_run(run_id, status="failed", final_node=failed, error_type=type(error).__name__)
+            self.traces.finish_run(run_id, status="failed", final_node=failed, error_type=type(error).__name__,
+                                   sources=sources_used(trace))
             raise AgentRunError(run_id, failed, error) from error
-        final_node = next(s["name"] for s in reversed(self.traces.get_trace(run_id)["steps"]) if s["kind"] == "node")
-        self.traces.finish_run(run_id, status="completed", final_node=final_node)
-        return AgentResult(
-            run_id=run_id,
-            answer=state["answer"],
-            final_node=final_node,
-            error=state.get("error"),
-            context_count=len(state.get("context") or []),
-        )
+        finally:
+            with self._credentials_lock:
+                self._credentials.pop(run_id, None)
+        trace = self.traces.get_trace(run_id)
+        final_node = next(s["name"] for s in reversed(trace["steps"]) if s["kind"] == "node")
+        sources = sources_used(trace)
+        self.traces.finish_run(run_id, status="completed", final_node=final_node, sources=sources)
+        return AgentResult(run_id=run_id, answer=state["answer"], final_node=final_node, error=state.get("error"),
+                           context_count=len(state.get("context") or []), sources=sources)
 
     def checkpoints(self, run_id: str) -> list[dict[str, Any]]:
         """Historial de checkpoints de una corrida (del más antiguo al más reciente)."""

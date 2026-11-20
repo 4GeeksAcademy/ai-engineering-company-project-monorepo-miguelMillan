@@ -1,15 +1,20 @@
-Ya construiste las cuatro funciones de tu sistema RAG (setup, embed, retrieve, query) y las expusiste como un endpoint de FastAPI. Funciona, pero es una caja negra: recibe una pregunta y devuelve una respuesta, sin que nadie —ni tú— pueda ver qué decisiones tomó en el camino.
+Esta es la Parte 2 de 2 y depende directamente de la Parte 1: necesitas el grafo de LangGraph ya compilado, con tracing y evals funcionando, antes de continuar aquí.
 
-Tu tech lead abrió un ticket con un requisito claro: antes de agregar cualquier capacidad nueva al agente (Parte 2 de este mismo proyecto), el flujo de razonamiento tiene que quedar explícito como un grafo, con estado, nodos y transiciones que se puedan trazar y evaluar de forma independiente.
+Tu agente hoy solo sabe una cosa: buscar en la base de conocimiento del RAG. Pero soporte no vive solo de documentación — vive de datos que cambian todo el tiempo. El brief de tu tech lead es directo:
 
-Nota del tech lead: "No quiero que reescribas la lógica del RAG desde cero — el retrieve y el embed que ya tienes funcionan. Lo que quiero es que ese mismo comportamiento viva dentro de un grafo de LangGraph, con nodos con una sola responsabilidad, y que cada corrida quede trazada. Si no puedo ver por qué el agente respondió lo que respondió, no puedo confiar en él en producción."
+De: Tech Lead Para: Equipo de Agentes
 
-Tres cosas quedan implícitas en ese ticket y son fáciles de pasar por alto: (1) el grafo debe compilarse antes de cualquier ejecución, para detectar errores estructurales en tiempo de build y no en producción; (2) el estado que viaja entre nodos debe ser mínimo y explícito, no el historial completo de la conversación; y (3) cada corrida debe producir un trace consultable, no solo una respuesta final.
+El RAG que migraron en la Parte 1 responde bien preguntas sobre procedimientos y políticas, pero cuando un agente de soporte pregunta "¿en qué estado está el ticket 482?", el agente inventa una respuesta porque no tiene forma de consultar eso — esa información no vive en la base de conocimiento, vive en el gestor de incidentes que ya construimos.
 
-Conocimiento complementario: del loop ingenuo al grafo
-Un agente "ingenuo" es simplemente un while en Python: llamas al modelo, si pide una tool la ejecutas, le devuelves el resultado, y repites. Funciona para prototipos, pero no escala: no hay forma de pausar, retomar, trazar un paso específico o testear un nodo de forma aislada.
+Necesito que le den al agente una tool para consultar el sistema de incidentes en tiempo real. Como extra, si les alcanza el tiempo, otra tool para consultar el gestor de inventario también resuelve preguntas frecuentes de soporte ("¿tenemos stock de X?").
 
-LangGraph formaliza ese mismo loop como una máquina de estados: cada paso es un nodo, cada decisión sobre a dónde ir después es una arista (edge), y el conjunto compilado es el grafo. Esto es lo que te permite, en la Parte 2, agregar una tool nueva sin tocar el resto del flujo: solo agregas un nodo y una arista condicional que decide cuándo usarla.
+Criterio de aceptación: el agente debe decidir por sí mismo cuándo la pregunta requiere el RAG y cuándo requiere una tool externa — sin que el usuario tenga que especificarlo.
 
-Instala la dependencia con uv add langgraph (nunca uses pip install ni pipenv).
-Ubica tu código RAG existente: tus funciones setup, embed, retrieve y query en data/pipelines/, y el endpoint que las expone en services/.
+Dos requisitos quedan implícitos en ese brief y son fáciles de pasar por alto: (1) las tools deben leer de los servicios que ya construiste en proyectos anteriores (el gestor de incidentes y, si lo hiciste, el gestor de inventario) — no se simulan datos nuevos ni se inventa un dataset paralelo; y (2) si una tool falla o el servicio no responde, el grafo necesita una ruta explícita de recuperación, no un error que rompa toda la corrida.
+
+Conocimiento complementario: por qué esto no es "otro RAG"
+Es tentador resolver esto indexando los tickets en el mismo vector store del RAG. No lo hagas: los tickets cambian de estado en tiempo real, y el RAG está pensado para conocimiento relativamente estable (políticas, procedimientos). Una tool que llama directamente al endpoint del gestor de incidentes siempre te da el dato actual; una copia indexada del ticket queda desactualizada en el momento en que alguien cambia su estado. Esta es la diferencia entre "conocimiento" (RAG) y "datos operativos en vivo" (tool call).
+
+Confirma que tu servicio del gestor de incidentes (GET /api/incidents, GET /api/incidents/{id}) está corriendo localmente — es el que construiste en un proyecto anterior del monorepo. Si construiste también el gestor de inventario (GET /inventory/products), tenlo disponible también para el extra.
+
+No necesitas instalar dependencias nuevas más allá de las que ya usas para llamar HTTP desde tu backend

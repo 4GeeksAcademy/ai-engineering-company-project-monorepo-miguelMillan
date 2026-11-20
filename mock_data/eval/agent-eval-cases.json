@@ -1,15 +1,34 @@
 {
-  "description": "Evals del agente LangGraph de TrackFlow. Cada caso tiene una pregunta y criterios verificables sobre el TRACE grabado (mock_data/eval/agent-traces/<id>.json), no sobre una ejecución en vivo. Los criterios de anclaje usan datos exactos de los documentos de docs/company-knowledge-base/ (CONTEXT del Hito 7). Para regrabar los traces: uv run python scripts/record_agent_traces.py (requiere Qdrant indexado y el LLM de generación configurado).",
+  "description": "Evals del agente LangGraph de TrackFlow (Partes 1 y 2). Cada caso tiene una pregunta y criterios verificables sobre el TRACE grabado (mock_data/eval/agent-traces/<id>.json), no sobre una ejecución en vivo. Los criterios de anclaje usan datos exactos de docs/company-knowledge-base/ (RAG) y, para las tools, los datos que devolvió el servicio real en esa corrida (gestor de incidencias GET /api/incidents y gestor de inventario GET /inventory/products). Para regrabar: uv run python scripts/record_agent_traces.py con el API, Qdrant y el LLM en marcha y AGENT_API_TOKEN definido.",
   "cases": [
     {
       "id": "carrier-aragon-rural",
       "question": "¿Qué transportista cubre mejor Aragón rural?",
       "criteria": {
         "status": "completed",
-        "node_order": ["receive_question", "retrieve", "generate"],
+        "node_order": [
+          "receive_question",
+          "plan_sources",
+          "retrieve",
+          "generate"
+        ],
         "final_node": "generate",
-        "retrieved_includes": [{"source_document": "carrier-coverage", "chunk_index": 1}],
-        "answer_contains_all": ["SEUR"]
+        "retrieved_includes": [
+          {
+            "source_document": "carrier-coverage",
+            "chunk_index": 1
+          }
+        ],
+        "answer_contains_all": [
+          "SEUR"
+        ],
+        "sources_used": [
+          "rag"
+        ],
+        "nodes_not_executed": [
+          "lookup_incidents",
+          "lookup_inventory"
+        ]
       }
     },
     {
@@ -17,10 +36,29 @@
       "question": "¿Cuál es la ventana de devolución estándar?",
       "criteria": {
         "status": "completed",
-        "node_order": ["receive_question", "retrieve", "generate"],
+        "node_order": [
+          "receive_question",
+          "plan_sources",
+          "retrieve",
+          "generate"
+        ],
         "final_node": "generate",
-        "retrieved_includes": [{"source_document": "returns-policy", "chunk_index": 1}],
-        "answer_contains_all": ["30 días"]
+        "retrieved_includes": [
+          {
+            "source_document": "returns-policy",
+            "chunk_index": 1
+          }
+        ],
+        "answer_contains_all": [
+          "30 días"
+        ],
+        "sources_used": [
+          "rag"
+        ],
+        "nodes_not_executed": [
+          "lookup_incidents",
+          "lookup_inventory"
+        ]
       }
     },
     {
@@ -29,8 +67,22 @@
       "criteria": {
         "status": "completed",
         "final_node": "generate",
-        "retrieved_includes": [{"source_document": "storage-pricing", "chunk_index": 4}],
-        "answer_contains_all": ["Miguel Torres"]
+        "retrieved_includes": [
+          {
+            "source_document": "storage-pricing",
+            "chunk_index": 4
+          }
+        ],
+        "answer_contains_all": [
+          "Miguel Torres"
+        ],
+        "sources_used": [
+          "rag"
+        ],
+        "nodes_not_executed": [
+          "lookup_incidents",
+          "lookup_inventory"
+        ]
       }
     },
     {
@@ -39,9 +91,28 @@
       "criteria": {
         "status": "completed",
         "final_node": "generate",
-        "retrieved_includes": [{"source_document": "sla-delivery", "chunk_index": 4}],
-        "answer_contains_all": ["40%"],
-        "answer_contains_any": ["no garantiza", "no puedo garantizar", "no se garantiza", "no podemos garantizar"]
+        "retrieved_includes": [
+          {
+            "source_document": "sla-delivery",
+            "chunk_index": 4
+          }
+        ],
+        "answer_contains_all": [
+          "40%"
+        ],
+        "answer_contains_any": [
+          "no garantiza",
+          "no puedo garantizar",
+          "no se garantiza",
+          "no podemos garantizar"
+        ],
+        "sources_used": [
+          "rag"
+        ],
+        "nodes_not_executed": [
+          "lookup_incidents",
+          "lookup_inventory"
+        ]
       }
     },
     {
@@ -49,12 +120,28 @@
       "question": "¿Qué receta lleva una paella valenciana?",
       "criteria": {
         "status": "completed",
-        "node_order": ["receive_question", "retrieve", "no_context"],
+        "node_order": [
+          "receive_question",
+          "plan_sources",
+          "retrieve",
+          "no_context"
+        ],
         "final_node": "no_context",
-        "nodes_not_executed": ["generate"],
+        "nodes_not_executed": [
+          "generate",
+          "lookup_incidents",
+          "lookup_inventory"
+        ],
         "retrieved_count": 0,
-        "route_decisions": {"route_after_retrieve": "no_context"},
-        "answer_contains_all": ["No tengo información suficiente"]
+        "route_decisions": {
+          "route_after_retrieve": "no_context"
+        },
+        "answer_contains_all": [
+          "No tengo información suficiente"
+        ],
+        "sources_used": [
+          "rag"
+        ]
       }
     },
     {
@@ -62,11 +149,172 @@
       "question": "   ",
       "criteria": {
         "status": "completed",
-        "node_order": ["receive_question", "invalid_question"],
+        "node_order": [
+          "receive_question",
+          "invalid_question"
+        ],
         "final_node": "invalid_question",
-        "nodes_not_executed": ["retrieve", "generate"],
-        "route_decisions": {"route_after_receive": "invalid_question"},
-        "answer_contains_all": ["pregunta está vacía"]
+        "nodes_not_executed": [
+          "retrieve",
+          "generate"
+        ],
+        "route_decisions": {
+          "route_after_receive": "invalid_question"
+        },
+        "answer_contains_all": [
+          "pregunta está vacía"
+        ],
+        "sources_used": []
+      }
+    },
+    {
+      "id": "tool-ticket-status-by-id",
+      "question": "¿En qué estado está el ticket d32a9b66-b81b-5dce-b90f-c4e8bfc27161?",
+      "criteria": {
+        "status": "completed",
+        "sources_used": [
+          "incidents"
+        ],
+        "node_order": [
+          "receive_question",
+          "plan_sources",
+          "lookup_incidents",
+          "compose_answer"
+        ],
+        "final_node": "compose_answer",
+        "nodes_not_executed": [
+          "retrieve",
+          "generate",
+          "lookup_inventory"
+        ],
+        "incident_tool_ok": true,
+        "answer_reflects_incident_status": true,
+        "answer_contains_all": [
+          "d32a9b66-b81b-5dce-b90f-c4e8bfc27161"
+        ]
+      }
+    },
+    {
+      "id": "tool-ticket-search-open-returns",
+      "question": "¿Cuántas incidencias de devolución están abiertas?",
+      "criteria": {
+        "status": "completed",
+        "sources_used": [
+          "incidents"
+        ],
+        "final_node": "compose_answer",
+        "nodes_not_executed": [
+          "retrieve",
+          "generate"
+        ],
+        "incident_tool_ok": true,
+        "incident_query": {
+          "status": "open",
+          "category": "returns_issue"
+        },
+        "answer_contains_incident_total": true
+      }
+    },
+    {
+      "id": "tool-inventory-stock-by-sku",
+      "question": "¿Cuántas unidades quedan de TEC-EAR-001?",
+      "criteria": {
+        "status": "completed",
+        "sources_used": [
+          "inventory"
+        ],
+        "final_node": "compose_answer",
+        "nodes_not_executed": [
+          "retrieve",
+          "generate",
+          "lookup_incidents"
+        ],
+        "inventory_tool_ok": true,
+        "answer_contains_inventory_stock": true,
+        "answer_contains_all": [
+          "TEC-EAR-001"
+        ]
+      }
+    },
+    {
+      "id": "mixed-ticket-and-policy",
+      "question": "¿En qué estado está el ticket d32a9b66-b81b-5dce-b90f-c4e8bfc27161 y cuál es la ventana de devolución estándar?",
+      "criteria": {
+        "status": "completed",
+        "sources_used": [
+          "incidents",
+          "rag"
+        ],
+        "node_order": [
+          "receive_question",
+          "plan_sources",
+          "lookup_incidents",
+          "retrieve",
+          "generate",
+          "compose_answer"
+        ],
+        "final_node": "compose_answer",
+        "incident_tool_ok": true,
+        "answer_reflects_incident_status": true,
+        "retrieved_includes": [
+          {
+            "source_document": "returns-policy",
+            "chunk_index": 1
+          }
+        ],
+        "answer_contains_all": [
+          "30 días"
+        ]
+      }
+    },
+    {
+      "id": "fallback-incidents-service-down",
+      "question": "¿En qué estado está el ticket d32a9b66-b81b-5dce-b90f-c4e8bfc27161?",
+      "record_with_env": {
+        "AGENT_API_BASE_URL": "http://127.0.0.1:9"
+      },
+      "criteria": {
+        "status": "completed",
+        "sources_used": [
+          "incidents"
+        ],
+        "final_node": "compose_answer",
+        "nodes_not_executed": [
+          "retrieve",
+          "generate"
+        ],
+        "incident_tool_error": "unavailable",
+        "answer_contains_all": [
+          "No pude confirmar el estado de ese ticket ahora mismo"
+        ],
+        "answer_must_not_contain": [
+          "Abierta",
+          "En curso",
+          "Resuelta",
+          "Descartada"
+        ]
+      }
+    },
+    {
+      "id": "fallback-ticket-reference-not-uuid",
+      "question": "¿En qué estado está el ticket 482?",
+      "criteria": {
+        "status": "completed",
+        "sources_used": [
+          "incidents"
+        ],
+        "final_node": "compose_answer",
+        "incident_tool_error": "invalid_query",
+        "answer_contains_all": [
+          "482",
+          "UUID"
+        ],
+        "answer_must_not_contain": [
+          "Abierta",
+          "En curso",
+          "Resuelta",
+          "Descartada"
+        ]
       }
     }
   ]

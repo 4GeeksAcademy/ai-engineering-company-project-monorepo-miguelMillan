@@ -1,5 +1,27 @@
 # Progress Log — TrackFlow
 
+## Agente LangGraph (Parte 2): tools de incidencias e inventario, 2026-11-20
+
+- Contexto nuevo archivado en `memory-bank/history/LANGGRAPH-EXTERNAL-TOOLS-CONTEXT-2026-11-20.md` (verificado con `cmp`). Rama `feature/langgraph-external-tools`, al día con `main` (#37 fusionado).
+- `services/agent/tools.py`: dos tools separadas de solo lectura con contratos Pydantic.
+  - `lookup_incidents`: `GET /api/incidents/{id}` y `GET /api/incidents?filtros`.
+  - `lookup_inventory`: `GET /inventory/products`.
+  - HTTP al API real; hook que bloquea métodos distintos de GET; timeout 4.0 s; errores tipados (`timeout`, `unavailable`, `not_found`, `unauthorized`, `invalid_query`, `bad_response`).
+  - Credenciales: JWT de quien llama a `/agent/query`, reenviado, o `AGENT_API_TOKEN` del entorno. Nunca en el estado ni en checkpoints.
+- `services/agent/routing.py`: enrutador determinista (incidencias / inventario / RAG / mixto); `rag_question` para preguntas mixtas. Con el UUID en la consulta el score caía a 0.419 < 0.45; la versión normalizada sin tildes también empeoraba (0.426), así que se conserva el texto original.
+- `services/agent/answers.py`: los datos de las tools se redactan de forma determinista (sin LLM); fallback honesto.
+- `graph.py`: nodos `plan_sources`, `lookup_incidents`, `lookup_inventory` y `compose_answer`, con aristas condicionales. Trace con `sources_used` en `agent_runs` (migración de la tabla) e `inspect` muestra las fuentes. El endpoint reenvía el JWT del usuario; compose define `AGENT_API_BASE_URL`.
+- Datos reales:
+  - Seed oficial `scripts/seed_incidents.py` (95 incidencias del CSV de la empresa) en una TinyDB de desarrollo aparte (`SUPPLIERS_DB_PATH`), sin tocar la TinyDB local del desarrollador.
+  - Inventario: 8 SKU reales de Supabase.
+  - Cuenta de servicio creada con `POST /users`; su JWT es efímero y quedó fuera del repo.
+- Evals: 12 casos (6 nuevos de enrutamiento y fallback), grabados con el API real. El fallback se grabó con el servicio caído de verdad (puerto cerrado). El eval mixto detectó un fallo real del RAG en preguntas mixtas, corregido con `rag_question`.
+- Validación:
+  - `uv run pytest tests -q` → 114 passed; `services/api` → 98 passed; evals → 17 passed.
+  - E2E por `POST /agent/query` con el API en marcha: ticket → incidents, stock → inventory, política → rag.
+  - Log de acceso: solo GET y 0 escrituras.
+- Evidencias en `docs/pr-evidence/agent-tools/`, revisadas sin token ni secretos. API de desarrollo detenido. Sin commit.
+
 ## Agente LangGraph (Parte 1): grafo, checkpointing, tracing, evals y endpoint, 2026-11-20
 
 - Contexto nuevo archivado en `memory-bank/history/LANGGRAPH-AGENT-CONTEXT-2026-11-20.md` (verificado con `cmp`). Rama `feature/langgraph-agent-base`.

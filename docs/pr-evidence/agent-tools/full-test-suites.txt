@@ -1,0 +1,5 @@
+$ uv run pytest tests -q
+114 passed in 10.19s
+
+$ cd services/api && uv run pytest -q
+98 passed in 119.61s (0:01:59)

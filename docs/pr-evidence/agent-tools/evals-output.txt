@@ -1,0 +1,22 @@
+$ uv run pytest tests/pipelines/test_agent_evals.py -v
+collecting ... collected 17 items
+
+tests/pipelines/test_agent_evals.py::test_there_are_at_least_three_evals_including_grounding PASSED [  5%]
+tests/pipelines/test_agent_evals.py::test_routing_evals_cover_tool_only_rag_only_and_fallback PASSED [ 11%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[carrier-aragon-rural] PASSED [ 17%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[returns-standard-window] PASSED [ 23%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[storage-discount-needs-approval] PASSED [ 29%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[sla-black-friday-not-guaranteed] PASSED [ 35%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[out-of-domain-no-context] PASSED [ 41%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[empty-question-invalid] PASSED [ 47%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[tool-ticket-status-by-id] PASSED [ 52%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[tool-ticket-search-open-returns] PASSED [ 58%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[tool-inventory-stock-by-sku] PASSED [ 64%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[mixed-ticket-and-policy] PASSED [ 70%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[fallback-incidents-service-down] PASSED [ 76%]
+tests/pipelines/test_agent_evals.py::test_agent_eval_case[fallback-ticket-reference-not-uuid] PASSED [ 82%]
+tests/pipelines/test_agent_evals.py::test_perfect_trace_with_ungrounded_answer_fails_the_eval PASSED [ 88%]
+tests/pipelines/test_agent_evals.py::test_eval_detects_generation_forced_on_empty_context PASSED [ 94%]
+tests/pipelines/test_agent_evals.py::test_traces_were_recorded_with_real_models_and_checkpoints PASSED [100%]
+
+============================== 17 passed in 0.32s ==============================

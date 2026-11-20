@@ -1,0 +1,3 @@
+2026-11-20T09:06:16.168+00:00  6ac993ad-da8f-4023-8cfd-de23b55f2a43  completed  fuentes=rag                          final=generate  «¿Cuál es la ventana de devolución estándar?»
+2026-11-20T09:06:15.441+00:00  ab05cb7e-af44-4349-8c0d-930b359ba4f3  completed  fuentes=inventory                    final=compose_answer  «¿Tenemos stock de auriculares inalámbricos?»
+2026-11-20T09:06:15.008+00:00  0e825dd0-f98d-43d3-b29d-fde432c2696a  completed  fuentes=incidents                    final=compose_answer  «¿En qué estado está el ticket d32a9b66-b81b-5dce-b90f-c4e8bf»
