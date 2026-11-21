@@ -1,0 +1,13 @@
+2026-11-21T17:12:56.157+00:00 job_runs: []
+2026-11-21T17:12:56.157+00:00 locks sobre public.job_runs (otras sesiones): ninguno
+Traceback (most recent call last):
+  File "/tmp/claude-1000/-workspaces-ai-engineering-company-project-monorepo-miguelMillan/cec032f5-f8ce-4e78-be63-32820908fbc1/scratchpad/poll_job_runs.py", line 8, in <module>
+    rows = c.execute("""select left(id::text, 8), status, started_at is not null, finished_at is not null,
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                               coalesce(error_message, '') from public.job_runs
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        where job_name='nightly_export' and target_date=%s order by created_at""", (target,)).fetchall()
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/ai-engineering-company-project-monorepo-miguelMillan/.venv/lib/python3.14/site-packages/psycopg/connection.py", line 304, in execute
+    raise ex.with_traceback(None)
+psycopg.errors.InvalidSqlStatementName: prepared statement "_pg3_0" does not exist

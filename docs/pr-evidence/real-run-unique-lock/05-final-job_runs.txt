@@ -1,0 +1,9 @@
+public.job_runs (nightly_export), días 2026-11-11 y 2026-11-12:
+id         target_date status     started_at                 finished_at                error_message
+1a25eb68   2026-11-12  completed  2026-11-21 17:12:58.363    2026-11-21 17:13:20.647    
+c7e36520   2026-11-12  failed     -                          2026-11-21 17:12:58.579    Cancelled: another nightly_export run is processing.
+6d4e6390   2026-11-11  completed  2026-11-21 17:13:40.914    2026-11-21 17:13:52.748    
+5d5310cd   2026-11-11  failed     -                          2026-11-21 17:13:41.122    Cancelled: another nightly_export run is processing.
+
+filas en processing ahora: 0
+índices: ['ix_job_runs_job_name_target_date', 'job_runs_pkey', 'ux_job_runs_one_processing_per_job']

@@ -1,5 +1,22 @@
 # Progress Log — TrackFlow
 
+## Revisión PR #33 (job nocturno): el lock es el índice único de `processing`, 2026-11-21
+
+- Petición del revisor: quitar `LOCK TABLE`, crear un índice único parcial `(job_name) WHERE status='processing'`, hacer atómica la transición pending → processing y repetir las dos instancias.
+- Migración `20261121100000_job_runs_unique_processing_lock.sql`: elimina `ix_job_runs_processing` (no único) y crea `ux_job_runs_one_processing_per_job` (UNIQUE parcial). Aplicada en Supabase tras comprobar que no había filas `processing`.
+- `create_job` (`services/job_runner.py`):
+  - inserta `pending` y confirma;
+  - un único `UPDATE` atómico hace pending → processing si el día no está completado;
+  - un `UniqueViolation` del índice cancela la ejecución (`failed` con el mensaje de cancelación) y se registra la restricción en el log;
+  - con el lock tomado, vuelve a comprobar `completed` y deshace el claim si otra ejecución terminó entre medias;
+  - ya no hay LOCK TABLE.
+- Tests (`tests/test_job_runner.py`): contra SQLite con el mismo índice único parcial (violación real), la carrera «completado entre medias» con doble de engine, la migración y la ausencia de LOCK TABLE. `uv run pytest tests -q` en verde.
+- Evidencia real en `docs/pr-evidence/real-run-unique-lock/`:
+  - dos corridas concurrentes (2026-11-12 y 2026-11-11): A `completed` y B cancelada por `constraint=ux_job_runs_one_processing_per_job`;
+  - sondeo con B en `pending`, A en `processing` y solo `RowExclusiveLock` en `pg_locks`, sin bloqueo de tabla;
+  - re-ejecución idempotente.
+- El primer sondeo falló por pgbouncer (sentencias preparadas); se conserva y se repitió. Se eliminaron los CSV con solo la cabecera.
+- Rama `fix/job-runs-unique-processing-lock` desde `main`.
 ## Revisión PR #39 (servidor MCP): evidencia de MCP Playground, 2026-11-21
 
 - Petición del revisor: la evidencia pública venía de `verify_checklist.py` (cliente MCP) y la fila de Playground estaba como "Parcial". Faltaba una sesión en MCP Playground con la URL pública, el token, una tool ejecutada y una captura o un trace.

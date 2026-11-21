@@ -1,0 +1,10 @@
+2026-11-21T17:13:38.167+00:00 job_runs: []
+2026-11-21T17:13:38.168+00:00 locks sobre public.job_runs (otras sesiones): ninguno
+2026-11-21T17:13:40.855+00:00 job_runs: []
+2026-11-21T17:13:40.855+00:00 locks sobre public.job_runs (otras sesiones): ['RowExclusiveLock']
+2026-11-21T17:13:41.123+00:00 job_runs: ['6d4e6390 processing started=True finished=False', '5d5310cd pending started=False finished=False']
+2026-11-21T17:13:41.123+00:00 locks sobre public.job_runs (otras sesiones): ninguno
+2026-11-21T17:13:41.394+00:00 job_runs: ['6d4e6390 processing started=True finished=False', '5d5310cd failed started=False finished=True Cancelled: another nightly_export run is processing.']
+2026-11-21T17:13:41.394+00:00 locks sobre public.job_runs (otras sesiones): ninguno
+2026-11-21T17:13:52.928+00:00 job_runs: ['6d4e6390 completed started=True finished=True', '5d5310cd failed started=False finished=True Cancelled: another nightly_export run is processing.']
+2026-11-21T17:13:52.928+00:00 locks sobre public.job_runs (otras sesiones): ninguno
