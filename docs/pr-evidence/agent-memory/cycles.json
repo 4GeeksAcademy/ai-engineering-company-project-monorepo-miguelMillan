@@ -1,0 +1,960 @@
+{
+  "recorded_at": "2026-11-21T16:31:25+00:00",
+  "generation_model": "qwen2.5:1.5b",
+  "redis": "redis://127.0.0.1:6379/4",
+  "cycles": [
+    {
+      "id": "ciclo-aprobado",
+      "description": "Propuesta aprobada que se refleja en una conversación futura",
+      "turns": [
+        {
+          "session_id": "conv-aprobado",
+          "message": "En realidad SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado.",
+          "run_id": "ciclo-aprobado-1",
+          "seconds": 20.2,
+          "nodes": [
+            "resolve_pending_memory",
+            "receive_question",
+            "recall_memory",
+            "plan_sources",
+            "retrieve",
+            "propose_memory"
+          ],
+          "memory_gate": {
+            "open": true,
+            "signals": [
+              "correccion"
+            ],
+            "reason": "señales de correccion sobre una categoría memorizable",
+            "candidate_type": "regla_carrier",
+            "hints": {
+              "carriers_mencionados": [
+                "LOCAL_ZARAGOZA",
+                "SEUR"
+              ],
+              "paises_mencionados": [
+                "ES"
+              ]
+            }
+          },
+          "recalled": [],
+          "model_proposal_raw": {
+            "tipo": "regla_carrier",
+            "accion": "corregir",
+            "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+            "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+            "pais": "ES",
+            "carrier": "SEUR",
+            "zona": "zona rural de zaragoza",
+            "_campos_completados_por_el_sistema": [
+              "pais",
+              "carrier",
+              "zona"
+            ]
+          },
+          "memory_rejection": null,
+          "answer": "Tomo nota de lo que indicas. Todavía no está verificado ni guardado en memoria.\nLo que dice hoy la base de conocimiento: «Cobertura de Transportistas TrackFlow trabaja con transportistas distintos según el país: España (Zaragoza): MRW, SEUR, DHL, y dos transportistas locales de última milla en zona metropolitana de Zaragoza. - SEUR: mejor cobertura en zonas rurales de Aragón. - MRW: tarifas más comp» (carrier-coverage — Cobertura de Transportistas > España (Zaragoza)).\n\n📌 Propuesta de memoria (regla de carrier): «SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.». Motivo: Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-d6ee8bf960; no se guarda nada hasta que la confirmes)",
+          "final_node": "propose_memory",
+          "sources": [
+            "rag"
+          ],
+          "memory_proposal": {
+            "id": "mem-d6ee8bf960",
+            "tipo": "regla_carrier",
+            "accion": "corregir",
+            "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+            "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+            "carrier": "SEUR",
+            "pais": "ES",
+            "zona": "zona rural de zaragoza",
+            "ruta": null,
+            "cliente_b2b": null,
+            "tickets_relacionados": null,
+            "vigencia_dias": null
+          },
+          "memory_resolution": null,
+          "memory_before": [],
+          "memory_after": []
+        },
+        {
+          "session_id": "conv-aprobado",
+          "message": "Sí, guárdalo.",
+          "run_id": "ciclo-aprobado-2",
+          "seconds": 0.0,
+          "nodes": [
+            "resolve_pending_memory",
+            "memory_acknowledge"
+          ],
+          "memory_gate": null,
+          "recalled": [],
+          "model_proposal_raw": null,
+          "memory_rejection": null,
+          "answer": "✅ Memoria actualizada: «SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.». Lo tendré en cuenta en las próximas conversaciones.",
+          "final_node": "memory_acknowledge",
+          "sources": [],
+          "memory_proposal": null,
+          "memory_resolution": {
+            "proposal_id": "mem-d6ee8bf960",
+            "label": "aprobar",
+            "outcome": "aprobada",
+            "rationale": "aprobación explícita al inicio: «Sí»",
+            "ack": "✅ Memoria actualizada: «SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.». Lo tendré en cuenta en las próximas conversaciones.",
+            "remainder": ""
+          },
+          "memory_before": [],
+          "memory_after": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ]
+        },
+        {
+          "session_id": "conv-dia-siguiente",
+          "message": "¿Qué carrier usamos para un envío a la zona rural de Zaragoza?",
+          "run_id": "ciclo-aprobado-3",
+          "seconds": 49.9,
+          "nodes": [
+            "resolve_pending_memory",
+            "receive_question",
+            "recall_memory",
+            "plan_sources",
+            "retrieve",
+            "generate",
+            "propose_memory"
+          ],
+          "memory_gate": {
+            "open": false,
+            "signals": [],
+            "reason": "sin información nueva ni corregida (consulta o tarea puntual): nada que recordar",
+            "candidate_type": null,
+            "hints": {}
+          },
+          "recalled": [
+            "carrier:SEUR:ES"
+          ],
+          "model_proposal_raw": null,
+          "memory_rejection": null,
+          "answer": "TrackFlow trabaja con transportistas distintos según el país: España (Zaragoza): MRW, SEUR, DHL, y dos transportistas locales de última milla en zona metropolitana de Zaragoza.\n\nSEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+          "final_node": "generate",
+          "sources": [
+            "rag"
+          ],
+          "memory_proposal": null,
+          "memory_resolution": null,
+          "memory_before": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ],
+          "memory_after": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ciclo-rechazado",
+      "description": "Propuesta rechazada: la memoria queda sin cambios",
+      "turns": [
+        {
+          "session_id": "conv-rechazado",
+          "message": "El cliente de cosméticos siempre quiere su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos.",
+          "run_id": "ciclo-rechazado-1",
+          "seconds": 54.0,
+          "nodes": [
+            "resolve_pending_memory",
+            "receive_question",
+            "recall_memory",
+            "plan_sources",
+            "retrieve",
+            "propose_memory"
+          ],
+          "memory_gate": {
+            "open": true,
+            "signals": [
+              "preferencia"
+            ],
+            "reason": "señales de preferencia sobre una categoría memorizable",
+            "candidate_type": "preferencia_reporte_b2b",
+            "hints": {
+              "carriers_mencionados": [],
+              "paises_mencionados": []
+            }
+          },
+          "recalled": [],
+          "model_proposal_raw": {
+            "tipo": "preferencia_reporte_b2b",
+            "accion": "corregir",
+            "hecho": "El cliente siempre desea su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos.",
+            "motivo": "Esta preferencia se ha notado en múltiples clientes y es una solicitud común para la mayoría de las marcas B2B.",
+            "carrier": null,
+            "pais": null,
+            "zona": null,
+            "ruta": null,
+            "cliente_b2b": "cosméticos",
+            "tickets_relacionados": 0
+          },
+          "memory_rejection": null,
+          "answer": "Tomo nota de lo que indicas. Todavía no está verificado ni guardado en memoria.\nLo que dice hoy la base de conocimiento: «Tarifas de Almacenamiento El cliente puede solicitar un reporte de antigüedad de inventario en cualquier momento a través de su account manager; este reporte no está automatizado actualmente para el cliente final, solo internamente.» (storage-pricing — Tarifas de Almacenamiento > El cliente puede solicitar un reporte de antigüedad de inventario e…).\n\n📌 Propuesta de memoria (preferencia de reporte B2B): «El cliente siempre desea su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos.». Motivo: Esta preferencia se ha notado en múltiples clientes y es una solicitud común para la mayoría de las marcas B2B.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-f5dcfec385; no se guarda nada hasta que la confirmes)",
+          "final_node": "propose_memory",
+          "sources": [
+            "rag"
+          ],
+          "memory_proposal": {
+            "id": "mem-f5dcfec385",
+            "tipo": "preferencia_reporte_b2b",
+            "accion": "corregir",
+            "hecho": "El cliente siempre desea su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos.",
+            "motivo": "Esta preferencia se ha notado en múltiples clientes y es una solicitud común para la mayoría de las marcas B2B.",
+            "carrier": null,
+            "pais": null,
+            "zona": null,
+            "ruta": null,
+            "cliente_b2b": "cosméticos",
+            "tickets_relacionados": 0,
+            "vigencia_dias": null
+          },
+          "memory_resolution": null,
+          "memory_before": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ],
+          "memory_after": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ]
+        },
+        {
+          "session_id": "conv-rechazado",
+          "message": "No, no lo guardes. ¿Cuál es la ventana de devolución estándar?",
+          "run_id": "ciclo-rechazado-2",
+          "seconds": 35.8,
+          "nodes": [
+            "resolve_pending_memory",
+            "receive_question",
+            "recall_memory",
+            "plan_sources",
+            "retrieve",
+            "generate",
+            "propose_memory"
+          ],
+          "memory_gate": {
+            "open": false,
+            "signals": [],
+            "reason": "sin información nueva ni corregida (consulta o tarea puntual): nada que recordar",
+            "candidate_type": null,
+            "hints": {}
+          },
+          "recalled": [],
+          "model_proposal_raw": null,
+          "memory_rejection": null,
+          "answer": "De acuerdo, no lo guardo: la memoria queda sin cambios.\n\nLa ventana de devolución estándar para TrackFlow es de 30 días desde la entrega, salvo que el cliente haya especificado una ventana diferente en su contrato.",
+          "final_node": "generate",
+          "sources": [
+            "rag"
+          ],
+          "memory_proposal": null,
+          "memory_resolution": {
+            "proposal_id": "mem-f5dcfec385",
+            "label": "rechazar",
+            "outcome": "rechazada",
+            "rationale": "rechazo explícito al inicio: «No»",
+            "ack": "De acuerdo, no lo guardo: la memoria queda sin cambios.",
+            "remainder": "¿Cuál es la ventana de devolución estándar?"
+          },
+          "memory_before": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ],
+          "memory_after": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ]
+        },
+        {
+          "session_id": "conv-rechazado-2",
+          "message": "Prepara el reporte mensual del cliente de cosméticos: ¿qué métricas destaco?",
+          "run_id": "ciclo-rechazado-3",
+          "seconds": 0.1,
+          "nodes": [
+            "resolve_pending_memory",
+            "receive_question",
+            "recall_memory",
+            "plan_sources",
+            "retrieve",
+            "no_context",
+            "propose_memory"
+          ],
+          "memory_gate": {
+            "open": false,
+            "signals": [],
+            "reason": "sin información nueva ni corregida (consulta o tarea puntual): nada que recordar",
+            "candidate_type": null,
+            "hints": {}
+          },
+          "recalled": [],
+          "model_proposal_raw": null,
+          "memory_rejection": null,
+          "answer": "No tengo información suficiente en la base de conocimiento de TrackFlow para responder a esa pregunta con datos exactos. Para no comprometer condiciones que no están en los acuerdos estándar, consúltalo con el área responsable antes de responder al cliente.",
+          "final_node": "no_context",
+          "sources": [
+            "rag"
+          ],
+          "memory_proposal": null,
+          "memory_resolution": null,
+          "memory_before": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ],
+          "memory_after": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ciclo-cambio-de-tema",
+      "description": "El usuario cambia de tema: la propuesta se descarta por defecto",
+      "turns": [
+        {
+          "session_id": "conv-tema",
+          "message": "Esos retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema nuestro — ya van tres tickets sobre lo mismo.",
+          "run_id": "ciclo-cambio-de-tema-1",
+          "seconds": 50.8,
+          "nodes": [
+            "resolve_pending_memory",
+            "receive_question",
+            "recall_memory",
+            "plan_sources",
+            "mcp_incidents",
+            "compose_answer",
+            "propose_memory"
+          ],
+          "memory_gate": {
+            "open": true,
+            "signals": [
+              "recurrencia"
+            ],
+            "reason": "señales de recurrencia sobre una categoría memorizable",
+            "candidate_type": "contexto_incidente_recurrente",
+            "hints": {
+              "carriers_mencionados": [],
+              "paises_mencionados": [
+                "US"
+              ]
+            }
+          },
+          "recalled": [],
+          "model_proposal_raw": {
+            "tipo": "contexto_incidente_recurrente",
+            "accion": "corregir",
+            "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
+            "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+            "pais": "US",
+            "tickets_relacionados": 3,
+            "ruta": "Los Angeles",
+            "_campos_completados_por_el_sistema": [
+              "pais",
+              "tickets_relacionados",
+              "ruta"
+            ]
+          },
+          "memory_rejection": null,
+          "answer": "Hay 95 tickets en el gestor de incidencias (consulta en vivo).\n- d32a9b66-b81b-5dce-b90f-c4e8bfc27161 — Abierta — Return requested within 14-day window, awaiting approval\n- be7b68f6-9305-566b-825e-88a5b899922b — Resuelta — Outer box crushed, inner product compromised\n- 1a99a7aa-74f8-5659-b560-b532b3ac959d — Resuelta — Package held at sorting facility for unknown reason\n- f184dbd2-e01a-5c15-9f6d-cbeffbf6ef3f — Resuelta — Carrier attempted delivery but customer was not notified\n- 2c1a40f2-cfaf-59ae-936c-d445e40872ce — Resuelta — Customer address was truncated in carrier system\n(se muestran los 5 más recientes)\n\n📌 Propuesta de memoria (contexto de incidente recurrente): «Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.». Motivo: Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-cac70c98a9; no se guarda nada hasta que la confirmes)",
+          "final_node": "compose_answer",
+          "sources": [
+            "incidents"
+          ],
+          "memory_proposal": {
+            "id": "mem-cac70c98a9",
+            "tipo": "contexto_incidente_recurrente",
+            "accion": "corregir",
+            "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
+            "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+            "carrier": null,
+            "pais": "US",
+            "zona": null,
+            "ruta": "Los Angeles",
+            "cliente_b2b": null,
+            "tickets_relacionados": 3,
+            "vigencia_dias": null
+          },
+          "memory_resolution": null,
+          "memory_before": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ],
+          "memory_after": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ]
+        },
+        {
+          "session_id": "conv-tema",
+          "message": "¿Cuál es la ventana de devolución estándar?",
+          "run_id": "ciclo-cambio-de-tema-2",
+          "seconds": 36.0,
+          "nodes": [
+            "resolve_pending_memory",
+            "receive_question",
+            "recall_memory",
+            "plan_sources",
+            "retrieve",
+            "generate",
+            "propose_memory"
+          ],
+          "memory_gate": {
+            "open": false,
+            "signals": [],
+            "reason": "sin información nueva ni corregida (consulta o tarea puntual): nada que recordar",
+            "candidate_type": null,
+            "hints": {}
+          },
+          "recalled": [],
+          "model_proposal_raw": null,
+          "memory_rejection": null,
+          "answer": "(Descarté la propuesta de memoria anterior porque no respondiste sí o no; no se guardó nada.)\n\nLa ventana de devolución estándar para TrackFlow es de 30 días desde la entrega, salvo que el cliente haya especificado una ventana diferente en su contrato.",
+          "final_node": "generate",
+          "sources": [
+            "rag"
+          ],
+          "memory_proposal": null,
+          "memory_resolution": {
+            "proposal_id": "mem-cac70c98a9",
+            "label": "otro_tema",
+            "outcome": "descartada_sin_respuesta_clara",
+            "rationale": "el mensaje no responde claramente sí, no ni edita la propuesta: se descarta por defecto",
+            "ack": "(Descarté la propuesta de memoria anterior porque no respondiste sí o no; no se guardó nada.)",
+            "remainder": "¿Cuál es la ventana de devolución estándar?"
+          },
+          "memory_before": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ],
+          "memory_after": [
+            {
+              "key": "carrier:SEUR:ES",
+              "tipo": "regla_carrier",
+              "titulo": "Carrier SEUR (ES)",
+              "hechos": {
+                "zona-rural-de-zaragoza": {
+                  "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+                  "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+                  "zona": "zona rural de zaragoza",
+                  "ruta": null,
+                  "accion": "corregir",
+                  "aprobado_por": "valentina.cruz@trackflow.example",
+                  "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+                  "confirmaciones": 1,
+                  "propuesta_id": "mem-d6ee8bf960",
+                  "run_id": "ciclo-aprobado-1"
+                }
+              },
+              "actualizado_en": "2026-11-21T16:27:39+00:00",
+              "expira_en": null,
+              "ultimo_uso": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "final_memory": [
+    {
+      "key": "carrier:SEUR:ES",
+      "tipo": "regla_carrier",
+      "titulo": "Carrier SEUR (ES)",
+      "hechos": {
+        "zona-rural-de-zaragoza": {
+          "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+          "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+          "zona": "zona rural de zaragoza",
+          "ruta": null,
+          "accion": "corregir",
+          "aprobado_por": "valentina.cruz@trackflow.example",
+          "aprobado_en": "2026-11-21T16:27:39.341921+00:00",
+          "confirmaciones": 1,
+          "propuesta_id": "mem-d6ee8bf960",
+          "run_id": "ciclo-aprobado-1"
+        }
+      },
+      "actualizado_en": "2026-11-21T16:27:39+00:00",
+      "expira_en": null,
+      "ultimo_uso": null
+    }
+  ],
+  "audit": [
+    {
+      "ts": "2026-11-21T16:23:17+00:00",
+      "outcome": "propuesta",
+      "proposal_id": "mem-d08c920601",
+      "session_id": "eval-memorable-carrier-seur-rural-zaragoza",
+      "user": null,
+      "tipo": "regla_carrier",
+      "propuesta": {
+        "tipo": "regla_carrier",
+        "accion": "corregir",
+        "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+        "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+        "carrier": "SEUR",
+        "pais": "ES",
+        "zona": "zona rural de zaragoza"
+      },
+      "mensaje_origen": "En realidad SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado.",
+      "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza"
+    },
+    {
+      "ts": "2026-11-21T16:23:17+00:00",
+      "outcome": "descartada_sin_respuesta_clara",
+      "proposal_id": "mem-d08c920601",
+      "session_id": "eval-memorable-carrier-seur-rural-zaragoza",
+      "user": null,
+      "tipo": "regla_carrier",
+      "propuesta": {
+        "tipo": "regla_carrier",
+        "accion": "corregir",
+        "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+        "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+        "carrier": "SEUR",
+        "pais": "ES",
+        "zona": "zona rural de zaragoza"
+      },
+      "mensaje_origen": "En realidad SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado.",
+      "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
+      "reason": "fin del caso de evaluación"
+    },
+    {
+      "ts": "2026-11-21T16:23:44+00:00",
+      "outcome": "propuesta",
+      "proposal_id": "mem-90bfc9b473",
+      "session_id": "eval-memorable-incident-port-strike-la",
+      "user": null,
+      "tipo": "contexto_incidente_recurrente",
+      "propuesta": {
+        "tipo": "contexto_incidente_recurrente",
+        "accion": "corregir",
+        "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
+        "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+        "pais": "US",
+        "ruta": "Los Angeles",
+        "tickets_relacionados": 3
+      },
+      "mensaje_origen": "Esos retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema nuestro — ya van tres tickets sobre lo mismo.",
+      "run_id": "memory-eval-memorable-incident-port-strike-la"
+    },
+    {
+      "ts": "2026-11-21T16:23:44+00:00",
+      "outcome": "descartada_sin_respuesta_clara",
+      "proposal_id": "mem-90bfc9b473",
+      "session_id": "eval-memorable-incident-port-strike-la",
+      "user": null,
+      "tipo": "contexto_incidente_recurrente",
+      "propuesta": {
+        "tipo": "contexto_incidente_recurrente",
+        "accion": "corregir",
+        "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
+        "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+        "pais": "US",
+        "ruta": "Los Angeles",
+        "tickets_relacionados": 3
+      },
+      "mensaje_origen": "Esos retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema nuestro — ya van tres tickets sobre lo mismo.",
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "reason": "fin del caso de evaluación"
+    },
+    {
+      "ts": "2026-11-21T16:24:13+00:00",
+      "outcome": "propuesta",
+      "proposal_id": "mem-a92fb9e138",
+      "session_id": "eval-memorable-b2b-cosmetics-report",
+      "user": null,
+      "tipo": "preferencia_reporte_b2b",
+      "propuesta": {
+        "tipo": "preferencia_reporte_b2b",
+        "accion": "corregir",
+        "hecho": "El cliente siempre desea su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos.",
+        "motivo": "Esta preferencia se ha notado en múltiples clientes y es una solicitud común para la mayoría de las marcas B2B.",
+        "cliente_b2b": "cosméticos",
+        "tickets_relacionados": 0
+      },
+      "mensaje_origen": "El cliente de cosméticos siempre quiere su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos.",
+      "run_id": "memory-eval-memorable-b2b-cosmetics-report"
+    },
+    {
+      "ts": "2026-11-21T16:24:13+00:00",
+      "outcome": "descartada_sin_respuesta_clara",
+      "proposal_id": "mem-a92fb9e138",
+      "session_id": "eval-memorable-b2b-cosmetics-report",
+      "user": null,
+      "tipo": "preferencia_reporte_b2b",
+      "propuesta": {
+        "tipo": "preferencia_reporte_b2b",
+        "accion": "corregir",
+        "hecho": "El cliente siempre desea su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos.",
+        "motivo": "Esta preferencia se ha notado en múltiples clientes y es una solicitud común para la mayoría de las marcas B2B.",
+        "cliente_b2b": "cosméticos",
+        "tickets_relacionados": 0
+      },
+      "mensaje_origen": "El cliente de cosméticos siempre quiere su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos.",
+      "run_id": "memory-eval-memorable-b2b-cosmetics-report",
+      "reason": "fin del caso de evaluación"
+    },
+    {
+      "ts": "2026-11-21T16:27:39+00:00",
+      "outcome": "propuesta",
+      "proposal_id": "mem-d6ee8bf960",
+      "session_id": "conv-aprobado",
+      "user": null,
+      "tipo": "regla_carrier",
+      "propuesta": {
+        "tipo": "regla_carrier",
+        "accion": "corregir",
+        "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+        "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+        "carrier": "SEUR",
+        "pais": "ES",
+        "zona": "zona rural de zaragoza"
+      },
+      "mensaje_origen": "En realidad SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado.",
+      "run_id": "ciclo-aprobado-1"
+    },
+    {
+      "ts": "2026-11-21T16:27:39+00:00",
+      "outcome": "aprobada",
+      "proposal_id": "mem-d6ee8bf960",
+      "session_id": "conv-aprobado",
+      "user": "valentina.cruz@trackflow.example",
+      "tipo": "regla_carrier",
+      "propuesta": {
+        "tipo": "regla_carrier",
+        "accion": "corregir",
+        "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
+        "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+        "carrier": "SEUR",
+        "pais": "ES",
+        "zona": "zona rural de zaragoza"
+      },
+      "mensaje_origen": "En realidad SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado.",
+      "run_id": "ciclo-aprobado-1",
+      "reply": "Sí, guárdalo.",
+      "key": "carrier:SEUR:ES"
+    },
+    {
+      "ts": "2026-11-21T16:29:23+00:00",
+      "outcome": "propuesta",
+      "proposal_id": "mem-f5dcfec385",
+      "session_id": "conv-rechazado",
+      "user": null,
+      "tipo": "preferencia_reporte_b2b",
+      "propuesta": {
+        "tipo": "preferencia_reporte_b2b",
+        "accion": "corregir",
+        "hecho": "El cliente siempre desea su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos.",
+        "motivo": "Esta preferencia se ha notado en múltiples clientes y es una solicitud común para la mayoría de las marcas B2B.",
+        "cliente_b2b": "cosméticos",
+        "tickets_relacionados": 0
+      },
+      "mensaje_origen": "El cliente de cosméticos siempre quiere su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos.",
+      "run_id": "ciclo-rechazado-1"
+    },
+    {
+      "ts": "2026-11-21T16:29:23+00:00",
+      "outcome": "rechazada",
+      "proposal_id": "mem-f5dcfec385",
+      "session_id": "conv-rechazado",
+      "user": "valentina.cruz@trackflow.example",
+      "tipo": "preferencia_reporte_b2b",
+      "propuesta": {
+        "tipo": "preferencia_reporte_b2b",
+        "accion": "corregir",
+        "hecho": "El cliente siempre desea su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos.",
+        "motivo": "Esta preferencia se ha notado en múltiples clientes y es una solicitud común para la mayoría de las marcas B2B.",
+        "cliente_b2b": "cosméticos",
+        "tickets_relacionados": 0
+      },
+      "mensaje_origen": "El cliente de cosméticos siempre quiere su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos.",
+      "run_id": "ciclo-rechazado-1",
+      "reply": "No, no lo guardes. ¿Cuál es la ventana de devolución estándar?"
+    },
+    {
+      "ts": "2026-11-21T16:30:49+00:00",
+      "outcome": "propuesta",
+      "proposal_id": "mem-cac70c98a9",
+      "session_id": "conv-tema",
+      "user": null,
+      "tipo": "contexto_incidente_recurrente",
+      "propuesta": {
+        "tipo": "contexto_incidente_recurrente",
+        "accion": "corregir",
+        "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
+        "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+        "pais": "US",
+        "ruta": "Los Angeles",
+        "tickets_relacionados": 3
+      },
+      "mensaje_origen": "Esos retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema nuestro — ya van tres tickets sobre lo mismo.",
+      "run_id": "ciclo-cambio-de-tema-1"
+    },
+    {
+      "ts": "2026-11-21T16:30:49+00:00",
+      "outcome": "descartada_sin_respuesta_clara",
+      "proposal_id": "mem-cac70c98a9",
+      "session_id": "conv-tema",
+      "user": null,
+      "tipo": "contexto_incidente_recurrente",
+      "propuesta": {
+        "tipo": "contexto_incidente_recurrente",
+        "accion": "corregir",
+        "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
+        "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+        "pais": "US",
+        "ruta": "Los Angeles",
+        "tickets_relacionados": 3
+      },
+      "mensaje_origen": "Esos retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema nuestro — ya van tres tickets sobre lo mismo.",
+      "run_id": "ciclo-cambio-de-tema-1",
+      "reply": "¿Cuál es la ventana de devolución estándar?",
+      "reason": "el mensaje no responde claramente sí, no ni edita la propuesta: se descarta por defecto"
+    }
+  ]
+}

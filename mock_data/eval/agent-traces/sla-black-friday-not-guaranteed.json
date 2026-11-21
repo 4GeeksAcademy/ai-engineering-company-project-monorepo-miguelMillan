@@ -7,16 +7,39 @@
   "sources_used": [
     "rag"
   ],
-  "started_at": "2026-11-20T09:57:34.055+00:00",
-  "finished_at": "2026-11-20T09:58:05.980+00:00",
+  "started_at": "2026-11-21T16:32:45.989+00:00",
+  "finished_at": "2026-11-21T16:33:05.424+00:00",
   "steps": [
     {
       "run_id": "eval-sla-black-friday-not-guaranteed",
       "seq": 0,
       "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T16:32:45.994+00:00",
+      "duration_ms": 0.004,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "eval-sla-black-friday-not-guaranteed",
+      "seq": 1,
+      "kind": "route",
+      "name": "route_after_resolve",
+      "started_at": "2026-11-21T16:32:45.995+00:00",
+      "duration_ms": 0.002,
+      "status": "ok",
+      "output": {
+        "next": "receive_question",
+        "reason": "no hay propuesta pendiente, o el mensaje sigue con otra pregunta"
+      }
+    },
+    {
+      "run_id": "eval-sla-black-friday-not-guaranteed",
+      "seq": 2,
+      "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-20T09:57:34.076+00:00",
-      "duration_ms": 0.009,
+      "started_at": "2026-11-21T16:32:45.998+00:00",
+      "duration_ms": 0.007,
       "status": "ok",
       "output": {
         "question": "¿Podemos garantizar los plazos de entrega durante Black Friday?"
@@ -24,24 +47,43 @@
     },
     {
       "run_id": "eval-sla-black-friday-not-guaranteed",
-      "seq": 1,
+      "seq": 3,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-20T09:57:34.078+00:00",
+      "started_at": "2026-11-21T16:32:45.999+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
-        "next": "plan_sources",
+        "next": "recall_memory",
         "reason": "pregunta válida"
       }
     },
     {
       "run_id": "eval-sla-black-friday-not-guaranteed",
-      "seq": 2,
+      "seq": 4,
+      "kind": "node",
+      "name": "recall_memory",
+      "started_at": "2026-11-21T16:32:46.002+00:00",
+      "duration_ms": 0.07,
+      "status": "ok",
+      "output": {
+        "memory_gate": {
+          "open": false,
+          "signals": [],
+          "reason": "sin información nueva ni corregida (consulta o tarea puntual): nada que recordar",
+          "candidate_type": null,
+          "hints": {}
+        },
+        "memories": []
+      }
+    },
+    {
+      "run_id": "eval-sla-black-friday-not-guaranteed",
+      "seq": 5,
       "kind": "node",
       "name": "plan_sources",
-      "started_at": "2026-11-20T09:57:34.081+00:00",
-      "duration_ms": 0.05,
+      "started_at": "2026-11-21T16:32:46.006+00:00",
+      "duration_ms": 0.037,
       "status": "ok",
       "output": {
         "plan": {
@@ -56,11 +98,11 @@
     },
     {
       "run_id": "eval-sla-black-friday-not-guaranteed",
-      "seq": 3,
+      "seq": 6,
       "kind": "route",
       "name": "route_after_plan",
-      "started_at": "2026-11-20T09:57:34.083+00:00",
-      "duration_ms": 0.005,
+      "started_at": "2026-11-21T16:32:46.007+00:00",
+      "duration_ms": 0.003,
       "status": "ok",
       "output": {
         "next": "retrieve",
@@ -69,11 +111,11 @@
     },
     {
       "run_id": "eval-sla-black-friday-not-guaranteed",
-      "seq": 4,
+      "seq": 7,
       "kind": "node",
       "name": "retrieve",
-      "started_at": "2026-11-20T09:57:34.087+00:00",
-      "duration_ms": 6539.339,
+      "started_at": "2026-11-21T16:32:46.010+00:00",
+      "duration_ms": 45.041,
       "status": "ok",
       "output": {
         "context": [
@@ -91,24 +133,24 @@
     },
     {
       "run_id": "eval-sla-black-friday-not-guaranteed",
-      "seq": 5,
+      "seq": 8,
       "kind": "route",
       "name": "route_after_retrieve",
-      "started_at": "2026-11-20T09:57:40.636+00:00",
+      "started_at": "2026-11-21T16:32:46.057+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {
         "next": "generate",
-        "reason": "hay contexto ≥ min_score"
+        "reason": "hay contexto ≥ min_score o memoria aprobada relevante"
       }
     },
     {
       "run_id": "eval-sla-black-friday-not-guaranteed",
-      "seq": 6,
+      "seq": 9,
       "kind": "node",
       "name": "generate",
-      "started_at": "2026-11-20T09:57:40.667+00:00",
-      "duration_ms": 25260.195,
+      "started_at": "2026-11-21T16:32:46.061+00:00",
+      "duration_ms": 19353.9,
       "status": "ok",
       "output": {
         "answer": "No puedo garantizar los plazos de entrega durante Black Friday. Según nuestra SLA de Entrega, TrackFlow no garantiza SLA de entrega en esos días de alta demanda declarados (Black Friday, Navidad, Rebajas de enero en España). Los tiempos pueden extenderse hasta un 40% adicional, lo que debe comunicarse proactivamente a los clientes con anticipación."
@@ -116,20 +158,32 @@
     },
     {
       "run_id": "eval-sla-black-friday-not-guaranteed",
-      "seq": 7,
+      "seq": 10,
       "kind": "route",
       "name": "route_after_generate",
-      "started_at": "2026-11-20T09:58:05.929+00:00",
-      "duration_ms": 0.004,
+      "started_at": "2026-11-21T16:33:05.416+00:00",
+      "duration_ms": 0.003,
       "status": "ok",
       "output": {
-        "next": "__end__",
+        "next": "propose_memory",
         "reason": "solo RAG: la respuesta generada es la final"
+      }
+    },
+    {
+      "run_id": "eval-sla-black-friday-not-guaranteed",
+      "seq": 11,
+      "kind": "node",
+      "name": "propose_memory",
+      "started_at": "2026-11-21T16:33:05.420+00:00",
+      "duration_ms": 0.005,
+      "status": "ok",
+      "output": {
+        "memory_proposal": null
       }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-20T09:58:05+00:00",
+    "recorded_at": "2026-11-21T16:33:05+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
     "mcp_server_url": "http://127.0.0.1:8090/mcp",
@@ -139,7 +193,13 @@
         "__start__"
       ],
       [
+        "resolve_pending_memory"
+      ],
+      [
         "receive_question"
+      ],
+      [
+        "recall_memory"
       ],
       [
         "plan_sources"
@@ -149,6 +209,9 @@
       ],
       [
         "generate"
+      ],
+      [
+        "propose_memory"
       ],
       []
     ]

@@ -7,16 +7,39 @@
   "sources_used": [
     "incidents"
   ],
-  "started_at": "2026-11-20T09:56:53.134+00:00",
-  "finished_at": "2026-11-20T09:56:54.312+00:00",
+  "started_at": "2026-11-21T16:33:05.531+00:00",
+  "finished_at": "2026-11-21T16:33:06.340+00:00",
   "steps": [
     {
       "run_id": "eval-tool-ticket-status-by-id",
       "seq": 0,
       "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T16:33:05.537+00:00",
+      "duration_ms": 0.004,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "eval-tool-ticket-status-by-id",
+      "seq": 1,
+      "kind": "route",
+      "name": "route_after_resolve",
+      "started_at": "2026-11-21T16:33:05.538+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "receive_question",
+        "reason": "no hay propuesta pendiente, o el mensaje sigue con otra pregunta"
+      }
+    },
+    {
+      "run_id": "eval-tool-ticket-status-by-id",
+      "seq": 2,
+      "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-20T09:56:53.138+00:00",
-      "duration_ms": 0.007,
+      "started_at": "2026-11-21T16:33:05.541+00:00",
+      "duration_ms": 0.006,
       "status": "ok",
       "output": {
         "question": "¿En qué estado está el ticket d32a9b66-b81b-5dce-b90f-c4e8bfc27161?"
@@ -24,24 +47,43 @@
     },
     {
       "run_id": "eval-tool-ticket-status-by-id",
-      "seq": 1,
+      "seq": 3,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-20T09:56:53.139+00:00",
+      "started_at": "2026-11-21T16:33:05.543+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
-        "next": "plan_sources",
+        "next": "recall_memory",
         "reason": "pregunta válida"
       }
     },
     {
       "run_id": "eval-tool-ticket-status-by-id",
-      "seq": 2,
+      "seq": 4,
+      "kind": "node",
+      "name": "recall_memory",
+      "started_at": "2026-11-21T16:33:05.545+00:00",
+      "duration_ms": 0.077,
+      "status": "ok",
+      "output": {
+        "memory_gate": {
+          "open": false,
+          "signals": [],
+          "reason": "sin información nueva ni corregida (consulta o tarea puntual): nada que recordar",
+          "candidate_type": null,
+          "hints": {}
+        },
+        "memories": []
+      }
+    },
+    {
+      "run_id": "eval-tool-ticket-status-by-id",
+      "seq": 5,
       "kind": "node",
       "name": "plan_sources",
-      "started_at": "2026-11-20T09:56:53.142+00:00",
-      "duration_ms": 0.07,
+      "started_at": "2026-11-21T16:33:05.549+00:00",
+      "duration_ms": 0.083,
       "status": "ok",
       "output": {
         "plan": {
@@ -59,11 +101,11 @@
     },
     {
       "run_id": "eval-tool-ticket-status-by-id",
-      "seq": 3,
+      "seq": 6,
       "kind": "route",
       "name": "route_after_plan",
-      "started_at": "2026-11-20T09:56:53.143+00:00",
-      "duration_ms": 0.003,
+      "started_at": "2026-11-21T16:33:05.550+00:00",
+      "duration_ms": 0.004,
       "status": "ok",
       "output": {
         "next": "mcp_incidents",
@@ -72,11 +114,11 @@
     },
     {
       "run_id": "eval-tool-ticket-status-by-id",
-      "seq": 4,
+      "seq": 7,
       "kind": "node",
       "name": "mcp_incidents",
-      "started_at": "2026-11-20T09:56:53.146+00:00",
-      "duration_ms": 1155.68,
+      "started_at": "2026-11-21T16:33:05.554+00:00",
+      "duration_ms": 770.933,
       "status": "ok",
       "output": {
         "incident_result": {
@@ -111,11 +153,11 @@
     },
     {
       "run_id": "eval-tool-ticket-status-by-id",
-      "seq": 5,
+      "seq": 8,
       "kind": "route",
       "name": "route_after_incidents",
-      "started_at": "2026-11-20T09:56:54.305+00:00",
-      "duration_ms": 0.006,
+      "started_at": "2026-11-21T16:33:06.327+00:00",
+      "duration_ms": 0.005,
       "status": "ok",
       "output": {
         "next": "compose_answer",
@@ -124,19 +166,31 @@
     },
     {
       "run_id": "eval-tool-ticket-status-by-id",
-      "seq": 6,
+      "seq": 9,
       "kind": "node",
       "name": "compose_answer",
-      "started_at": "2026-11-20T09:56:54.308+00:00",
-      "duration_ms": 0.045,
+      "started_at": "2026-11-21T16:33:06.331+00:00",
+      "duration_ms": 0.042,
       "status": "ok",
       "output": {
         "answer": "El ticket d32a9b66-b81b-5dce-b90f-c4e8bfc27161 («Return requested within 14-day window, awaiting approval») está en estado **Abierta**. Categoría: Problema de devolución; origen: Cliente; sede: Zaragoza — Oficina. Creado el 08/01/2024, última actualización el 08/01/2024. (Fuente: gestor de incidencias, consulta en vivo.)"
       }
+    },
+    {
+      "run_id": "eval-tool-ticket-status-by-id",
+      "seq": 10,
+      "kind": "node",
+      "name": "propose_memory",
+      "started_at": "2026-11-21T16:33:06.336+00:00",
+      "duration_ms": 0.005,
+      "status": "ok",
+      "output": {
+        "memory_proposal": null
+      }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-20T09:56:54+00:00",
+    "recorded_at": "2026-11-21T16:33:06+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
     "mcp_server_url": "http://127.0.0.1:8090/mcp",
@@ -146,7 +200,13 @@
         "__start__"
       ],
       [
+        "resolve_pending_memory"
+      ],
+      [
         "receive_question"
+      ],
+      [
+        "recall_memory"
       ],
       [
         "plan_sources"
@@ -156,6 +216,9 @@
       ],
       [
         "compose_answer"
+      ],
+      [
+        "propose_memory"
       ],
       []
     ]

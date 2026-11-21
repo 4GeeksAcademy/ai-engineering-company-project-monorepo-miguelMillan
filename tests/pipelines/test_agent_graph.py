@@ -144,7 +144,7 @@ def test_compile_rejects_edge_to_unknown_node():
 
 def test_node_writing_undeclared_key_fails_at_runtime(monkeypatch):
     """LangGraph ignoraría en silencio una clave fuera del estado; el arnés la convierte en error."""
-    def leaky_generate_node(generate_fn):
+    def leaky_generate_node(generate_fn, memory_generate_fn):
         return lambda state: {"answer": "x", "chat_history": ["turno previo"]}
 
     monkeypatch.setattr(agent_graph, "make_generate_node", leaky_generate_node)
@@ -165,11 +165,13 @@ def test_each_transition_is_checkpointed_and_inspectable(tmp_path):
 
     checkpoints = agent.checkpoints(result.run_id)
     assert [c["next"] for c in checkpoints] == [
-        ["__start__"], ["receive_question"], ["plan_sources"], ["retrieve"], ["generate"], [],
+        ["__start__"], ["resolve_pending_memory"], ["receive_question"], ["recall_memory"], ["plan_sources"], ["retrieve"], ["generate"],
+        ["propose_memory"], [],
     ]
-    assert checkpoints[2]["values"]["question"] == "¿Qué transportista cubre mejor Aragón rural?"
-    assert checkpoints[3]["values"]["plan"]["sources"] == ["rag"]
-    assert checkpoints[4]["values"]["context"] == [SEUR_CHUNK]  # estado tras retrieve, antes de generate
+    assert checkpoints[3]["values"]["question"] == "¿Qué transportista cubre mejor Aragón rural?"
+    assert checkpoints[4]["values"]["memory_gate"]["open"] is False  # consulta sin nada nuevo que recordar
+    assert checkpoints[5]["values"]["plan"]["sources"] == ["rag"]
+    assert checkpoints[6]["values"]["context"] == [SEUR_CHUNK]  # estado tras retrieve, antes de generate
     assert checkpoints[-1]["values"]["answer"].startswith("SEUR")
 
     # Persistente: otro proceso (nuevo checkpointer sobre el mismo archivo) puede inspeccionar la corrida.
@@ -185,18 +187,19 @@ def test_trace_records_nodes_in_order_with_outputs_and_routes(tmp_path):
 
     trace = TraceStore(tmp_path / "traces.sqlite").get_trace(result.run_id)  # consultable después de la corrida
     assert trace["status"] == "completed" and trace["final_node"] == "generate"
-    assert executed_nodes(trace) == ["receive_question", "plan_sources", "retrieve", "generate"]
+    assert executed_nodes(trace) == ["resolve_pending_memory", "receive_question", "recall_memory", "plan_sources", "retrieve", "generate", "propose_memory"]
     assert trace["sources_used"] == ["rag"]
     assert [(s["kind"], s["name"]) for s in trace["steps"]] == [
-        ("node", "receive_question"), ("route", "route_after_receive"),
+        ("node", "resolve_pending_memory"), ("route", "route_after_resolve"),
+        ("node", "receive_question"), ("route", "route_after_receive"), ("node", "recall_memory"),
         ("node", "plan_sources"), ("route", "route_after_plan"),
         ("node", "retrieve"), ("route", "route_after_retrieve"),
-        ("node", "generate"), ("route", "route_after_generate"),
+        ("node", "generate"), ("route", "route_after_generate"), ("node", "propose_memory"),
     ]
     assert node_output(trace, "retrieve")["context"][0]["source_document"] == "carrier-coverage"
     assert node_output(trace, "generate")["answer"] == result.answer
     route = next(s for s in trace["steps"] if s["name"] == "route_after_retrieve")
-    assert route["output"] == {"next": "generate", "reason": "hay contexto ≥ min_score"}
+    assert route["output"] == {"next": "generate", "reason": "hay contexto ≥ min_score o memoria aprobada relevante"}
 
 
 def test_node_failure_is_traced_and_raised_with_run_id(tmp_path):

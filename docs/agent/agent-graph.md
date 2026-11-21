@@ -14,6 +14,8 @@
 
 ## Grafo
 
+> **Memoria (Hito 8).** El grafo añade `resolve_pending_memory` (primer nodo: resuelve la propuesta de memoria pendiente de la conversación), `memory_acknowledge`, `recall_memory` (lectura explícita de la memoria aprobada) y `propose_memory` (auto-evaluación; último nodo de los caminos válidos). El diagrama de abajo muestra el núcleo RAG/tools; el flujo de memoria está en [agent-memory.md](agent-memory.md).
+
 Generado desde `compile_agent_graph(build_agent_graph()).get_graph()`. Las líneas discontinuas son aristas condicionales. La Parte 2 añade `plan_sources`, los nodos de tools y `compose_answer` (ver [Parte 2](#parte-2-tools-de-incidencias-e-inventario)). Desde la [migración a MCP](#migración-a-mcp-el-agente-como-cliente-del-servidor-mcp), los nodos de tools son **clientes del servidor MCP**: `mcp_incidents` y `mcp_inventory`.
 
 ```mermaid

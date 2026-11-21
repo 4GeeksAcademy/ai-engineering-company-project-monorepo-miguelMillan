@@ -1,31 +1,41 @@
-Sobre los MCP Servers
+# BRIEFING — TrackFlow
 
-Un MCP Server expone las capacidades de un sistema (herramientas, recursos, prompts) mediante un protocolo estándar que cualquier agente compatible puede descubrir y consumir, sin acoplarse al código interno de tu backend. A diferencia de las tools que ya conectaste directamente al grafo de tu agente, un MCP Server puede ser reutilizado por múltiples clientes — otros agentes, otros equipos, otras compañías del ecosistema — siempre que se autentiquen correctamente. Por eso la autenticación y el principio de mínimo privilegio no son un detalle: un servidor MCP sin auth es una vulnerabilidad real desde el primer día.
+## Hito 8 · Parte 1 · Memoria y Auto-mejora de Agentes
 
-Tu agente ya sabe llamar herramientas directamente. Ahora tu tech lead ha abierto un ticket pidiendo que esas capacidades dejen de estar hardcodeadas dentro del grafo y se expongan como un servicio independiente, reutilizable y protegido por OAuth — y que el propio agente deje de llamar al Incidents Manager de forma directa para consumirlo a través del servidor MCP.
+---
 
-De: Tu tech lead Para: Tu squad Asunto: RFP — Servidor MCP para herramientas de la compañía
+## Por qué importa esta memoria para TrackFlow
 
-El agente que construimos ya consulta el Incidents Manager desde dentro del grafo, pero cualquier integración futura (otro agente, otro equipo, un partner externo) tendría que reimplementar esas mismas llamadas. Necesitamos exponerlas como un MCP Server independiente, autenticado con OAuth, para que cualquier cliente MCP autorizado pueda:
+Tu agente ya conoce las operaciones de TrackFlow en Los Ángeles y Zaragoza, consulta el Incidents Manager y el inventario a través del MCP Server, y recibirá su harness en la Parte 2. Valentina Cruz (CX Manager) reporta que sus 15 agentes de soporte, distribuidos entre ambos países, tienen que corregirle al asistente las mismas reglas de carrier una y otra vez — el asistente no aprende de una sesión a la siguiente.
 
-Gestionar tickets del Incidents Manager (crear, actualizar, consultar estado).
-Consultar —nunca editar— los datos del inventario.
-El servidor no debe dar más permisos de los estrictamente necesarios para cada tool. Documenten bien el discovery: cualquier cliente debe poder entender qué puede hacer el servidor sin necesitar contexto humano adicional.
+## Qué SÍ vale la pena recordar
 
-Y no dejen la migración a medias: quiero que el propio agente reemplace su tool directa del Incidents Manager por una llamada al MCP Server como cliente. Si el agente sigue llamando al Incidents Manager por fuera del servidor, el ticket no está resuelto.
+- **Reglas de asignación de carrier corregidas**: si un carrier cambió su cobertura para cierta zona, o si dejó de operar cierta ruta, vale la pena recordarlo.
+- **Contexto de incidentes conocidos y recurrentes**: "los retrasos en la ruta de Zaragoza a Cataluña esta semana son por una huelga de transportistas, no un problema de TrackFlow" — útil para no re-escalar la misma alerta.
+- **Preferencias de clientes B2B recurrentes** sobre su reporte mensual (formato, métricas destacadas).
 
-Los criterios de aceptación están en el checklist. Avísenme cuando esté listo para probarlo desde un cliente MCP.
+## Qué NUNCA debe entrar en la memoria
 
-Como parte del reto, tu implementación debe resolver — sin que se te diga explícitamente en un checklist — las siguientes decisiones de diseño:
+- Direcciones exactas de clientes finales (B2C) o rutas internas del almacén — es información sensible de seguridad física, tal como señala el propio README de guardrails de la empresa.
+- Datos de una incidencia puntual de un solo paquete sin patrón repetible (una queja aislada de un cliente no es memorizable).
+- Información de contratos comerciales activos en negociación (eso lo maneja el CRM del equipo comercial, no la memoria del agente de soporte).
 
-Qué transporte usar (stdio vs. Streamable HTTP) según si el servidor se consume localmente o por múltiples clientes remotos, y qué implica esa elección para la autenticación.
-Cómo estructurar el sistema de permisos para que la tool de inventario sea, por diseño, de solo lectura — no basta con "no implementar" el endpoint de escritura, el servidor debe rechazar explícitamente cualquier intento.
-Qué información exponer en el discovery (nombres, descripciones y esquemas de las tools) para que un agente externo, sin contexto humano previo, entienda qué puede y qué no puede hacer.
-Cómo reemplazar, dentro del grafo del agente, el nodo que llamaba directamente al Incidents Manager por tools del MCP Server vía langchain-mcp-adapters — sin romper el enrutamiento entre RAG y tools que ya tenías funcionando.
+## Ejemplos para tu checklist de "Auto-evaluación"
 
+**Deberían generar una propuesta de memoria:**
+1. "En realidad SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado."
+2. "Esos retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema nuestro — ya van tres tickets sobre lo mismo."
+3. "El cliente de cosméticos siempre quiere su reporte mensual con el desglose de devoluciones primero, antes que el volumen de envíos."
 
-Trabaja sobre el backend del Incidents Manager y del módulo de inventario que ya construiste en hitos anteriores — el MCP Server se apoya en esos servicios, no los reemplaza.
-Instala las dependencias necesarias con uv add (por ejemplo, fastmcp, mcpauth, langchain-mcp-adapters) — nunca uses pip install directamente en este monorepo.
-Crea el servidor MCP dentro de la carpeta mcps/ del monorepo (no bajo services/).
-Cablea OAuth con MCP Auth (paquete Python mcpauth) — OAuth 2.1 / OIDC listo para usar en servidores MCP como resource server. No uses las helpers de auth integradas de FastMCP; usa MCP Auth para Protected Resource Metadata, validación de JWT bearer y scopes.
-Ubica el nodo del agente que hoy llama directamente al Incidents Manager — es el punto que vas a migrar para que consuma el nuevo MCP Server como cliente en lugar de llamar la API por fuera de él.
+**NO deberían generar una propuesta:**
+1. "¿Dónde está el paquete con tracking XJ4471?" (consulta puntual de tracking, no un patrón).
+2. "Perfecto, ya quedó resuelto." (cierre de conversación).
+3. "Tradúceme esto al inglés para el cliente." (tarea de un solo uso).
+
+## Consolidación sugerida
+
+TrackFlow opera con 8 carriers entre dos países. Considera consolidar la memoria por carrier + país en vez de por ticket individual, para que las reglas de asignación no queden fragmentadas en decenas de entradas sueltas.
+
+## Restricciones de la empresa
+
+TrackFlow distingue entre clientes B2B (marcas) y B2C (destinatarios finales). Tu validación de "qué nunca debe recordarse" debe cubrir explícitamente los datos sensibles de ubicación de ambos tipos de cliente, no solo uno.

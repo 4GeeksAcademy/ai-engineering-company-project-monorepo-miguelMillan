@@ -1,5 +1,31 @@
 # Progress Log — TrackFlow
 
+## Memoria y auto-mejora del agente (Hito 8, Parte 1), 2026-11-21
+
+- Contexto archivado en `memory-bank/history/AGENT-MEMORY-CONTEXT-2026-11-20.md` (verificado con `cmp`). Rama `feature/agent-memory`. `VERIFICATION-PHASES-1-4.md` aparece borrado en el árbol: lo hizo el desarrollador, no se tocó.
+- Backend: Redis (namespace `trackflow:agent_memory:*`, base 2 en compose), nunca Qdrant `trackflow_knowledge`. Memoria semántica estructurada por clave: carrier+país, país+ruta y cliente B2B. Justificación y descartes (episódica, VectorDB, knowledge graph) en `docs/agent/agent-memory.md`.
+- `services/agent/memory.py`:
+  - Tres tipos memorizables exactos del CONTEXT.
+  - Guardrails en código para lo prohibido: ubicación B2C **y** B2B, rutas internas del almacén, un solo paquete sin patrón y contratos en negociación.
+  - Puerta de auto-evaluación determinista; clasificador `classify_pending_reply` (`aprobar`, `rechazar`, `editar`, `otro_tema`).
+  - Store con una sola propuesta pendiente por conversación, `confirm` / `edit_and_confirm` como únicas escrituras y auditoría de cada decisión.
+  - Consolidación: deduplicación, topes con LRU y caducidad (reglas 180 días, incidentes 7 días, B2B 365 días sin uso, propuestas 24 h → `caducada_sin_respuesta`).
+- Grafo: nodos `resolve_pending_memory` (primero), `memory_acknowledge`, `recall_memory` y `propose_memory`. Como máximo una llamada al modelo por interacción.
+- Decisión medida: con la puerta abierta, la única llamada es la auto-evaluación `{"propuesta_memoria": …}` y la respuesta es determinista (acuse más la base de conocimiento).
+  - Con `qwen2.5:1.5b`, pedir respuesta y propuesta en la misma llamada dio `propuesta_memoria` null en 6 de 6 intentos (tres prompts).
+  - Además, el texto libre afirmaba la corrección no aprobada como un hecho.
+  - Se probó `qwen2.5:3b`; el desarrollador interrumpió la prueba y el modelo se borró (1,9 GB).
+- API: `conversation_id` (aislado por usuario), `memory_proposal` y `memory_resolution` en `/agent/query`; `GET /agent/memory`, `GET /agent/memory/audit` y confirmación o rechazo explícitos.
+- Validación:
+  - `uv run pytest tests -q` → 266 passed; `services/api` → 104 passed.
+  - Evidencia real (`scripts/record_memory_evidence.py`):
+    - 11 casos de auto-evaluación: 3 memorizables proponen el tipo correcto; 3 no memorizables, puerta cerrada sin llamada al modelo; 5 prohibidos sin propuesta, 4 de ellos rechazados por los guardrails con su código.
+    - Ciclos aprobado (reflejado en una conversación nueva), rechazado (memoria idéntica) y de cambio de tema (descartado).
+  - Evals de memoria: 17 passed. Evals del agente regrabados con el grafo nuevo (`AGENT_MEMORY_ENABLED=0`): 17 passed.
+- Incidencias del entorno: el Codespace se reinició dos veces y se borró el scratchpad (`/tmp`), con los secretos de desarrollo. Ahora viven en `~/.config/trackflow-dev/` (fuera del repo, 600). Keycloak se recreó con credenciales nuevas, la TinyDB se volvió a sembrar con el seed oficial y el puerto 8090 ya no es público tras el reinicio.
+- Limitación: el modelo de desarrollo resume a veces el hecho (p. ej. omitió "usar el carrier local"); el usuario puede editar con «guárdalo como: …». Riesgo abierto: un agente con credenciales puede aprobar una regla falsa; un segundo aprobador o un rol queda para la Parte 2.
+- Sin commit.
+
 ## Servidor MCP (mcps/trackflow_mcp) + migración del agente a cliente MCP, 2026-11-20
 
 - Contexto nuevo archivado en `memory-bank/history/MCP-SERVER-CONTEXT-2026-11-20.md` (verificado con `cmp`). Rama `feature/mcp-server` desde `main` (#38 fusionado).

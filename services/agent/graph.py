@@ -74,6 +74,18 @@ from services.agent.tools import (  # noqa: E402
     lookup_incidents,
     lookup_inventory,
 )
+from services.agent.memory import (  # noqa: E402
+    MemoryEntry,
+    MemoryStore,
+    MemoryWriteRejected,
+    PendingAlreadyOpen,
+    check_proposal,
+    classify_pending_reply,
+    enrich_proposal,
+    evaluate_memory_gate,
+    parse_proposal,
+)
+from services.agent.memory_llm import generate_with_memory, reflect_memory  # noqa: E402
 from services.agent.tracing import TraceStore, _now  # noqa: E402
 
 logger = logging.getLogger("trackflow.agent")
@@ -105,12 +117,21 @@ class RetrievedChunk(TypedDict):
 
 class AgentState(TypedDict):
     question: str
+    session_id: NotRequired[str]                         # conversación (para la propuesta pendiente)
+    memory_resolution: NotRequired[dict[str, Any]]       # cómo respondió el usuario a la propuesta pendiente
     error: NotRequired[Literal["empty_question", "question_too_long"]]
     plan: NotRequired[SourcePlan]
     incident_result: NotRequired[dict[str, Any]]   # IncidentToolResult serializado
     inventory_result: NotRequired[dict[str, Any]]  # InventoryToolResult serializado
     context: NotRequired[list[RetrievedChunk]]
     answer: NotRequired[str]
+    # Memoria (Hito 8): lo recordado, la decisión de auto-evaluación y la propuesta.
+    memory_gate: NotRequired[dict[str, Any]]            # MemoryGate: ¿hay algo nuevo o corregido que valga recordar?
+    memories: NotRequired[list[dict[str, Any]]]          # MemoryEntry relevantes (lectura explícita)
+    memory_evaluated_by: NotRequired[Literal["reflect"]]
+    memory_proposal_raw: NotRequired[Any]                # campo propuesta_memoria tal como lo devolvió el modelo
+    memory_proposal: NotRequired[dict[str, Any] | None]  # propuesta pendiente (id, tipo, hecho…) o None
+    memory_rejection: NotRequired[dict[str, Any]]        # propuesta descartada por los guardrails (códigos)
 
 
 def _has_tool_results(state: AgentState) -> bool:
@@ -184,21 +205,187 @@ def make_retrieve_node(retrieve_fn: Callable[..., list[dict[str, Any]]]):
     return retrieve_node
 
 
-def make_generate_node(generate_fn: Callable[[str, list[dict[str, Any]]], str]):
+RESOLUTION_ACKS = {
+    "aprobada": "✅ Memoria actualizada: «{hecho}». Lo tendré en cuenta en las próximas conversaciones.",
+    "editada_y_aprobada": "✅ Memoria actualizada con tu corrección: «{hecho}».",
+    "rechazada": "De acuerdo, no lo guardo: la memoria queda sin cambios.",
+    "rechazada_por_guardrails": "No puedo guardar eso en memoria ({codes}); la memoria queda sin cambios.",
+    "descartada_sin_respuesta_clara": "(Descarté la propuesta de memoria anterior porque no respondiste sí o no; no se guardó nada.)",
+}
+
+
+def make_resolve_node(memory_store: Callable[[], MemoryStore | None]):
+    def resolve_pending_memory(state: AgentState, config) -> dict[str, Any]:
+        """Si la conversación tiene una propuesta pendiente, el mensaje se evalúa PRIMERO contra ella.
+
+        Clasificación explícita (``classify_pending_reply``): aprobar, rechazar, editar u otro_tema. Lo que no es
+        un sí o un no claro descarta la propuesta: nunca se aprueba por silencio ni por ambigüedad. El resto
+        del mensaje continúa por el grafo con normalidad.
+        """
+        store, session = memory_store(), state.get("session_id")
+        if store is None or not session:
+            return {}
+        try:
+            pending = store.session_pending(session)
+        except Exception:  # noqa: BLE001
+            logger.exception("no se pudo leer la propuesta pendiente")
+            return {}
+        if pending is None:
+            return {}
+        intent = classify_pending_reply(state["question"])
+        user = config["configurable"].get("user") or f"sesion:{session}"
+        hecho, codes = pending.proposal.hecho, ""
+        try:
+            if intent.label == "aprobar":
+                store.confirm(pending.id, approved_by=user, reply=state["question"])
+                outcome = "aprobada"
+            elif intent.label == "editar":
+                store.edit_and_confirm(pending.id, intent.edited_fact or hecho, approved_by=user, reply=state["question"])
+                outcome, hecho = "editada_y_aprobada", intent.edited_fact or hecho
+            elif intent.label == "rechazar":
+                store.reject(pending.id, rejected_by=user, reply=state["question"])
+                outcome = "rechazada"
+            else:
+                store.discard(pending.id, reason=intent.rationale, reply=state["question"])
+                outcome = "descartada_sin_respuesta_clara"
+        except MemoryWriteRejected as error:
+            outcome, codes = "rechazada_por_guardrails", ", ".join(sorted({v.code for v in error.violations}))
+        resolution = {"proposal_id": pending.id, "label": intent.label, "outcome": outcome, "rationale": intent.rationale,
+                      "ack": RESOLUTION_ACKS[outcome].format(hecho=hecho, codes=codes), "remainder": intent.remainder}
+        return {"memory_resolution": resolution, "question": intent.remainder or state["question"]}
+
+    return resolve_pending_memory
+
+
+def memory_acknowledge(state: AgentState) -> dict[str, Any]:
+    """El mensaje solo respondía a la propuesta ("sí", "no, gracias"): se confirma el resultado y termina."""
+    return {"answer": state["memory_resolution"]["ack"]}
+
+
+def make_recall_node(memory_store: Callable[[], MemoryStore | None]):
+    def recall_memory(state: AgentState) -> dict[str, Any]:
+        """Lectura explícita de memoria (solo lo relevante) + criterio de auto-evaluación para esta interacción."""
+        gate = evaluate_memory_gate(state["question"])
+        store, memories = memory_store(), []
+        if store is not None:
+            try:
+                memories = [m.model_dump() for m in store.recall(state["question"])]
+            except Exception:  # noqa: BLE001 — sin memoria se responde igual que antes
+                logger.exception("recall de memoria no disponible")
+        return {"memory_gate": gate.model_dump(), "memories": memories}
+
+    return recall_memory
+
+
+def make_generate_node(generate_fn: Callable[[str, list[dict[str, Any]]], str], memory_generate_fn: Callable[..., str]):
     def generate_node(state: AgentState) -> dict[str, Any]:
-        """Genera la respuesta SOLO a partir del contexto ya recuperado."""
+        """Genera la respuesta SOLO a partir del contexto recuperado y, si la hay, de la memoria aprobada relevante."""
         question = state.get("plan", {}).get("rag_question") or state["question"]
-        return {"answer": generate_fn(question, state["context"])}
+        memories = [MemoryEntry.model_validate(m) for m in state.get("memories") or []]
+        if not memories:
+            return {"answer": generate_fn(question, state.get("context") or [])}
+        return {"answer": memory_generate_fn(question, state.get("context") or [], memories)}
 
     return generate_node
 
 
+def statement_ack(state: AgentState) -> str:
+    """Respuesta determinista a un mensaje que aporta un dato (puerta de memoria abierta, sin tools).
+
+    El agente NO da por cierta una corrección que nadie ha aprobado (defensa contra el envenenamiento): acusa
+    recibo, muestra lo que dice hoy la base de conocimiento y, si procede, propone recordarlo.
+    """
+    lines = ["Tomo nota de lo que indicas. Todavía no está verificado ni guardado en memoria."]
+    for chunk in (state.get("context") or [])[:2]:
+        lines.append(f"Lo que dice hoy la base de conocimiento: «{' '.join(chunk['text'].split())[:280]}» "
+                     f"({chunk['source_document']} — {chunk['section']}).")
+    for memory in state.get("memories") or []:
+        lines += [f"Memoria aprobada relacionada: {line}" for line in MemoryEntry.model_validate(memory).lines()]
+    return "\n".join(lines)
+
+
 def compose_answer(state: AgentState) -> dict[str, Any]:
-    """Une, en orden de ejecución, los resultados de las tools (texto determinista) y la parte del RAG."""
-    return {"answer": answers.compose(
+    """Une, en orden de ejecución, los resultados de las tools (texto determinista), la parte del RAG y,
+    si la hay, la memoria aprobada relevante (para no re-escalar un incidente ya explicado)."""
+    rag_answer = state.get("answer")
+    if state.get("memory_gate", {}).get("open") and state.get("context"):
+        rag_answer = "\n".join(line for line in statement_ack({"context": state["context"]}).splitlines()[1:])
+    answer = answers.compose(
         state.get("incident_result"), state.get("inventory_result"),
-        rag_answer=state.get("answer"), rag_planned="rag" in _planned(state), no_context_answer=NO_CONTEXT_ANSWER,
-    )}
+        rag_answer=rag_answer, rag_planned="rag" in _planned(state), no_context_answer=NO_CONTEXT_ANSWER,
+    )
+    if state.get("memories") and not state.get("context"):
+        lines = [line for m in state["memories"] for line in MemoryEntry.model_validate(m).lines()]
+        answer += "\n\nContexto recordado (memoria aprobada por el equipo):\n" + "\n".join(f"- {line}" for line in lines)
+    return {"answer": answer}
+
+
+MEMORY_TYPE_LABELS = {
+    "regla_carrier": "regla de carrier",
+    "contexto_incidente_recurrente": "contexto de incidente recurrente",
+    "preferencia_reporte_b2b": "preferencia de reporte B2B",
+}
+
+
+def make_propose_node(memory_store: Callable[[], MemoryStore | None], reflect_fn: Callable[..., Any]):
+    def propose_memory(state: AgentState, config) -> dict[str, Any]:
+        """Auto-evaluación: valida la propuesta del modelo y, si procede, la PROPONE al usuario al final de la respuesta.
+
+        Nunca escribe en memoria: guarda una propuesta pendiente que solo un usuario puede confirmar.
+        """
+        gate = state.get("memory_gate") or {}
+        resolution = state.get("memory_resolution")
+        ack = resolution["ack"] + "\n\n" if resolution else ""
+        update: dict[str, Any] = {"memory_proposal": None}
+        base = state.get("answer")
+        if gate.get("open") and base is None:
+            base = statement_ack(state)  # el mensaje aporta un dato: acuse determinista, sin dar nada por cierto
+        base = base or ""
+        if ack or base != state.get("answer"):
+            update["answer"] = ack + base
+        if not gate.get("open"):
+            return update
+        # Auto-evaluación: la ÚNICA llamada al modelo de esta interacción, con salida estructurada propuesta_memoria.
+        try:
+            raw = reflect_fn(state["question"], base, [MemoryEntry.model_validate(m) for m in state.get("memories") or []],
+                             gate=gate)
+        except Exception as error:  # noqa: BLE001 — la auto-evaluación nunca rompe la respuesta
+            logger.warning("auto-evaluación de memoria no disponible: %r", error)
+            return update | {"memory_evaluated_by": "reflect",
+                             "memory_rejection": {"codes": ["AUTOEVALUACION_NO_DISPONIBLE"], "detail": type(error).__name__}}
+        update |= {"memory_evaluated_by": "reflect", "memory_proposal_raw": raw}
+        raw, filled = enrich_proposal(raw, state["question"], gate)
+        if filled:  # queda en el trace qué claves completó el código (el modelo decidió y redactó el hecho)
+            update["memory_proposal_raw"] = {**raw, "_campos_completados_por_el_sistema": filled}
+        proposal, parse_error = parse_proposal(raw)
+        if proposal is None:
+            if parse_error:
+                update["memory_rejection"] = {"codes": ["PROPUESTA_MAL_FORMADA"], "detail": parse_error}
+            return update  # el modelo decidió que no hay nada que recordar
+        violations = check_proposal(proposal, state["question"])
+        if violations:
+            return update | {"memory_rejection": {"codes": sorted({v.code for v in violations}),
+                                                  "violations": [v.model_dump() for v in violations],
+                                                  "proposal": proposal.model_dump()}}
+        store = memory_store()
+        if store is None:
+            return update | {"memory_rejection": {"codes": ["MEMORIA_NO_DISPONIBLE"], "proposal": proposal.model_dump()}}
+        try:
+            pending = store.save_pending(proposal, state["question"], config["configurable"]["thread_id"],
+                                         session_id=state.get("session_id"))
+        except PendingAlreadyOpen:
+            # Solo una propuesta pendiente a la vez: no se lanza otra hasta cerrar la primera.
+            return update | {"memory_rejection": {"codes": ["PROPUESTA_PENDIENTE_ABIERTA"], "proposal": proposal.model_dump()}}
+        except Exception as error:  # noqa: BLE001
+            logger.warning("no se pudo guardar la propuesta de memoria: %r", error)
+            return update | {"memory_rejection": {"codes": ["MEMORIA_NO_DISPONIBLE"], "proposal": proposal.model_dump()}}
+        question = (f"\n\n📌 Propuesta de memoria ({MEMORY_TYPE_LABELS[proposal.tipo]}): «{proposal.hecho}». "
+                    f"Motivo: {proposal.motivo}. ¿Quieres que lo recuerde para las próximas conversaciones? "
+                    f"(propuesta {pending.id}; no se guarda nada hasta que la confirmes)")
+        return update | {"answer": ack + base + question,
+                         "memory_proposal": {"id": pending.id, **proposal.model_dump()}}
+
+    return propose_memory
 
 
 def no_context(state: AgentState) -> dict[str, Any]:
@@ -217,7 +404,11 @@ NODE_WRITES: dict[str, frozenset[str]] = {
     "mcp_incidents": frozenset({"incident_result"}),
     "mcp_inventory": frozenset({"inventory_result"}),
     "retrieve": frozenset({"context"}),
+    "resolve_pending_memory": frozenset({"memory_resolution", "question"}),
+    "memory_acknowledge": frozenset({"answer"}),
+    "recall_memory": frozenset({"memory_gate", "memories"}),
     "generate": frozenset({"answer"}),
+    "propose_memory": frozenset({"answer", "memory_evaluated_by", "memory_proposal_raw", "memory_proposal", "memory_rejection"}),
     "compose_answer": frozenset({"answer"}),
     "no_context": frozenset({"answer"}),
     "invalid_question": frozenset({"answer"}),
@@ -227,8 +418,13 @@ NODE_WRITES: dict[str, frozenset[str]] = {
 # --------------------------------------------------------------------------
 # Aristas condicionales
 # --------------------------------------------------------------------------
-def route_after_receive(state: AgentState) -> Literal["invalid_question", "plan_sources"]:
-    return "invalid_question" if state.get("error") else "plan_sources"
+def route_after_resolve(state: AgentState) -> Literal["memory_acknowledge", "receive_question"]:
+    resolution = state.get("memory_resolution")
+    return "memory_acknowledge" if resolution and not resolution["remainder"].strip() else "receive_question"
+
+
+def route_after_receive(state: AgentState) -> Literal["invalid_question", "recall_memory"]:
+    return "invalid_question" if state.get("error") else "recall_memory"
 
 
 def route_after_plan(state: AgentState) -> Literal["mcp_incidents", "mcp_inventory", "retrieve"]:
@@ -251,19 +447,26 @@ def route_after_inventory(state: AgentState) -> Literal["retrieve", "compose_ans
     return "retrieve" if "rag" in _planned(state) else "compose_answer"
 
 
-def route_after_retrieve(state: AgentState) -> Literal["generate", "compose_answer", "no_context"]:
-    if state.get("context"):
+def route_after_retrieve(state: AgentState) -> Literal["generate", "compose_answer", "no_context", "propose_memory"]:
+    gate_open = bool(state.get("memory_gate", {}).get("open"))
+    if gate_open:
+        # El mensaje aporta un dato: no se redacta texto libre (no se da por cierto) y la única llamada al
+        # modelo es la auto-evaluación de propose_memory.
+        return "compose_answer" if _has_tool_results(state) else "propose_memory"
+    if state.get("context") or (state.get("memories") and not _has_tool_results(state)):
         return "generate"
     return "compose_answer" if _has_tool_results(state) else "no_context"
 
 
-def route_after_generate(state: AgentState) -> Literal["compose_answer", "__end__"]:
-    return "compose_answer" if _has_tool_results(state) else END
+def route_after_generate(state: AgentState) -> Literal["compose_answer", "propose_memory"]:
+    return "compose_answer" if _has_tool_results(state) else "propose_memory"
 
 
 ROUTE_REASONS = {
+    ("route_after_resolve", "memory_acknowledge"): "el mensaje solo respondía a la propuesta de memoria pendiente",
+    ("route_after_resolve", "receive_question"): "no hay propuesta pendiente, o el mensaje sigue con otra pregunta",
     ("route_after_receive", "invalid_question"): "pregunta vacía o demasiado larga",
-    ("route_after_receive", "plan_sources"): "pregunta válida",
+    ("route_after_receive", "recall_memory"): "pregunta válida",
     ("route_after_plan", "mcp_incidents"): "el plan incluye el gestor de incidencias (vía servidor MCP)",
     ("route_after_plan", "mcp_inventory"): "el plan incluye el gestor de inventario (vía servidor MCP)",
     ("route_after_plan", "retrieve"): "el plan solo necesita la base de conocimiento",
@@ -272,11 +475,12 @@ ROUTE_REASONS = {
     ("route_after_incidents", "compose_answer"): "no hay más fuentes planificadas",
     ("route_after_inventory", "retrieve"): "falta consultar la base de conocimiento",
     ("route_after_inventory", "compose_answer"): "no hay más fuentes planificadas",
-    ("route_after_retrieve", "generate"): "hay contexto ≥ min_score",
+    ("route_after_retrieve", "generate"): "hay contexto ≥ min_score o memoria aprobada relevante",
+    ("route_after_retrieve", "propose_memory"): "el mensaje aporta un dato memorizable: auto-evaluación y acuse sin darlo por cierto",
     ("route_after_retrieve", "compose_answer"): "sin contexto ≥ min_score; se responde con las tools",
     ("route_after_retrieve", "no_context"): "ningún chunk supera min_score",
     ("route_after_generate", "compose_answer"): "hay resultados de tools que combinar",
-    ("route_after_generate", END): "solo RAG: la respuesta generada es la final",
+    ("route_after_generate", "propose_memory"): "solo RAG: la respuesta generada es la final",
 }
 
 
@@ -345,17 +549,24 @@ def build_agent_graph(
     incidents_fn: Callable[..., IncidentToolResult] = lookup_incidents,
     inventory_fn: Callable[..., InventoryToolResult] = lookup_inventory,
     mcp: Callable[[], McpCaller] = default_mcp,
+    memory_store: Callable[[], MemoryStore | None] = lambda: None,
+    memory_generate_fn: Callable[..., str] = generate_with_memory,
+    reflect_fn: Callable[..., Any] = reflect_memory,
     traces: TraceStore | None = None,
 ) -> StateGraph:
     """Define nodos y aristas (sin compilar). Las funciones solo se inyectan en tests."""
     nodes = {
+        "resolve_pending_memory": make_resolve_node(memory_store),
+        "memory_acknowledge": memory_acknowledge,
         "receive_question": receive_question,
+        "recall_memory": make_recall_node(memory_store),
         "plan_sources": plan_sources,
         "mcp_incidents": make_incidents_node(incidents_fn, mcp),
         "mcp_inventory": make_inventory_node(inventory_fn, mcp),
         "retrieve": make_retrieve_node(retrieve_fn),
-        "generate": make_generate_node(generate_fn),
+        "generate": make_generate_node(generate_fn, memory_generate_fn),
         "compose_answer": compose_answer,
+        "propose_memory": make_propose_node(memory_store, reflect_fn),
         "no_context": no_context,
         "invalid_question": invalid_question,
     }
@@ -366,15 +577,19 @@ def build_agent_graph(
     def conditional(source: str, route: Callable, destinations: list[str]) -> None:
         builder.add_conditional_edges(source, _traced_route(route, traces), {d: d for d in destinations})
 
-    builder.add_edge(START, "receive_question")
-    conditional("receive_question", route_after_receive, ["invalid_question", "plan_sources"])
+    builder.add_edge(START, "resolve_pending_memory")
+    conditional("resolve_pending_memory", route_after_resolve, ["memory_acknowledge", "receive_question"])
+    builder.add_edge("memory_acknowledge", END)
+    conditional("receive_question", route_after_receive, ["invalid_question", "recall_memory"])
+    builder.add_edge("recall_memory", "plan_sources")
     conditional("plan_sources", route_after_plan, ["mcp_incidents", "mcp_inventory", "retrieve"])
     conditional("mcp_incidents", route_after_incidents, ["mcp_inventory", "retrieve", "compose_answer"])
     conditional("mcp_inventory", route_after_inventory, ["retrieve", "compose_answer"])
-    conditional("retrieve", route_after_retrieve, ["generate", "compose_answer", "no_context"])
-    conditional("generate", route_after_generate, ["compose_answer", END])
-    builder.add_edge("compose_answer", END)
-    builder.add_edge("no_context", END)
+    conditional("retrieve", route_after_retrieve, ["generate", "compose_answer", "no_context", "propose_memory"])
+    conditional("generate", route_after_generate, ["compose_answer", "propose_memory"])
+    builder.add_edge("compose_answer", "propose_memory")
+    builder.add_edge("no_context", "propose_memory")
+    builder.add_edge("propose_memory", END)
     builder.add_edge("invalid_question", END)
     return builder
 
@@ -447,6 +662,27 @@ def sqlite_checkpointer(path: Path | str):
     return SqliteSaver(sqlite3.connect(str(path), check_same_thread=False))
 
 
+MEMORY_NODES = frozenset({"resolve_pending_memory", "recall_memory", "propose_memory"})
+
+
+ANSWER_NODES = frozenset({"generate", "compose_answer", "no_context", "invalid_question", "memory_acknowledge"})
+
+
+def answering_node(trace: dict[str, Any]) -> str:
+    """Nodo que produjo la respuesta. Si fue un acuse de un dato memorizable, es ``propose_memory``."""
+    nodes = [s["name"] for s in trace["steps"] if s["kind"] == "node"]
+    return next((n for n in reversed(nodes) if n in ANSWER_NODES), nodes[-1])
+
+
+def default_memory_store() -> MemoryStore | None:
+    """Redis de ``AGENT_MEMORY_REDIS_URL``; ``None`` (sin memoria) si ``AGENT_MEMORY_ENABLED=0``."""
+    if os.environ.get("AGENT_MEMORY_ENABLED", "1") == "0":
+        return None
+    from services.agent.memory import RedisMemoryStore
+
+    return RedisMemoryStore.from_env()
+
+
 def sources_used(trace: dict[str, Any]) -> list[str]:
     """Fuentes consultadas en una corrida, en orden: 'incidents', 'inventory', 'rag'."""
     return [SOURCE_BY_NODE[s["name"]] for s in trace["steps"] if s["kind"] == "node" and s["name"] in SOURCE_BY_NODE]
@@ -460,6 +696,8 @@ class AgentResult:
     error: str | None
     context_count: int
     sources: list[str] = field(default_factory=list)
+    memory_proposal: dict[str, Any] | None = None
+    memory_resolution: dict[str, Any] | None = None
 
 
 class KnowledgeAgent:
@@ -467,25 +705,34 @@ class KnowledgeAgent:
 
     def __init__(self, *, data_dir: Path | None = None, retrieve_fn=retrieve, generate_fn=generate_answer,
                  incidents_fn=lookup_incidents, inventory_fn=lookup_inventory, mcp: McpCaller | None = None,
-                 checkpointer=None, traces: TraceStore | None = None):
+                 memory_store: MemoryStore | None = None, memory_generate_fn=generate_with_memory,
+                 reflect_fn=reflect_memory, checkpointer=None, traces: TraceStore | None = None):
         data_dir = data_dir or default_data_dir()
         self.traces = traces or TraceStore(data_dir / "traces.sqlite")
         self.checkpointer = checkpointer or sqlite_checkpointer(data_dir / "checkpoints.sqlite")
         # El cliente MCP se crea al primer uso: las preguntas solo-RAG no necesitan servidor MCP.
         mcp_provider = (lambda: mcp) if mcp is not None else default_mcp
+        # Memoria: store explícito (Redis por defecto, AGENT_MEMORY_REDIS_URL); nunca la colección RAG.
+        self.memory_store = memory_store if memory_store is not None else default_memory_store()
         self.graph = compile_agent_graph(
             build_agent_graph(retrieve_fn=retrieve_fn, generate_fn=generate_fn, incidents_fn=incidents_fn,
-                              inventory_fn=inventory_fn, mcp=mcp_provider, traces=self.traces),
+                              inventory_fn=inventory_fn, mcp=mcp_provider, memory_store=lambda: self.memory_store,
+                              memory_generate_fn=memory_generate_fn, reflect_fn=reflect_fn, traces=self.traces),
             checkpointer=self.checkpointer,
         )
 
-    def run(self, question: str, *, run_id: str | None = None) -> AgentResult:
-        """Ejecuta una corrida. Las tools usan la identidad OAuth del agente ante el servidor MCP."""
+    def run(self, question: str, *, run_id: str | None = None, session_id: str | None = None,
+            user: str | None = None) -> AgentResult:
+        """Ejecuta una corrida. ``session_id`` identifica la conversación (propuesta de memoria pendiente) y
+        ``user`` queda en el registro de auditoría de memoria. Las tools usan la identidad OAuth del agente."""
         run_id = run_id or str(uuid.uuid4())
-        config = {"configurable": {"thread_id": run_id}}
+        config = {"configurable": {"thread_id": run_id, "user": user}}
         self.traces.start_run(run_id, question)
+        initial: dict[str, Any] = {"question": question}
+        if session_id:
+            initial["session_id"] = session_id
         try:
-            state = self.graph.invoke({"question": question}, config, durability="sync")
+            state = self.graph.invoke(initial, config, durability="sync")
         except Exception as error:
             trace = self.traces.get_trace(run_id) or {"steps": []}
             failed = next((s["name"] for s in reversed(trace["steps"]) if s["status"] == "error"), None)
@@ -493,11 +740,12 @@ class KnowledgeAgent:
                                    sources=sources_used(trace))
             raise AgentRunError(run_id, failed, error) from error
         trace = self.traces.get_trace(run_id)
-        final_node = next(s["name"] for s in reversed(trace["steps"]) if s["kind"] == "node")
+        final_node = answering_node(trace)
         sources = sources_used(trace)
         self.traces.finish_run(run_id, status="completed", final_node=final_node, sources=sources)
         return AgentResult(run_id=run_id, answer=state["answer"], final_node=final_node, error=state.get("error"),
-                           context_count=len(state.get("context") or []), sources=sources)
+                           context_count=len(state.get("context") or []), sources=sources,
+                           memory_proposal=state.get("memory_proposal"), memory_resolution=state.get("memory_resolution"))
 
     def checkpoints(self, run_id: str) -> list[dict[str, Any]]:
         """Historial de checkpoints de una corrida (del más antiguo al más reciente)."""

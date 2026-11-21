@@ -22,7 +22,7 @@ from services.agent.graph import KnowledgeAgent, sqlite_checkpointer
 from services.agent.mcp_client import OAuthClientCredentials, TrackflowMcpTools
 from services.agent.tracing import TraceStore, executed_nodes
 
-from tests.conftest import TEST_SECRET
+TEST_SECRET = "test-secret-key-with-at-least-32-bytes"  # mismo valor que tests/conftest.py del API
 
 SERVICE_EMAIL, SERVICE_PASSWORD = "mcp-service@example.com", "contraseña-de-servicio-mcp"
 
@@ -109,5 +109,5 @@ def test_agent_reads_real_ticket_status_as_mcp_client(stack, tmp_path):
     result = agent.run(f"¿En qué estado está el ticket {ticket_id}?")
 
     assert result.sources == ["incidents"]
-    assert executed_nodes(agent.traces.get_trace(result.run_id)) == ["receive_question", "plan_sources", "mcp_incidents", "compose_answer"]
+    assert executed_nodes(agent.traces.get_trace(result.run_id)) == ["resolve_pending_memory", "receive_question", "recall_memory", "plan_sources", "mcp_incidents", "compose_answer", "propose_memory"]
     assert "**Abierta**" in result.answer and "Paquete extraviado en Zaragoza" in result.answer
