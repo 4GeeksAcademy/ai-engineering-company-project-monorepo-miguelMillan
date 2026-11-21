@@ -27,13 +27,42 @@ Ningún archivo contiene tokens ni secretos (revisado con `grep`).
 | Los errores de autenticación, autorización y validación tienen códigos y mensajes distintos | ✅ | Autenticación: HTTP 401 `missing_auth_header` / `invalid_token` / `invalid_audience` / `invalid_issuer`. Base scope: HTTP 403 `missing_required_scopes`. Autorización por tool: `INSUFFICIENT_SCOPE` (con `required_scope` y `granted_scopes`). Validación: `VALIDATION_ERROR` (con `field`). Además: `INVALID_STATUS_TRANSITION`, `NOT_FOUND` e `INVENTORY_READ_ONLY` |
 | Al menos un log por invocación de tool con cliente, tool y resultado | ✅ | `audit-log-public-url.jsonl`: 16 `tool_call` y 4 `auth_rejected` en la verificación pública |
 | El agente ya no llama directamente al Incidents Manager | ✅ | Nodos `mcp_incidents` / `mcp_inventory` con `langchain-mcp-adapters` y OAuth `client_credentials` (`trackflow-agent`). La implementación HTTP directa se eliminó. Los evals se regrabaron con los servicios reales **a través del servidor MCP**: 17 passed, con el criterio `mcp_tool` |
-| MCP Playground con la URL pública reenviada de Codespaces | ⚠️ Parcial | El puerto 8090 es **público** y el servidor está configurado para esa URL: es su `resource`, el `aud` de los tokens, el host permitido y el CORS de `mcpplaygroundonline.com`, con el preflight comprobado. Los flujos de cada tool se ejecutaron contra esa URL pública con un cliente MCP. **La sesión en la web de MCP Playground la tiene que hacer una persona**: el asistente no tiene navegador. Pasos en la sección siguiente |
+| MCP Playground con la URL pública reenviada de Codespaces | ✅ | Sesión real en **mcpplaygroundonline.com** el 2026-11-21, conectada a `https://<codespace>-8090.app.github.dev/mcp` (no localhost) con un bearer token: 5 tools descubiertas, `incidents_get_ticket` ejecutada (ticket `d32a9b66-…`, `open`) e intento de escritura en inventario rechazado con `INVENTORY_READ_ONLY`. Capturas y trace del servidor en [`playground/`](#sesión-en-mcp-playground-2026-11-21) |
 
-## Probar en MCP Playground
+## Sesión en MCP Playground (2026-11-21)
 
-1. Abrir https://mcpplaygroundonline.com.
-2. Elegir **Streamable HTTP** y la URL `https://<codespace>-8090.app.github.dev/mcp`.
-3. Conseguir el token: autenticación **Bearer token**, con un token del cliente `trackflow-ops-console`. Caduca en 15 min:
+Sesión real en la web de **MCP Playground** (`https://mcpplaygroundonline.com/mcp-test-server`), conectada a la URL **pública** reenviada por Codespaces, no a localhost.
+
+Cómo se hizo: el navegador fue Chromium headless manejado con Playwright, con el script [`mcps/trackflow_mcp/dev/playground_session.cjs`](../../../mcps/trackflow_mcp/dev/playground_session.cjs), que la hace reproducible. La configuración fue:
+- MCP version: Auto detect;
+- transporte: HTTP / Streamable HTTP;
+- Auth Header: `Bearer <token>` del cliente `trackflow-ops-console`, de 15 min.
+
+El token solo se escribió en el campo enmascarado del Playground. El script comprobó que no aparece en el texto visible de ninguna pantalla, y tampoco está en los logs del servidor.
+
+| Paso | Captura |
+|---|---|
+| 1. Formulario con la URL pública y el token enmascarado | ![formulario](playground/01-formulario-url-publica.png) |
+| 2. Conectado («LIVE»): 5 tools descubiertas por `tools/list` | ![conectado](playground/02-conectado-5-tools.png) |
+| 3. `incidents_get_ticket` con `d32a9b66-b81b-5dce-b90f-c4e8bfc27161` → ticket real, `status: open` | ![incidents_get_ticket](playground/03-incidents_get_ticket-resultado.png) |
+| 4. Intento de escritura: `inventory_query_products` con `operation=update`, `product_id=1` → `INVENTORY_READ_ONLY` | ![inventario](playground/04-inventario-escritura-rechazada.png) |
+| 5. Protocol Logs del Playground: `tools/call` con `isError: true` e `INVENTORY_READ_ONLY` | ![logs](playground/05-logs-json-rpc.png) |
+
+**Trace del lado del servidor**, de la misma sesión:
+- [`playground/audit-log-playground-session.jsonl`](playground/audit-log-playground-session.jsonl): log de auditoría del servidor MCP. Son 2 `tools_list` y 2 `tool_call` del cliente `trackflow-ops-console`:
+  - `incidents_get_ticket` → `ok` (16:58:45 UTC);
+  - `inventory_query_products` → `error` / `INVENTORY_READ_ONLY` (16:58:54 UTC).
+
+  Coinciden con las horas que muestran los Protocol Logs del Playground (4:58 PM).
+- [`playground/server-access-log.txt`](playground/server-access-log.txt): log de acceso de uvicorn.
+  - Las peticiones llegan desde **IPs públicas de AWS** (44.197.x, 54.146.x, 44.223.x), que son el backend de MCP Playground, a través de la URL pública de Codespaces.
+  - Los `400` y `405` son el sondeo de "Auto detect": el Playground prueba la variante stateless 2026-07-28 y el SSE por `GET`, que este servidor (Streamable HTTP, JSON) no ofrece, y después continúa con la versión soportada.
+
+### Repetirlo a mano
+
+1. Abrir https://mcpplaygroundonline.com/mcp-test-server.
+2. Elegir **HTTP / Streamable HTTP** y la URL `https://<codespace>-8090.app.github.dev/mcp`. El puerto 8090 debe estar en público: `gh codespace ports visibility 8090:public -c "$CODESPACE_NAME"`.
+3. Auth Header: `Bearer <token>`, con un token del cliente `trackflow-ops-console` (caduca en 15 min):
 
    ```bash
    source <fichero de secretos fuera del repo>
@@ -41,12 +70,5 @@ Ningún archivo contiene tokens ni secretos (revisado con `grep`).
      -d client_id=trackflow-ops-console -d client_secret=$TRACKFLOW_OPS_CONSOLE_CLIENT_SECRET | jq -r .access_token
    ```
 
-4. Conectar sin token: debe fallar (401).
-5. Conectar con el token: aparecen las 5 tools.
-6. Ejecutar un flujo por tool:
-   - `incidents_create_ticket`;
-   - `incidents_update_ticket_status` → `in_progress`;
-   - `incidents_get_ticket`;
-   - `incidents_list_tickets` con `status=open`;
-   - `inventory_query_products` con `operation=list`.
-7. Intento de escritura: `inventory_query_products` con `{"operation": "update", "product_id": 1, "current_stock": 999}` → `INVENTORY_READ_ONLY`.
+4. Sin token, la conexión falla (401). Con el token aparecen las 5 tools.
+5. Ejecutar una tool, p. ej. `incidents_get_ticket`, y el intento de escritura `inventory_query_products` con `operation=update` → `INVENTORY_READ_ONLY`.

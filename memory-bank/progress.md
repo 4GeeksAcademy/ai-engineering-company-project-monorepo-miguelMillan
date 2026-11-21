@@ -1,5 +1,16 @@
 # Progress Log — TrackFlow
 
+## Revisión PR #39 (servidor MCP): evidencia de MCP Playground, 2026-11-21
+
+- Petición del revisor: la evidencia pública venía de `verify_checklist.py` (cliente MCP) y la fila de Playground estaba como "Parcial". Faltaba una sesión en MCP Playground con la URL pública, el token, una tool ejecutada y una captura o un trace.
+- Sesión real en `https://mcpplaygroundonline.com/mcp-test-server` con Chromium headless (Playwright de `uis/backoffice`, navegador `chromium-1187` de la caché; sin instalar nada).
+  - URL pública `https://<codespace>-8090.app.github.dev/mcp` (puerto 8090 puesto en público) y bearer token de `trackflow-ops-console`.
+  - 5 tools descubiertas; `incidents_get_ticket` → ticket `d32a9b66-…` `open`; `inventory_query_products` con `operation=update` → `INVENTORY_READ_ONLY`.
+- Evidencia en `docs/pr-evidence/mcp-server/playground/`: 5 capturas, la auditoría del servidor de esa sesión (horas cruzadas con los Protocol Logs del Playground) y el log de acceso (IPs de AWS del backend del Playground; los 400/405 son el sondeo de Auto detect).
+- Script reproducible `mcps/trackflow_mcp/dev/playground_session.cjs`: el token solo va al campo enmascarado; se verificó que no aparece en pantallas, logs ni archivos.
+- README de evidencias del #39: la fila de Playground pasa de "Parcial" a ✅.
+- Rama `fix/mcp-playground-evidence` desde `main`.
+
 ## Memoria y auto-mejora del agente (Hito 8, Parte 1), 2026-11-21
 
 - Contexto archivado en `memory-bank/history/AGENT-MEMORY-CONTEXT-2026-11-20.md` (verificado con `cmp`). Rama `feature/agent-memory`. `VERIFICATION-PHASES-1-4.md` aparece borrado en el árbol: lo hizo el desarrollador, no se tocó.
