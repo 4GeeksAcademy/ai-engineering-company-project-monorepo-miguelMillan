@@ -5,25 +5,54 @@
   "final_node": "invalid_question",
   "error_type": null,
   "sources_used": [],
-  "started_at": "2026-11-21T16:33:05.511+00:00",
-  "finished_at": "2026-11-21T16:33:05.528+00:00",
+  "started_at": "2026-11-21T18:39:49.953+00:00",
+  "finished_at": "2026-11-21T18:39:49.979+00:00",
   "steps": [
     {
       "run_id": "eval-empty-question-invalid",
       "seq": 0,
       "kind": "node",
-      "name": "resolve_pending_memory",
-      "started_at": "2026-11-21T16:33:05.517+00:00",
-      "duration_ms": 0.005,
+      "name": "input_guard",
+      "started_at": "2026-11-21T18:39:49.958+00:00",
+      "duration_ms": 0.045,
       "status": "ok",
-      "output": {}
+      "output": {
+        "guard": {
+          "action": "allow",
+          "guard": "input_guard",
+          "reason": "consulta dentro del dominio de soporte"
+        }
+      }
     },
     {
       "run_id": "eval-empty-question-invalid",
       "seq": 1,
       "kind": "route",
+      "name": "route_after_input_guard",
+      "started_at": "2026-11-21T18:39:49.959+00:00",
+      "duration_ms": 0.002,
+      "status": "ok",
+      "output": {
+        "next": "resolve_pending_memory",
+        "reason": "petición dentro del dominio (o reescrita por la guarda)"
+      }
+    },
+    {
+      "run_id": "eval-empty-question-invalid",
+      "seq": 2,
+      "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T18:39:49.962+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "eval-empty-question-invalid",
+      "seq": 3,
+      "kind": "route",
       "name": "route_after_resolve",
-      "started_at": "2026-11-21T16:33:05.518+00:00",
+      "started_at": "2026-11-21T18:39:49.964+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -33,11 +62,11 @@
     },
     {
       "run_id": "eval-empty-question-invalid",
-      "seq": 2,
+      "seq": 4,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-21T16:33:05.521+00:00",
-      "duration_ms": 0.005,
+      "started_at": "2026-11-21T18:39:49.967+00:00",
+      "duration_ms": 0.004,
       "status": "ok",
       "output": {
         "question": "",
@@ -46,10 +75,10 @@
     },
     {
       "run_id": "eval-empty-question-invalid",
-      "seq": 3,
+      "seq": 5,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-21T16:33:05.522+00:00",
+      "started_at": "2026-11-21T18:39:49.968+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -59,19 +88,37 @@
     },
     {
       "run_id": "eval-empty-question-invalid",
-      "seq": 4,
+      "seq": 6,
       "kind": "node",
       "name": "invalid_question",
-      "started_at": "2026-11-21T16:33:05.525+00:00",
-      "duration_ms": 0.004,
+      "started_at": "2026-11-21T18:39:49.971+00:00",
+      "duration_ms": 0.003,
       "status": "ok",
       "output": {
         "answer": "La pregunta está vacía o no es válida. Escribe una pregunta sobre SLA de entrega, política de devoluciones, cobertura de transportistas, tarifas de almacenamiento, el estado de un ticket o el stock de un producto de TrackFlow."
       }
+    },
+    {
+      "run_id": "eval-empty-question-invalid",
+      "seq": 7,
+      "kind": "node",
+      "name": "output_guard",
+      "started_at": "2026-11-21T18:39:49.975+00:00",
+      "duration_ms": 0.584,
+      "status": "ok",
+      "output": {
+        "answer": "La pregunta está vacía o no es válida. Escribe una pregunta sobre SLA de entrega, política de devoluciones, cobertura de transportistas, tarifas de almacenamiento, el estado de un ticket o el stock de un producto de TrackFlow.",
+        "output_check": {
+          "ok": true,
+          "failure_type": null,
+          "codes": [],
+          "detail": ""
+        }
+      }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-21T16:33:05+00:00",
+    "recorded_at": "2026-11-21T18:39:49+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
     "mcp_server_url": "http://127.0.0.1:8090/mcp",
@@ -81,6 +128,9 @@
         "__start__"
       ],
       [
+        "input_guard"
+      ],
+      [
         "resolve_pending_memory"
       ],
       [
@@ -88,6 +138,9 @@
       ],
       [
         "invalid_question"
+      ],
+      [
+        "output_guard"
       ],
       []
     ]

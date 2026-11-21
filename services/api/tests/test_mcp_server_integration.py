@@ -109,5 +109,5 @@ def test_agent_reads_real_ticket_status_as_mcp_client(stack, tmp_path):
     result = agent.run(f"¿En qué estado está el ticket {ticket_id}?")
 
     assert result.sources == ["incidents"]
-    assert executed_nodes(agent.traces.get_trace(result.run_id)) == ["resolve_pending_memory", "receive_question", "recall_memory", "plan_sources", "mcp_incidents", "compose_answer", "propose_memory"]
+    assert executed_nodes(agent.traces.get_trace(result.run_id)) == ["input_guard", "resolve_pending_memory", "receive_question", "recall_memory", "plan_sources", "mcp_incidents", "compose_answer", "propose_memory", "output_guard"]
     assert "**Abierta**" in result.answer and "Paquete extraviado en Zaragoza" in result.answer

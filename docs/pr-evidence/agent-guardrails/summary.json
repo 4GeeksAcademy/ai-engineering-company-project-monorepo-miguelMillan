@@ -1,0 +1,122 @@
+{
+  "recorded_at": "2026-11-21T19:36:02+00:00",
+  "generation_model": "qwen2.5:1.5b",
+  "session": {
+    "user": "cuenta-con-despachos@trackflow.example",
+    "authorized_orders": [
+      "1Z999AA10123456784",
+      "1Z999AA10123456785",
+      "TF-DEMO-OUTBOUND-003",
+      "TF-DEMO-OUTBOUND-004",
+      "TF-DEMO-OUTBOUND-005",
+      "TF-DEMO-OUTBOUND-006",
+      "TF-DEMO-OUTBOUND-007",
+      "TF-DEMO-OUTBOUND-008",
+      "TF-DEMO-THRESHOLD-001",
+      "TF-DEMO-THRESHOLD-002"
+    ]
+  },
+  "summary": {
+    "session_id": "sesion-pruebas-guardrails",
+    "since": null,
+    "total": 18,
+    "by_failure_type": {
+      "contenido": 5,
+      "n/a": 1,
+      "seguridad": 12
+    },
+    "by_guard": [
+      {
+        "guard": "instruction_change",
+        "action": "block",
+        "failure_type": "seguridad",
+        "code": "IGNORAR_INSTRUCCIONES",
+        "n": 3
+      },
+      {
+        "guard": "instruction_change",
+        "action": "block",
+        "failure_type": "seguridad",
+        "code": "OLVIDAR_TRACKFLOW",
+        "n": 2
+      },
+      {
+        "guard": "personal_use",
+        "action": "block",
+        "failure_type": "contenido",
+        "code": "USO_PERSONAL",
+        "n": 2
+      },
+      {
+        "guard": "sensitive_data_request",
+        "action": "block",
+        "failure_type": "seguridad",
+        "code": "TARIFA_CARRIER",
+        "n": 2
+      },
+      {
+        "guard": "general_logistics",
+        "action": "redirect",
+        "failure_type": "contenido",
+        "code": "LOGISTICA_GENERAL",
+        "n": 1
+      },
+      {
+        "guard": "instruction_change",
+        "action": "block",
+        "failure_type": "seguridad",
+        "code": "CAMBIO_DE_ROL",
+        "n": 1
+      },
+      {
+        "guard": "instruction_change",
+        "action": "block",
+        "failure_type": "seguridad",
+        "code": "EXTRACCION_DE_PROMPT",
+        "n": 1
+      },
+      {
+        "guard": "instruction_change",
+        "action": "block",
+        "failure_type": "seguridad",
+        "code": "INYECCION_DE_DELIMITADORES",
+        "n": 1
+      },
+      {
+        "guard": "order_authorization",
+        "action": "block",
+        "failure_type": "seguridad",
+        "code": "PEDIDO_NO_AUTORIZADO",
+        "n": 1
+      },
+      {
+        "guard": "order_tracking",
+        "action": "redirect",
+        "failure_type": null,
+        "code": "TRACKING_AUTORIZADO",
+        "n": 1
+      },
+      {
+        "guard": "policy_country",
+        "action": "redirect",
+        "failure_type": "contenido",
+        "code": "MEZCLA_DE_POLITICAS",
+        "n": 1
+      },
+      {
+        "guard": "sensitive_data_request",
+        "action": "block",
+        "failure_type": "seguridad",
+        "code": "UBICACION_ALMACEN",
+        "n": 1
+      },
+      {
+        "guard": "small_talk",
+        "action": "redirect",
+        "failure_type": "contenido",
+        "code": "PREGUNTA_CASUAL",
+        "n": 1
+      }
+    ]
+  }
+}

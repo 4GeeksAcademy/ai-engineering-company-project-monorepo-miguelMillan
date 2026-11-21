@@ -1,5 +1,5 @@
 {
-  "description": "Evals del agente LangGraph de TrackFlow (Partes 1 y 2, y migración a MCP). Cada caso tiene una pregunta y criterios verificables sobre el TRACE grabado (mock_data/eval/agent-traces/<id>.json), no sobre una ejecución en vivo. Los criterios de anclaje usan datos exactos de docs/company-knowledge-base/ (RAG) y, para las tools, los datos que devolvió el servicio real en esa corrida, obtenidos a través del servidor MCP de TrackFlow (tools incidents_get_ticket, incidents_list_tickets e inventory_query_products, que delegan en el Incidents Manager y el inventario). Para regrabar: uv run python scripts/record_agent_traces.py con el API, el servidor MCP, el proveedor OIDC, Qdrant y el LLM en marcha y AGENT_OAUTH_CLIENT_ID/AGENT_OAUTH_CLIENT_SECRET definidos.",
+  "description": "Evals del agente LangGraph de TrackFlow (Partes 1 y 2, migración a MCP, memoria y guardrails). Cada caso tiene una pregunta y criterios verificables sobre el TRACE grabado (mock_data/eval/agent-traces/<id>.json), no sobre una ejecución en vivo. Los criterios de anclaje usan datos exactos de docs/company-knowledge-base/ (RAG) y, para las tools, los datos que devolvió el servicio real en esa corrida, obtenidos a través del servidor MCP de TrackFlow (tools incidents_get_ticket, incidents_list_tickets e inventory_query_products, que delegan en el Incidents Manager y el inventario). Para regrabar: uv run python scripts/record_agent_traces.py con el API, el servidor MCP, el proveedor OIDC, Qdrant y el LLM en marcha y AGENT_OAUTH_CLIENT_ID/AGENT_OAUTH_CLIENT_SECRET definidos.",
   "cases": [
     {
       "id": "carrier-aragon-rural",
@@ -7,13 +7,15 @@
       "criteria": {
         "status": "completed",
         "node_order": [
+          "input_guard",
           "resolve_pending_memory",
           "receive_question",
           "recall_memory",
           "plan_sources",
           "retrieve",
           "generate",
-          "propose_memory"
+          "propose_memory",
+          "output_guard"
         ],
         "final_node": "generate",
         "retrieved_includes": [
@@ -40,13 +42,15 @@
       "criteria": {
         "status": "completed",
         "node_order": [
+          "input_guard",
           "resolve_pending_memory",
           "receive_question",
           "recall_memory",
           "plan_sources",
           "retrieve",
           "generate",
-          "propose_memory"
+          "propose_memory",
+          "output_guard"
         ],
         "final_node": "generate",
         "retrieved_includes": [
@@ -122,18 +126,40 @@
       }
     },
     {
-      "id": "out-of-domain-no-context",
+      "id": "personal-use-blocked-by-guardrail",
       "question": "¿Qué receta lleva una paella valenciana?",
       "criteria": {
         "status": "completed",
+        "sources_used": [],
         "node_order": [
+          "input_guard",
+          "guard_response",
+          "output_guard"
+        ],
+        "final_node": "guard_response",
+        "route_decisions": {
+          "route_after_input_guard": "guard_response"
+        },
+        "answer_contains_all": [
+          "no está relacionado con envíos, devoluciones ni incidencias"
+        ]
+      }
+    },
+    {
+      "id": "out-of-domain-no-context",
+      "question": "¿Cuál es la capital de Mongolia?",
+      "criteria": {
+        "status": "completed",
+        "node_order": [
+          "input_guard",
           "resolve_pending_memory",
           "receive_question",
           "recall_memory",
           "plan_sources",
           "retrieve",
           "no_context",
-          "propose_memory"
+          "propose_memory",
+          "output_guard"
         ],
         "final_node": "no_context",
         "nodes_not_executed": [
@@ -159,9 +185,11 @@
       "criteria": {
         "status": "completed",
         "node_order": [
+          "input_guard",
           "resolve_pending_memory",
           "receive_question",
-          "invalid_question"
+          "invalid_question",
+          "output_guard"
         ],
         "final_node": "invalid_question",
         "nodes_not_executed": [
@@ -186,13 +214,15 @@
           "incidents"
         ],
         "node_order": [
+          "input_guard",
           "resolve_pending_memory",
           "receive_question",
           "recall_memory",
           "plan_sources",
           "mcp_incidents",
           "compose_answer",
-          "propose_memory"
+          "propose_memory",
+          "output_guard"
         ],
         "final_node": "compose_answer",
         "nodes_not_executed": [
@@ -262,6 +292,7 @@
           "rag"
         ],
         "node_order": [
+          "input_guard",
           "resolve_pending_memory",
           "receive_question",
           "recall_memory",
@@ -270,7 +301,8 @@
           "retrieve",
           "generate",
           "compose_answer",
-          "propose_memory"
+          "propose_memory",
+          "output_guard"
         ],
         "final_node": "compose_answer",
         "incident_tool_ok": true,

@@ -12,7 +12,7 @@ import sys
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from security import get_current_user
@@ -21,6 +21,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
+from services.agent.guardrails import SessionContext  # noqa: E402
 from services.agent.graph import (  # noqa: E402
     AgentGraphStructureError,
     AgentRunError,
@@ -82,13 +83,14 @@ class AgentAnswer(BaseModel):
 
 
 @router.post("/agent/query", response_model=AgentAnswer, response_model_exclude_none=True)
-def ask_agent(payload: AgentQuestion, response: Response, user=Depends(get_current_user)) -> AgentAnswer:
+def ask_agent(payload: AgentQuestion, request: Request, response: Response, user=Depends(get_current_user)) -> AgentAnswer:
     # Las tools del agente van por el servidor MCP de TrackFlow con la identidad OAuth del propio
     # agente (cliente trackflow-agent, scopes de solo lectura). El JWT de quien pregunta solo
     # autoriza esta petición: no se reenvía (su audiencia es el API, no el servidor MCP).
     try:
         session = f"{getattr(user, 'id', 'u')}:{payload.conversation_id}" if payload.conversation_id else None
-        result = get_agent().run(payload.question, session_id=session, user=_user_label(user))
+        result = get_agent().run(payload.question, session_id=session, user=_user_label(user),
+                                 session=build_session_context(request, user))
     except AgentRunError as error:
         logger.error("agent run %s failed at node %s: %r", error.run_id, error.node, error.cause)
         headers = {"X-Agent-Run-Id": error.run_id}
@@ -150,6 +152,23 @@ def reject_memory_proposal(proposal_id: str, user=Depends(get_current_user)):
     except KeyError as error:
         raise HTTPException(status_code=404, detail="La propuesta no existe o ya caducó.") from error
     return {"status": "rejected", "id": proposal_id}
+
+
+# ----------------------------------------------------------------------------
+# Sesión autenticada para los guardrails: qué pedidos puede consultar quien pregunta
+# ----------------------------------------------------------------------------
+def build_session_context(request: Request, user) -> SessionContext:
+    """Pedidos autorizados = despachos con tracking de la cuenta autenticada (deny by default)."""
+    from services.agent.session import session_for
+
+    return session_for(getattr(request.app.state, "engine", None), getattr(user, "user_uuid", None), _user_label(user))
+
+
+@router.get("/agent/guardrails/summary")
+def guardrails_summary(conversation_id: str | None = None, since: str | None = None, user=Depends(get_current_user)):
+    """Cuántas veces se activó cada guardrail (opcionalmente en una conversación del usuario o desde una fecha)."""
+    session = f"{getattr(user, 'id', 'u')}:{conversation_id}" if conversation_id else None
+    return get_agent().traces.guardrail_summary(session_id=session, since=since)
 
 
 @router.get("/agent/memory")

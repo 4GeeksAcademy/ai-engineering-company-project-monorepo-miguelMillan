@@ -85,7 +85,15 @@ from services.agent.memory import (  # noqa: E402
     evaluate_memory_gate,
     parse_proposal,
 )
+from services.agent.guardrails import (  # noqa: E402
+    SAFE_FALLBACK,
+    SessionContext,
+    check_input,
+    check_output,
+    sanitize_external,
+)
 from services.agent.memory_llm import generate_with_memory, reflect_memory  # noqa: E402
+from services.agent.prompts import CX_SYSTEM_PROMPT, generate_cx_answer  # noqa: E402
 from services.agent.tracing import TraceStore, _now  # noqa: E402
 
 logger = logging.getLogger("trackflow.agent")
@@ -118,6 +126,9 @@ class RetrievedChunk(TypedDict):
 class AgentState(TypedDict):
     question: str
     session_id: NotRequired[str]                         # conversación (para la propuesta pendiente)
+    session: NotRequired[dict[str, Any]]                 # SessionContext: usuario autenticado y SUS pedidos
+    guard: NotRequired[dict[str, Any]]                   # decisión de la guarda de entrada
+    output_check: NotRequired[dict[str, Any]]            # validación de la salida
     memory_resolution: NotRequired[dict[str, Any]]       # cómo respondió el usuario a la propuesta pendiente
     error: NotRequired[Literal["empty_question", "question_too_long"]]
     plan: NotRequired[SourcePlan]
@@ -143,6 +154,71 @@ def _planned(state: AgentState) -> list[str]:
 
 
 # --------------------------------------------------------------------------
+# Guardrails (Hito 8, Parte 2): entrada, aislamiento del contenido externo y salida
+# --------------------------------------------------------------------------
+GuardLog = Callable[..., None]
+
+
+def make_guard_log(traces: TraceStore | None) -> GuardLog:
+    def guard_log(state: AgentState, config, *, guard: str, action: str, failure_type: str | None,
+                  code: str | None, detail: str = "") -> None:
+        if traces is not None:
+            traces.record_guardrail(run_id=config["configurable"]["thread_id"], session_id=state.get("session_id"),
+                                    guard=guard, action=action, failure_type=failure_type, code=code, detail=detail)
+
+    return guard_log
+
+
+def make_input_guard_node(guard_log: GuardLog, clock: Callable[[], Any] | None = None):
+    def input_guard(state: AgentState, config) -> dict[str, Any]:
+        """Primera capa: seguridad (cambio de instrucciones, datos sensibles, autorización por sesión), contenido
+        (uso personal, mezcla de políticas por país, small talk) y estructura, ANTES de tocar el modelo o las tools."""
+        kwargs = {"now": clock} if clock else {}
+        decision = check_input(state["question"], SessionContext.from_state(state.get("session")), **kwargs)
+        update: dict[str, Any] = {"guard": decision.to_state()}
+        if decision.rewritten_question:
+            update["question"] = decision.rewritten_question
+        if decision.action != "allow":
+            guard_log(state, config, guard=decision.guard, action=decision.action, failure_type=decision.failure_type,
+                      code=decision.code, detail=decision.reason)
+        return update
+
+    return input_guard
+
+
+def guard_response(state: AgentState) -> dict[str, Any]:
+    """Respuesta determinista de un guardrail (rechazo o redirección): el modelo no interviene."""
+    return {"answer": state["guard"]["response"]}
+
+
+def make_output_guard_node(guard_log: GuardLog):
+    def output_guard(state: AgentState, config) -> dict[str, Any]:
+        """Última capa: valida formato, filtraciones de instrucciones internas y datos sensibles antes de responder."""
+        answer = state.get("answer") or ""
+        notice = (state.get("guard") or {}).get("notice")
+        if notice:
+            answer = f"{notice}\n\n{answer}"
+        check = check_output(answer, SessionContext.from_state(state.get("session")), CX_SYSTEM_PROMPT)
+        if not check.ok:
+            guard_log(state, config, guard="output_validation", action="replace", failure_type=check.failure_type,
+                      code=",".join(check.codes), detail=check.detail)
+            answer = SAFE_FALLBACK
+        return {"answer": answer, "output_check": check.to_state()}
+
+    return output_guard
+
+
+def _sanitize_fields(items: list[dict[str, Any]], fields: tuple[str, ...]) -> tuple[list[dict[str, Any]], list[str]]:
+    findings: list[str] = []
+    for item in items:
+        for name in fields:
+            if isinstance(item.get(name), str):
+                item[name], found = sanitize_external(item[name])
+                findings += found
+    return items, findings
+
+
+# --------------------------------------------------------------------------
 # Nodos (una sola responsabilidad cada uno)
 # --------------------------------------------------------------------------
 def receive_question(state: AgentState) -> dict[str, Any]:
@@ -160,8 +236,9 @@ def plan_sources(state: AgentState) -> dict[str, Any]:
     return {"plan": plan_question_sources(state["question"])}
 
 
-def make_incidents_node(lookup_fn: Callable[..., IncidentToolResult], mcp: Callable[[], McpCaller]):
-    def mcp_incidents_node(state: AgentState) -> dict[str, Any]:
+def make_incidents_node(lookup_fn: Callable[..., IncidentToolResult], mcp: Callable[[], McpCaller],
+                        guard_log: GuardLog | None = None):
+    def mcp_incidents_node(state: AgentState, config) -> dict[str, Any]:
         """Cliente MCP: consulta el Incidents Manager con las tools del servidor MCP. Nunca rompe la corrida."""
         query = IncidentQuery.model_validate(state["plan"].get("incident_query", {}))
         try:
@@ -172,13 +249,20 @@ def make_incidents_node(lookup_fn: Callable[..., IncidentToolResult], mcp: Calla
             logger.exception("mcp_incidents falló de forma inesperada")
             result = IncidentToolResult(ok=False, mode="detail" if query.ticket_id else "list", query=query,
                                         error_type="unavailable")
-        return {"incident_result": result.model_dump(mode="json")}
+        data = result.model_dump(mode="json")
+        # El texto de los tickets lo escriben clientes y operadores: es DATO, nunca instrucción.
+        data["incidents"], findings = _sanitize_fields(data.get("incidents") or [], ("title",))
+        if findings and guard_log:
+            guard_log(state, config, guard="external_content", action="sanitize", failure_type="seguridad",
+                      code="INSTRUCCION_EN_TOOL", detail=f"mcp:incidents {sorted(set(findings))}")
+        return {"incident_result": data}
 
     return mcp_incidents_node
 
 
-def make_inventory_node(lookup_fn: Callable[..., InventoryToolResult], mcp: Callable[[], McpCaller]):
-    def mcp_inventory_node(state: AgentState) -> dict[str, Any]:
+def make_inventory_node(lookup_fn: Callable[..., InventoryToolResult], mcp: Callable[[], McpCaller],
+                        guard_log: GuardLog | None = None):
+    def mcp_inventory_node(state: AgentState, config) -> dict[str, Any]:
         """Cliente MCP: consulta el stock con la tool de inventario (solo lectura) del servidor MCP."""
         query = InventoryQuery.model_validate(state["plan"].get("inventory_query", {}))
         try:
@@ -188,19 +272,28 @@ def make_inventory_node(lookup_fn: Callable[..., InventoryToolResult], mcp: Call
         except Exception:
             logger.exception("mcp_inventory falló de forma inesperada")
             result = InventoryToolResult(ok=False, query=query, error_type="unavailable")
-        return {"inventory_result": result.model_dump(mode="json")}
+        data = result.model_dump(mode="json")
+        data["items"], findings = _sanitize_fields(data.get("items") or [], ("name", "client_name"))
+        if findings and guard_log:
+            guard_log(state, config, guard="external_content", action="sanitize", failure_type="seguridad",
+                      code="INSTRUCCION_EN_TOOL", detail=f"mcp:inventory {sorted(set(findings))}")
+        return {"inventory_result": data}
 
     return mcp_inventory_node
 
 
-def make_retrieve_node(retrieve_fn: Callable[..., list[dict[str, Any]]]):
-    def retrieve_node(state: AgentState) -> dict[str, Any]:
-        """Recupera chunks de ``trackflow_knowledge`` con el umbral calibrado."""
+def make_retrieve_node(retrieve_fn: Callable[..., list[dict[str, Any]]], guard_log: GuardLog | None = None):
+    def retrieve_node(state: AgentState, config) -> dict[str, Any]:
+        """Recupera chunks de ``trackflow_knowledge`` con el umbral calibrado y los sanea: son DATOS, no instrucciones."""
         top_k = int(os.environ.get("RAG_TOP_K", DEFAULT_TOP_K))
         min_score = float(os.environ.get("RAG_MIN_SCORE", DEFAULT_MIN_SCORE))
         # En preguntas mixtas (tool + RAG) se busca solo con la parte de política.
         question = state.get("plan", {}).get("rag_question") or state["question"]
-        return {"context": retrieve_fn(question, k=top_k, min_score=min_score)}
+        chunks, findings = _sanitize_fields([dict(c) for c in retrieve_fn(question, k=top_k, min_score=min_score)], ("text",))
+        if findings and guard_log:
+            guard_log(state, config, guard="external_content", action="sanitize", failure_type="seguridad",
+                      code="INSTRUCCION_EN_DOCUMENTO", detail=f"rag {sorted(set(findings))}")
+        return {"context": chunks}
 
     return retrieve_node
 
@@ -406,6 +499,9 @@ NODE_WRITES: dict[str, frozenset[str]] = {
     "retrieve": frozenset({"context"}),
     "resolve_pending_memory": frozenset({"memory_resolution", "question"}),
     "memory_acknowledge": frozenset({"answer"}),
+    "input_guard": frozenset({"guard", "question"}),
+    "guard_response": frozenset({"answer"}),
+    "output_guard": frozenset({"answer", "output_check"}),
     "recall_memory": frozenset({"memory_gate", "memories"}),
     "generate": frozenset({"answer"}),
     "propose_memory": frozenset({"answer", "memory_evaluated_by", "memory_proposal_raw", "memory_proposal", "memory_rejection"}),
@@ -418,6 +514,10 @@ NODE_WRITES: dict[str, frozenset[str]] = {
 # --------------------------------------------------------------------------
 # Aristas condicionales
 # --------------------------------------------------------------------------
+def route_after_input_guard(state: AgentState) -> Literal["guard_response", "resolve_pending_memory"]:
+    return "guard_response" if (state.get("guard") or {}).get("response") else "resolve_pending_memory"
+
+
 def route_after_resolve(state: AgentState) -> Literal["memory_acknowledge", "receive_question"]:
     resolution = state.get("memory_resolution")
     return "memory_acknowledge" if resolution and not resolution["remainder"].strip() else "receive_question"
@@ -463,6 +563,8 @@ def route_after_generate(state: AgentState) -> Literal["compose_answer", "propos
 
 
 ROUTE_REASONS = {
+    ("route_after_input_guard", "guard_response"): "un guardrail bloquea o redirige la petición (respuesta determinista)",
+    ("route_after_input_guard", "resolve_pending_memory"): "petición dentro del dominio (o reescrita por la guarda)",
     ("route_after_resolve", "memory_acknowledge"): "el mensaje solo respondía a la propuesta de memoria pendiente",
     ("route_after_resolve", "receive_question"): "no hay propuesta pendiente, o el mensaje sigue con otra pregunta",
     ("route_after_receive", "invalid_question"): "pregunta vacía o demasiado larga",
@@ -545,7 +647,7 @@ def _traced_route(fn: Callable, traces: TraceStore | None):
 def build_agent_graph(
     *,
     retrieve_fn: Callable[..., list[dict[str, Any]]] = retrieve,
-    generate_fn: Callable[[str, list[dict[str, Any]]], str] = generate_answer,
+    generate_fn: Callable[[str, list[dict[str, Any]]], str] = generate_cx_answer,
     incidents_fn: Callable[..., IncidentToolResult] = lookup_incidents,
     inventory_fn: Callable[..., InventoryToolResult] = lookup_inventory,
     mcp: Callable[[], McpCaller] = default_mcp,
@@ -553,17 +655,22 @@ def build_agent_graph(
     memory_generate_fn: Callable[..., str] = generate_with_memory,
     reflect_fn: Callable[..., Any] = reflect_memory,
     traces: TraceStore | None = None,
+    clock: Callable[[], Any] | None = None,
 ) -> StateGraph:
     """Define nodos y aristas (sin compilar). Las funciones solo se inyectan en tests."""
+    guard_log = make_guard_log(traces)
     nodes = {
+        "input_guard": make_input_guard_node(guard_log, clock),
+        "guard_response": guard_response,
+        "output_guard": make_output_guard_node(guard_log),
         "resolve_pending_memory": make_resolve_node(memory_store),
         "memory_acknowledge": memory_acknowledge,
         "receive_question": receive_question,
         "recall_memory": make_recall_node(memory_store),
         "plan_sources": plan_sources,
-        "mcp_incidents": make_incidents_node(incidents_fn, mcp),
-        "mcp_inventory": make_inventory_node(inventory_fn, mcp),
-        "retrieve": make_retrieve_node(retrieve_fn),
+        "mcp_incidents": make_incidents_node(incidents_fn, mcp, guard_log),
+        "mcp_inventory": make_inventory_node(inventory_fn, mcp, guard_log),
+        "retrieve": make_retrieve_node(retrieve_fn, guard_log),
         "generate": make_generate_node(generate_fn, memory_generate_fn),
         "compose_answer": compose_answer,
         "propose_memory": make_propose_node(memory_store, reflect_fn),
@@ -577,9 +684,11 @@ def build_agent_graph(
     def conditional(source: str, route: Callable, destinations: list[str]) -> None:
         builder.add_conditional_edges(source, _traced_route(route, traces), {d: d for d in destinations})
 
-    builder.add_edge(START, "resolve_pending_memory")
+    builder.add_edge(START, "input_guard")
+    conditional("input_guard", route_after_input_guard, ["guard_response", "resolve_pending_memory"])
+    builder.add_edge("guard_response", "output_guard")
     conditional("resolve_pending_memory", route_after_resolve, ["memory_acknowledge", "receive_question"])
-    builder.add_edge("memory_acknowledge", END)
+    builder.add_edge("memory_acknowledge", "output_guard")
     conditional("receive_question", route_after_receive, ["invalid_question", "recall_memory"])
     builder.add_edge("recall_memory", "plan_sources")
     conditional("plan_sources", route_after_plan, ["mcp_incidents", "mcp_inventory", "retrieve"])
@@ -589,8 +698,9 @@ def build_agent_graph(
     conditional("generate", route_after_generate, ["compose_answer", "propose_memory"])
     builder.add_edge("compose_answer", "propose_memory")
     builder.add_edge("no_context", "propose_memory")
-    builder.add_edge("propose_memory", END)
-    builder.add_edge("invalid_question", END)
+    builder.add_edge("propose_memory", "output_guard")
+    builder.add_edge("invalid_question", "output_guard")
+    builder.add_edge("output_guard", END)
     return builder
 
 
@@ -665,12 +775,13 @@ def sqlite_checkpointer(path: Path | str):
 MEMORY_NODES = frozenset({"resolve_pending_memory", "recall_memory", "propose_memory"})
 
 
-ANSWER_NODES = frozenset({"generate", "compose_answer", "no_context", "invalid_question", "memory_acknowledge"})
+ANSWER_NODES = frozenset({"generate", "compose_answer", "no_context", "invalid_question", "memory_acknowledge",
+                          "guard_response"})
 
 
 def answering_node(trace: dict[str, Any]) -> str:
     """Nodo que produjo la respuesta. Si fue un acuse de un dato memorizable, es ``propose_memory``."""
-    nodes = [s["name"] for s in trace["steps"] if s["kind"] == "node"]
+    nodes = [s["name"] for s in trace["steps"] if s["kind"] == "node" and s["name"] != "output_guard"]
     return next((n for n in reversed(nodes) if n in ANSWER_NODES), nodes[-1])
 
 
@@ -698,15 +809,17 @@ class AgentResult:
     sources: list[str] = field(default_factory=list)
     memory_proposal: dict[str, Any] | None = None
     memory_resolution: dict[str, Any] | None = None
+    guard: dict[str, Any] | None = None
+    output_check: dict[str, Any] | None = None
 
 
 class KnowledgeAgent:
     """Grafo compilado + checkpointer + trace store, listo para servir peticiones."""
 
-    def __init__(self, *, data_dir: Path | None = None, retrieve_fn=retrieve, generate_fn=generate_answer,
+    def __init__(self, *, data_dir: Path | None = None, retrieve_fn=retrieve, generate_fn=generate_cx_answer,
                  incidents_fn=lookup_incidents, inventory_fn=lookup_inventory, mcp: McpCaller | None = None,
                  memory_store: MemoryStore | None = None, memory_generate_fn=generate_with_memory,
-                 reflect_fn=reflect_memory, checkpointer=None, traces: TraceStore | None = None):
+                 reflect_fn=reflect_memory, checkpointer=None, traces: TraceStore | None = None, clock=None):
         data_dir = data_dir or default_data_dir()
         self.traces = traces or TraceStore(data_dir / "traces.sqlite")
         self.checkpointer = checkpointer or sqlite_checkpointer(data_dir / "checkpoints.sqlite")
@@ -717,18 +830,21 @@ class KnowledgeAgent:
         self.graph = compile_agent_graph(
             build_agent_graph(retrieve_fn=retrieve_fn, generate_fn=generate_fn, incidents_fn=incidents_fn,
                               inventory_fn=inventory_fn, mcp=mcp_provider, memory_store=lambda: self.memory_store,
-                              memory_generate_fn=memory_generate_fn, reflect_fn=reflect_fn, traces=self.traces),
+                              memory_generate_fn=memory_generate_fn, reflect_fn=reflect_fn, traces=self.traces,
+                              clock=clock),
             checkpointer=self.checkpointer,
         )
 
     def run(self, question: str, *, run_id: str | None = None, session_id: str | None = None,
-            user: str | None = None) -> AgentResult:
+            user: str | None = None, session: SessionContext | None = None) -> AgentResult:
         """Ejecuta una corrida. ``session_id`` identifica la conversación (propuesta de memoria pendiente) y
-        ``user`` queda en el registro de auditoría de memoria. Las tools usan la identidad OAuth del agente."""
+        ``user`` queda en el registro de auditoría de memoria. ``session`` es el contexto autenticado (qué
+        pedidos puede consultar); sin él, ningún pedido concreto está autorizado. Las tools usan la identidad
+        OAuth del agente."""
         run_id = run_id or str(uuid.uuid4())
         config = {"configurable": {"thread_id": run_id, "user": user}}
         self.traces.start_run(run_id, question)
-        initial: dict[str, Any] = {"question": question}
+        initial: dict[str, Any] = {"question": question, "session": (session or SessionContext(user=user)).to_state()}
         if session_id:
             initial["session_id"] = session_id
         try:
@@ -745,7 +861,8 @@ class KnowledgeAgent:
         self.traces.finish_run(run_id, status="completed", final_node=final_node, sources=sources)
         return AgentResult(run_id=run_id, answer=state["answer"], final_node=final_node, error=state.get("error"),
                            context_count=len(state.get("context") or []), sources=sources,
-                           memory_proposal=state.get("memory_proposal"), memory_resolution=state.get("memory_resolution"))
+                           memory_proposal=state.get("memory_proposal"), memory_resolution=state.get("memory_resolution"),
+                           guard=state.get("guard"), output_check=state.get("output_check"))
 
     def checkpoints(self, run_id: str) -> list[dict[str, Any]]:
         """Historial de checkpoints de una corrida (del más antiguo al más reciente)."""

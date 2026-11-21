@@ -242,7 +242,7 @@ def test_memorable_rag_interaction_proposes_with_a_single_model_call_and_never_w
     assert store.entries() == []  # proponer no es escribir
     assert store.get_pending(result.memory_proposal["id"]) is not None
     trace = agent.traces.get_trace(result.run_id)
-    assert executed_nodes(trace)[:3] == ["resolve_pending_memory", "receive_question", "recall_memory"] and executed_nodes(trace)[-1] == "propose_memory"
+    assert executed_nodes(trace)[:4] == ["input_guard", "resolve_pending_memory", "receive_question", "recall_memory"] and executed_nodes(trace)[-2:] == ["propose_memory", "output_guard"]
     assert trace["final_node"] == "propose_memory"
 
 

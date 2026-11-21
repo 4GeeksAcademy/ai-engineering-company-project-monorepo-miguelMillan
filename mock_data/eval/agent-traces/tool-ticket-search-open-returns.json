@@ -7,25 +7,54 @@
   "sources_used": [
     "incidents"
   ],
-  "started_at": "2026-11-21T16:33:06.346+00:00",
-  "finished_at": "2026-11-21T16:33:06.633+00:00",
+  "started_at": "2026-11-21T18:39:53.698+00:00",
+  "finished_at": "2026-11-21T18:39:54.342+00:00",
   "steps": [
     {
       "run_id": "eval-tool-ticket-search-open-returns",
       "seq": 0,
       "kind": "node",
-      "name": "resolve_pending_memory",
-      "started_at": "2026-11-21T16:33:06.356+00:00",
-      "duration_ms": 0.004,
+      "name": "input_guard",
+      "started_at": "2026-11-21T18:39:53.706+00:00",
+      "duration_ms": 0.095,
       "status": "ok",
-      "output": {}
+      "output": {
+        "guard": {
+          "action": "allow",
+          "guard": "input_guard",
+          "reason": "consulta dentro del dominio de soporte"
+        }
+      }
     },
     {
       "run_id": "eval-tool-ticket-search-open-returns",
       "seq": 1,
       "kind": "route",
+      "name": "route_after_input_guard",
+      "started_at": "2026-11-21T18:39:53.708+00:00",
+      "duration_ms": 0.002,
+      "status": "ok",
+      "output": {
+        "next": "resolve_pending_memory",
+        "reason": "petición dentro del dominio (o reescrita por la guarda)"
+      }
+    },
+    {
+      "run_id": "eval-tool-ticket-search-open-returns",
+      "seq": 2,
+      "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T18:39:53.711+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "eval-tool-ticket-search-open-returns",
+      "seq": 3,
+      "kind": "route",
       "name": "route_after_resolve",
-      "started_at": "2026-11-21T16:33:06.357+00:00",
+      "started_at": "2026-11-21T18:39:53.712+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -35,11 +64,11 @@
     },
     {
       "run_id": "eval-tool-ticket-search-open-returns",
-      "seq": 2,
+      "seq": 4,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-21T16:33:06.365+00:00",
-      "duration_ms": 0.007,
+      "started_at": "2026-11-21T18:39:53.716+00:00",
+      "duration_ms": 0.006,
       "status": "ok",
       "output": {
         "question": "¿Cuántas incidencias de devolución están abiertas?"
@@ -47,10 +76,10 @@
     },
     {
       "run_id": "eval-tool-ticket-search-open-returns",
-      "seq": 3,
+      "seq": 5,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-21T16:33:06.367+00:00",
+      "started_at": "2026-11-21T18:39:53.718+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -60,11 +89,11 @@
     },
     {
       "run_id": "eval-tool-ticket-search-open-returns",
-      "seq": 4,
+      "seq": 6,
       "kind": "node",
       "name": "recall_memory",
-      "started_at": "2026-11-21T16:33:06.373+00:00",
-      "duration_ms": 0.095,
+      "started_at": "2026-11-21T18:39:53.723+00:00",
+      "duration_ms": 0.07,
       "status": "ok",
       "output": {
         "memory_gate": {
@@ -79,11 +108,11 @@
     },
     {
       "run_id": "eval-tool-ticket-search-open-returns",
-      "seq": 5,
+      "seq": 7,
       "kind": "node",
       "name": "plan_sources",
-      "started_at": "2026-11-21T16:33:06.379+00:00",
-      "duration_ms": 0.093,
+      "started_at": "2026-11-21T18:39:53.730+00:00",
+      "duration_ms": 0.069,
       "status": "ok",
       "output": {
         "plan": {
@@ -102,10 +131,10 @@
     },
     {
       "run_id": "eval-tool-ticket-search-open-returns",
-      "seq": 6,
+      "seq": 8,
       "kind": "route",
       "name": "route_after_plan",
-      "started_at": "2026-11-21T16:33:06.380+00:00",
+      "started_at": "2026-11-21T18:39:53.733+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {
@@ -115,11 +144,11 @@
     },
     {
       "run_id": "eval-tool-ticket-search-open-returns",
-      "seq": 7,
+      "seq": 9,
       "kind": "node",
       "name": "mcp_incidents",
-      "started_at": "2026-11-21T16:33:06.383+00:00",
-      "duration_ms": 234.963,
+      "started_at": "2026-11-21T18:39:53.737+00:00",
+      "duration_ms": 203.987,
       "status": "ok",
       "output": {
         "incident_result": {
@@ -204,11 +233,11 @@
     },
     {
       "run_id": "eval-tool-ticket-search-open-returns",
-      "seq": 8,
+      "seq": 10,
       "kind": "route",
       "name": "route_after_incidents",
-      "started_at": "2026-11-21T16:33:06.620+00:00",
-      "duration_ms": 0.005,
+      "started_at": "2026-11-21T18:39:53.943+00:00",
+      "duration_ms": 0.004,
       "status": "ok",
       "output": {
         "next": "compose_answer",
@@ -217,11 +246,11 @@
     },
     {
       "run_id": "eval-tool-ticket-search-open-returns",
-      "seq": 9,
+      "seq": 11,
       "kind": "node",
       "name": "compose_answer",
-      "started_at": "2026-11-21T16:33:06.624+00:00",
-      "duration_ms": 0.027,
+      "started_at": "2026-11-21T18:39:54.043+00:00",
+      "duration_ms": 0.032,
       "status": "ok",
       "output": {
         "answer": "Hay 6 tickets en estado Abierta de categoría Problema de devolución en el gestor de incidencias (consulta en vivo).\n- d32a9b66-b81b-5dce-b90f-c4e8bfc27161 — Abierta — Return requested within 14-day window, awaiting approval\n- 3bbeaf68-0ede-5923-8f14-0190895851fd — Abierta — Client initiating bulk return of unsold season stock\n- 607564d0-d515-5ec8-97e7-4b9ca5ae554c — Abierta — Client initiating bulk return of unsold season stock\n- c7ad57a7-bf6d-5c70-9d6a-9f05c294d3fd — Abierta — Customer requesting return label for damaged product\n- 0b9b54f7-d48d-51ac-ba01-95f36987b68d — Abierta — Customer requesting return label for damaged product\n(se muestran los 5 más recientes)"
@@ -229,19 +258,37 @@
     },
     {
       "run_id": "eval-tool-ticket-search-open-returns",
-      "seq": 10,
+      "seq": 12,
       "kind": "node",
       "name": "propose_memory",
-      "started_at": "2026-11-21T16:33:06.628+00:00",
+      "started_at": "2026-11-21T18:39:54.144+00:00",
       "duration_ms": 0.004,
       "status": "ok",
       "output": {
         "memory_proposal": null
       }
+    },
+    {
+      "run_id": "eval-tool-ticket-search-open-returns",
+      "seq": 13,
+      "kind": "node",
+      "name": "output_guard",
+      "started_at": "2026-11-21T18:39:54.244+00:00",
+      "duration_ms": 0.782,
+      "status": "ok",
+      "output": {
+        "answer": "Hay 6 tickets en estado Abierta de categoría Problema de devolución en el gestor de incidencias (consulta en vivo).\n- d32a9b66-b81b-5dce-b90f-c4e8bfc27161 — Abierta — Return requested within 14-day window, awaiting approval\n- 3bbeaf68-0ede-5923-8f14-0190895851fd — Abierta — Client initiating bulk return of unsold season stock\n- 607564d0-d515-5ec8-97e7-4b9ca5ae554c — Abierta — Client initiating bulk return of unsold season stock\n- c7ad57a7-bf6d-5c70-9d6a-9f05c294d3fd — Abierta — Customer requesting return label for damaged product\n- 0b9b54f7-d48d-51ac-ba01-95f36987b68d — Abierta — Customer requesting return label for damaged product\n(se muestran los 5 más recientes)",
+        "output_check": {
+          "ok": true,
+          "failure_type": null,
+          "codes": [],
+          "detail": ""
+        }
+      }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-21T16:33:06+00:00",
+    "recorded_at": "2026-11-21T18:39:54+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
     "mcp_server_url": "http://127.0.0.1:8090/mcp",
@@ -249,6 +296,9 @@
     "checkpoints": [
       [
         "__start__"
+      ],
+      [
+        "input_guard"
       ],
       [
         "resolve_pending_memory"
@@ -270,6 +320,9 @@
       ],
       [
         "propose_memory"
+      ],
+      [
+        "output_guard"
       ],
       []
     ]
