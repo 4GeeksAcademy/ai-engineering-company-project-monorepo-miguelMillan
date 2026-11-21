@@ -1,0 +1,12 @@
+2026-11-21T17:12:39.584+00:00 ANTES:
+   ix_job_runs_job_name_target_date CREATE INDEX ix_job_runs_job_name_target_date ON public.job_runs USING btree (job_name, target_date)
+   ix_job_runs_processing CREATE INDEX ix_job_runs_processing ON public.job_runs USING btree (job_name, status) WHERE (status = 'processing'::text)
+   job_runs_pkey CREATE UNIQUE INDEX job_runs_pkey ON public.job_runs USING btree (id)
+2026-11-21T17:12:39.878+00:00 migración 20261121100000_job_runs_unique_processing_lock.sql aplicada
+2026-11-21T17:12:39.878+00:00 DESPUÉS:
+   ix_job_runs_job_name_target_date CREATE INDEX ix_job_runs_job_name_target_date ON public.job_runs USING btree (job_name, target_date)
+   job_runs_pkey CREATE UNIQUE INDEX job_runs_pkey ON public.job_runs USING btree (id)
+   ux_job_runs_one_processing_per_job CREATE UNIQUE INDEX ux_job_runs_one_processing_per_job ON public.job_runs USING btree (job_name) WHERE (status = 'processing'::text)
+2026-11-21T17:12:40.217+00:00 prueba: 1ª fila processing de 'lock_probe' insertada (sin commit)
+2026-11-21T17:12:40.251+00:00 prueba: 2ª fila processing RECHAZADA -> UniqueViolation constraint=ux_job_runs_one_processing_per_job
+2026-11-21T17:12:40.284+00:00 prueba revertida; filas 'lock_probe' restantes: 0

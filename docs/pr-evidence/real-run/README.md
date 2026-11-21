@@ -1,5 +1,7 @@
 # Ejecución real del job nocturno contra Supabase (2026-11-19)
 
+> **Actualización (2026-11-21):** el lock ya no usa `LOCK TABLE`. Ahora lo garantiza un índice único parcial sobre `processing`, con la transición `pending → processing` atómica, y `pending` sí es observable. Ver [real-run-unique-lock](../real-run-unique-lock/README.md). Lo que sigue describe la ejecución original del PR #33.
+
 Esta carpeta reúne la evidencia de los puntos pendientes de la revisión del PR #30. Todo se ejecutó contra la base de datos Supabase de `DATABASE_URL`. Los logs se revisaron y no contienen la URL, el host ni la contraseña.
 
 Entorno: `uv sync` en la raíz con los grupos `nightly` y `dev`. Se usó `REPORTING_READ_DATABASE_URL` = `REPORTING_WRITE_DATABASE_URL` = `DATABASE_URL`, porque en este entorno hay una sola base de datos.
