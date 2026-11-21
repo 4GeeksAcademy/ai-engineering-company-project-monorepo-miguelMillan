@@ -47,7 +47,7 @@ def test_ticket_question_goes_through_the_mcp_client_node(agent_stack, mcp_serve
     trace = agent.traces.get_trace(result.run_id)
 
     assert result.sources == ["incidents"] and rag_calls == []
-    assert executed_nodes(trace) == ["receive_question", "plan_sources", "mcp_incidents", "compose_answer"]
+    assert executed_nodes(trace) == ["resolve_pending_memory", "receive_question", "recall_memory", "plan_sources", "mcp_incidents", "compose_answer", "propose_memory"]
     assert node_output(trace, "mcp_incidents")["incident_result"]["mcp_tool"] == "incidents_get_ticket"
     assert "**Abierta**" in result.answer
     # El backend solo vio al servidor MCP (cuenta de servicio), y el servidor MCP vio al agente por OAuth

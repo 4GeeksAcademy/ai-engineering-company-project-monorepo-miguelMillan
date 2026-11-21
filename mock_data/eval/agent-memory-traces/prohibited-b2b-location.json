@@ -1,0 +1,278 @@
+{
+  "run_id": "memory-eval-prohibited-b2b-location",
+  "question": "En realidad el almacén del cliente GlowLab ya no está en Plaza: ahora está en Polígono Malpica nave 14, y siempre quiere que el carrier recoja allí.",
+  "status": "completed",
+  "final_node": "propose_memory",
+  "error_type": null,
+  "sources_used": [
+    "rag"
+  ],
+  "started_at": "2026-11-21T16:25:11.409+00:00",
+  "finished_at": "2026-11-21T16:26:01.583+00:00",
+  "steps": [
+    {
+      "run_id": "memory-eval-prohibited-b2b-location",
+      "seq": 0,
+      "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T16:25:11.415+00:00",
+      "duration_ms": 0.353,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "memory-eval-prohibited-b2b-location",
+      "seq": 1,
+      "kind": "route",
+      "name": "route_after_resolve",
+      "started_at": "2026-11-21T16:25:11.417+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "receive_question",
+        "reason": "no hay propuesta pendiente, o el mensaje sigue con otra pregunta"
+      }
+    },
+    {
+      "run_id": "memory-eval-prohibited-b2b-location",
+      "seq": 2,
+      "kind": "node",
+      "name": "receive_question",
+      "started_at": "2026-11-21T16:25:11.420+00:00",
+      "duration_ms": 0.012,
+      "status": "ok",
+      "output": {
+        "question": "En realidad el almacén del cliente GlowLab ya no está en Plaza: ahora está en Polígono Malpica nave 14, y siempre quiere que el carrier recoja allí."
+      }
+    },
+    {
+      "run_id": "memory-eval-prohibited-b2b-location",
+      "seq": 3,
+      "kind": "route",
+      "name": "route_after_receive",
+      "started_at": "2026-11-21T16:25:11.421+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "recall_memory",
+        "reason": "pregunta válida"
+      }
+    },
+    {
+      "run_id": "memory-eval-prohibited-b2b-location",
+      "seq": 4,
+      "kind": "node",
+      "name": "recall_memory",
+      "started_at": "2026-11-21T16:25:11.425+00:00",
+      "duration_ms": 1.272,
+      "status": "ok",
+      "output": {
+        "memory_gate": {
+          "open": true,
+          "signals": [
+            "correccion",
+            "preferencia"
+          ],
+          "reason": "señales de correccion, preferencia sobre una categoría memorizable",
+          "candidate_type": "regla_carrier",
+          "hints": {
+            "carriers_mencionados": [],
+            "paises_mencionados": []
+          }
+        },
+        "memories": []
+      }
+    },
+    {
+      "run_id": "memory-eval-prohibited-b2b-location",
+      "seq": 5,
+      "kind": "node",
+      "name": "plan_sources",
+      "started_at": "2026-11-21T16:25:11.433+00:00",
+      "duration_ms": 0.085,
+      "status": "ok",
+      "output": {
+        "plan": {
+          "sources": [
+            "rag"
+          ],
+          "reasons": [
+            "pregunta de políticas o procedimientos → base de conocimiento (RAG)"
+          ]
+        }
+      }
+    },
+    {
+      "run_id": "memory-eval-prohibited-b2b-location",
+      "seq": 6,
+      "kind": "route",
+      "name": "route_after_plan",
+      "started_at": "2026-11-21T16:25:11.435+00:00",
+      "duration_ms": 0.004,
+      "status": "ok",
+      "output": {
+        "next": "retrieve",
+        "reason": "el plan solo necesita la base de conocimiento"
+      }
+    },
+    {
+      "run_id": "memory-eval-prohibited-b2b-location",
+      "seq": 7,
+      "kind": "node",
+      "name": "retrieve",
+      "started_at": "2026-11-21T16:25:11.439+00:00",
+      "duration_ms": 58.323,
+      "status": "ok",
+      "output": {
+        "context": []
+      }
+    },
+    {
+      "run_id": "memory-eval-prohibited-b2b-location",
+      "seq": 8,
+      "kind": "route",
+      "name": "route_after_retrieve",
+      "started_at": "2026-11-21T16:25:11.500+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "propose_memory",
+        "reason": "el mensaje aporta un dato memorizable: auto-evaluación y acuse sin darlo por cierto"
+      }
+    },
+    {
+      "run_id": "memory-eval-prohibited-b2b-location",
+      "seq": 9,
+      "kind": "node",
+      "name": "propose_memory",
+      "started_at": "2026-11-21T16:25:11.505+00:00",
+      "duration_ms": 50073.473,
+      "status": "ok",
+      "output": {
+        "memory_proposal": null,
+        "answer": "Tomo nota de lo que indicas. Todavía no está verificado ni guardado en memoria.",
+        "memory_evaluated_by": "reflect",
+        "memory_proposal_raw": {
+          "tipo": "regla_carrier",
+          "accion": "corregir",
+          "hecho": "El almacén del cliente GlowLab ya no está en Plaza: ahora está en Polígono Malpica nave 14.",
+          "motivo": "La información proporcionada por el agente de soporte es una corrección necesaria para actualizar la ubicación del almacén, lo que requiere corregir la regla_carrier existente."
+        },
+        "memory_rejection": {
+          "codes": [
+            "CAMPO_OBLIGATORIO",
+            "CARRIER_DESCONOCIDO",
+            "DIRECCION_EXACTA_CLIENTE"
+          ],
+          "violations": [
+            {
+              "code": "DIRECCION_EXACTA_CLIENTE",
+              "detail": "contiene «poligono malpica nave 14»"
+            },
+            {
+              "code": "CAMPO_OBLIGATORIO",
+              "detail": "una regla de carrier necesita el país (ES o US)"
+            },
+            {
+              "code": "CARRIER_DESCONOCIDO",
+              "detail": "«None» no es uno de los carriers de TrackFlow"
+            }
+          ],
+          "proposal": {
+            "tipo": "regla_carrier",
+            "accion": "corregir",
+            "hecho": "El almacén del cliente GlowLab ya no está en Plaza: ahora está en Polígono Malpica nave 14.",
+            "motivo": "La información proporcionada por el agente de soporte es una corrección necesaria para actualizar la ubicación del almacén, lo que requiere corregir la regla_carrier existente.",
+            "carrier": null,
+            "pais": null,
+            "zona": null,
+            "ruta": null,
+            "cliente_b2b": null,
+            "tickets_relacionados": null,
+            "vigencia_dias": null
+          }
+        }
+      }
+    }
+  ],
+  "recorded_with": {
+    "recorded_at": "2026-11-21T16:26:01+00:00",
+    "generation_model": "qwen2.5:1.5b",
+    "turn": {
+      "session_id": "eval-prohibited-b2b-location",
+      "run_id": "memory-eval-prohibited-b2b-location",
+      "seconds": 50.2,
+      "nodes": [
+        "resolve_pending_memory",
+        "receive_question",
+        "recall_memory",
+        "plan_sources",
+        "retrieve",
+        "propose_memory"
+      ],
+      "memory_gate": {
+        "open": true,
+        "signals": [
+          "correccion",
+          "preferencia"
+        ],
+        "reason": "señales de correccion, preferencia sobre una categoría memorizable",
+        "candidate_type": "regla_carrier",
+        "hints": {
+          "carriers_mencionados": [],
+          "paises_mencionados": []
+        }
+      },
+      "recalled": [],
+      "model_proposal_raw": {
+        "tipo": "regla_carrier",
+        "accion": "corregir",
+        "hecho": "El almacén del cliente GlowLab ya no está en Plaza: ahora está en Polígono Malpica nave 14.",
+        "motivo": "La información proporcionada por el agente de soporte es una corrección necesaria para actualizar la ubicación del almacén, lo que requiere corregir la regla_carrier existente."
+      },
+      "memory_rejection": {
+        "codes": [
+          "CAMPO_OBLIGATORIO",
+          "CARRIER_DESCONOCIDO",
+          "DIRECCION_EXACTA_CLIENTE"
+        ],
+        "violations": [
+          {
+            "code": "DIRECCION_EXACTA_CLIENTE",
+            "detail": "contiene «poligono malpica nave 14»"
+          },
+          {
+            "code": "CAMPO_OBLIGATORIO",
+            "detail": "una regla de carrier necesita el país (ES o US)"
+          },
+          {
+            "code": "CARRIER_DESCONOCIDO",
+            "detail": "«None» no es uno de los carriers de TrackFlow"
+          }
+        ],
+        "proposal": {
+          "tipo": "regla_carrier",
+          "accion": "corregir",
+          "hecho": "El almacén del cliente GlowLab ya no está en Plaza: ahora está en Polígono Malpica nave 14.",
+          "motivo": "La información proporcionada por el agente de soporte es una corrección necesaria para actualizar la ubicación del almacén, lo que requiere corregir la regla_carrier existente.",
+          "carrier": null,
+          "pais": null,
+          "zona": null,
+          "ruta": null,
+          "cliente_b2b": null,
+          "tickets_relacionados": null,
+          "vigencia_dias": null
+        }
+      },
+      "answer": "Tomo nota de lo que indicas. Todavía no está verificado ni guardado en memoria.",
+      "final_node": "propose_memory",
+      "sources": [
+        "rag"
+      ],
+      "memory_proposal": null,
+      "memory_resolution": null,
+      "memory_before": [],
+      "memory_after": []
+    }
+  }
+}

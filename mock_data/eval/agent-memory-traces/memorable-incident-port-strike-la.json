@@ -1,0 +1,786 @@
+{
+  "run_id": "memory-eval-memorable-incident-port-strike-la",
+  "question": "Esos retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema nuestro — ya van tres tickets sobre lo mismo.",
+  "status": "completed",
+  "final_node": "compose_answer",
+  "error_type": null,
+  "sources_used": [
+    "incidents"
+  ],
+  "started_at": "2026-11-21T16:23:17.829+00:00",
+  "finished_at": "2026-11-21T16:23:44.392+00:00",
+  "steps": [
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 0,
+      "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T16:23:17.839+00:00",
+      "duration_ms": 0.272,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 1,
+      "kind": "route",
+      "name": "route_after_resolve",
+      "started_at": "2026-11-21T16:23:17.841+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "receive_question",
+        "reason": "no hay propuesta pendiente, o el mensaje sigue con otra pregunta"
+      }
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 2,
+      "kind": "node",
+      "name": "receive_question",
+      "started_at": "2026-11-21T16:23:17.847+00:00",
+      "duration_ms": 0.011,
+      "status": "ok",
+      "output": {
+        "question": "Esos retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema nuestro — ya van tres tickets sobre lo mismo."
+      }
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 3,
+      "kind": "route",
+      "name": "route_after_receive",
+      "started_at": "2026-11-21T16:23:17.849+00:00",
+      "duration_ms": 0.002,
+      "status": "ok",
+      "output": {
+        "next": "recall_memory",
+        "reason": "pregunta válida"
+      }
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 4,
+      "kind": "node",
+      "name": "recall_memory",
+      "started_at": "2026-11-21T16:23:17.856+00:00",
+      "duration_ms": 1.687,
+      "status": "ok",
+      "output": {
+        "memory_gate": {
+          "open": true,
+          "signals": [
+            "recurrencia"
+          ],
+          "reason": "señales de recurrencia sobre una categoría memorizable",
+          "candidate_type": "contexto_incidente_recurrente",
+          "hints": {
+            "carriers_mencionados": [],
+            "paises_mencionados": [
+              "US"
+            ]
+          }
+        },
+        "memories": []
+      }
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 5,
+      "kind": "node",
+      "name": "plan_sources",
+      "started_at": "2026-11-21T16:23:17.863+00:00",
+      "duration_ms": 0.135,
+      "status": "ok",
+      "output": {
+        "plan": {
+          "sources": [
+            "incidents"
+          ],
+          "reasons": [
+            "cita un ticket o habla de incidencias → gestor de incidencias (dato operativo en vivo)"
+          ],
+          "incident_query": {}
+        }
+      }
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 6,
+      "kind": "route",
+      "name": "route_after_plan",
+      "started_at": "2026-11-21T16:23:17.865+00:00",
+      "duration_ms": 0.004,
+      "status": "ok",
+      "output": {
+        "next": "mcp_incidents",
+        "reason": "el plan incluye el gestor de incidencias (vía servidor MCP)"
+      }
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 7,
+      "kind": "node",
+      "name": "mcp_incidents",
+      "started_at": "2026-11-21T16:23:17.871+00:00",
+      "duration_ms": 1016.226,
+      "status": "ok",
+      "output": {
+        "incident_result": {
+          "ok": true,
+          "mode": "list",
+          "query": {
+            "ticket_id": null,
+            "raw_ticket_reference": null,
+            "status": null,
+            "category": null,
+            "origin": null,
+            "branch": null
+          },
+          "incidents": [
+            {
+              "id": "d32a9b66-b81b-5dce-b90f-c4e8bfc27161",
+              "title": "Return requested within 14-day window, awaiting approval",
+              "status": "open",
+              "category": "returns_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "be7b68f6-9305-566b-825e-88a5b899922b",
+              "title": "Outer box crushed, inner product compromised",
+              "status": "resolved",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "1a99a7aa-74f8-5659-b560-b532b3ac959d",
+              "title": "Package held at sorting facility for unknown reason",
+              "status": "resolved",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "f184dbd2-e01a-5c15-9f6d-cbeffbf6ef3f",
+              "title": "Carrier attempted delivery but customer was not notified",
+              "status": "resolved",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "2c1a40f2-cfaf-59ae-936c-d445e40872ce",
+              "title": "Customer address was truncated in carrier system",
+              "status": "resolved",
+              "category": "delivery_failure",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "317e4580-b506-5daa-bc42-862eefedcfd8",
+              "title": "Estimated delivery date changed three times by carrier",
+              "status": "resolved",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "cb585dc7-f7f5-5e9d-a4d9-c7d08fa06a7b",
+              "title": "Customer reports delivery window passed with no contact",
+              "status": "open",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "73a05396-f84a-5015-aced-d8aeed225b2c",
+              "title": "Delivery attempted at old address not updated in system",
+              "status": "discarded",
+              "category": "delivery_failure",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "6e3b3710-74ff-5419-afa9-6815f57cb1ff",
+              "title": "Outer box crushed, inner product compromised",
+              "status": "resolved",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "922d1add-288e-5c2b-82c4-9bf614f6c517",
+              "title": "Shipment marked delivered but customer has not received it",
+              "status": "resolved",
+              "category": "lost_parcel",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "ab8a10ba-1cb1-5a0f-9801-fd01728d524a",
+              "title": "Wrong postcode assigned during label generation",
+              "status": "open",
+              "category": "delivery_failure",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "c7869fd5-e6a4-59e3-97e9-6c0fef8a8885",
+              "title": "Wrong postcode assigned during label generation",
+              "status": "resolved",
+              "category": "delivery_failure",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "c878689b-d342-50a7-8bc6-b2e0f1288ad9",
+              "title": "Delivery delayed due to weather conditions per carrier",
+              "status": "open",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "0c2c5ecc-e092-5817-a6a7-78f2dbda8558",
+              "title": "Delivery delayed due to weather conditions per carrier",
+              "status": "resolved",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "6278f6f3-2610-5b8f-b6da-726f20f1c85c",
+              "title": "Delivery attempted at old address not updated in system",
+              "status": "open",
+              "category": "delivery_failure",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "4e2bfcfc-7e08-5fa8-9048-55e6683dc44f",
+              "title": "Estimated delivery date changed three times by carrier",
+              "status": "discarded",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "07a36d6f-8aeb-5244-ac52-85178a7b2d2e",
+              "title": "Carrier attempted delivery but customer was not notified",
+              "status": "discarded",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "d5bdc929-be26-516e-a686-44dbb724a42a",
+              "title": "Parcel not delivered and carrier shows no tracking updates",
+              "status": "open",
+              "category": "lost_parcel",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "41269975-ec85-5fa8-b010-7fc517d986e3",
+              "title": "Carrier attempted delivery but customer was not notified",
+              "status": "open",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "3bbeaf68-0ede-5923-8f14-0190895851fd",
+              "title": "Client initiating bulk return of unsold season stock",
+              "status": "open",
+              "category": "returns_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "17575566-028d-504f-92e8-282d53a2ce2a",
+              "title": "Return label sent but customer has not dropped off yet",
+              "status": "resolved",
+              "category": "returns_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "aff88d1c-6870-5538-ad29-0147967e905b",
+              "title": "Carrier attempted delivery but customer was not notified",
+              "status": "discarded",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "607564d0-d515-5ec8-97e7-4b9ca5ae554c",
+              "title": "Client initiating bulk return of unsold season stock",
+              "status": "open",
+              "category": "returns_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "f856c1e4-2a25-5dc3-bf7c-560f81282c97",
+              "title": "Parcel delivered to wrong address, neighbour received it",
+              "status": "resolved",
+              "category": "delivery_failure",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "bcf28263-ea68-5319-938c-2b8789a7dffa",
+              "title": "Customer wants exchange but return not yet processed",
+              "status": "resolved",
+              "category": "returns_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "53d8a4cc-e239-5875-8a99-8d30a60d3ecf",
+              "title": "Carrier attempted delivery but customer was not notified",
+              "status": "resolved",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "d7c7b5d0-a7c8-5f9f-aec6-70d17163383e",
+              "title": "Shipment stuck in customs clearance longer than expected",
+              "status": "open",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "e5f71c69-a743-5560-9cb3-d1a60be34de0",
+              "title": "Liquid product leaked during transit, contents damaged",
+              "status": "resolved",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "24df4767-6671-5f80-843e-f4595f4e2c16",
+              "title": "Return requested within 14-day window, awaiting approval",
+              "status": "resolved",
+              "category": "returns_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "822480f2-309a-5a6b-af05-c8029523a82c",
+              "title": "Delivery delayed due to weather conditions per carrier",
+              "status": "open",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "0fc70122-18c6-57c1-9742-2ecdbf4a1a5b",
+              "title": "Product arrived with broken packaging and cracked screen",
+              "status": "open",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "517f33d1-b558-5008-8d26-2d416f518b9c",
+              "title": "Wrong postcode assigned during label generation",
+              "status": "open",
+              "category": "delivery_failure",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "2284816d-0e23-5ba9-81c4-30007f01e84b",
+              "title": "Estimated delivery date changed three times by carrier",
+              "status": "resolved",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "71d43b33-fd8f-5d8e-a8e4-a0243a138f0f",
+              "title": "Shipment marked delivered but customer has not received it",
+              "status": "discarded",
+              "category": "lost_parcel",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "fd3ca377-8508-5a80-be48-83bf833e3dc9",
+              "title": "Investigation opened with carrier for missing parcel",
+              "status": "open",
+              "category": "lost_parcel",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "c6063208-20d4-5174-8aaa-a332ea54b1e3",
+              "title": "Client initiating bulk return of unsold season stock",
+              "status": "resolved",
+              "category": "returns_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "df75fdc5-d7a6-522e-b718-548d4f84f6ba",
+              "title": "Customer reports delivery window passed with no contact",
+              "status": "resolved",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "8970b93c-fe0a-5417-b0df-7334e214f967",
+              "title": "Shipment stuck in customs clearance longer than expected",
+              "status": "resolved",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "857721d6-dc31-57f2-80a7-d17d8f6f00d8",
+              "title": "Package held at sorting facility for unknown reason",
+              "status": "resolved",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "c7ad57a7-bf6d-5c70-9d6a-9f05c294d3fd",
+              "title": "Customer requesting return label for damaged product",
+              "status": "open",
+              "category": "returns_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "3e897074-74de-59e8-aa2a-9079be285a90",
+              "title": "Delivery attempted at old address not updated in system",
+              "status": "open",
+              "category": "delivery_failure",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "b7e98ca7-8cb1-539c-a864-c890f9e4148c",
+              "title": "Return requested within 14-day window, awaiting approval",
+              "status": "resolved",
+              "category": "returns_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "5ddc6dac-8ea7-57f3-a5a2-425c9981a261",
+              "title": "Customer confirms parcel never arrived, tracking stuck in transit",
+              "status": "resolved",
+              "category": "lost_parcel",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "2a8c0ef7-0131-5d88-ae7f-9521be7dbcca",
+              "title": "Customer address was truncated in carrier system",
+              "status": "resolved",
+              "category": "delivery_failure",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "a3e5daec-7190-50c9-965b-860a63874fcd",
+              "title": "Wrong postcode assigned during label generation",
+              "status": "resolved",
+              "category": "delivery_failure",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "b672b0a6-c8ac-5eff-ac74-225f3dd4257c",
+              "title": "Customer address was truncated in carrier system",
+              "status": "resolved",
+              "category": "delivery_failure",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "7e77689e-acdd-5338-a527-4b1de8694673",
+              "title": "Wrong postcode assigned during label generation",
+              "status": "open",
+              "category": "delivery_failure",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "bd366825-5628-5ba1-9534-225a879fe530",
+              "title": "Shipment marked delivered but customer has not received it",
+              "status": "resolved",
+              "category": "lost_parcel",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "051c87d5-1e6a-5a10-8058-d883a710f640",
+              "title": "Estimated delivery date changed three times by carrier",
+              "status": "discarded",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "la_office",
+              "created_at": null,
+              "updated_at": null
+            },
+            {
+              "id": "3a3332c9-14ad-5f56-9e8c-97634ac5d43a",
+              "title": "Carrier attempted delivery but customer was not notified",
+              "status": "discarded",
+              "category": "carrier_issue",
+              "origin": "customer",
+              "branch": "zaragoza_office",
+              "created_at": null,
+              "updated_at": null
+            }
+          ],
+          "total": 95,
+          "error_type": null,
+          "mcp_tool": "incidents_list_tickets",
+          "mcp_error_code": null
+        }
+      }
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 8,
+      "kind": "route",
+      "name": "route_after_incidents",
+      "started_at": "2026-11-21T16:23:18.895+00:00",
+      "duration_ms": 0.004,
+      "status": "ok",
+      "output": {
+        "next": "compose_answer",
+        "reason": "no hay más fuentes planificadas"
+      }
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 9,
+      "kind": "node",
+      "name": "compose_answer",
+      "started_at": "2026-11-21T16:23:18.899+00:00",
+      "duration_ms": 0.025,
+      "status": "ok",
+      "output": {
+        "answer": "Hay 95 tickets en el gestor de incidencias (consulta en vivo).\n- d32a9b66-b81b-5dce-b90f-c4e8bfc27161 — Abierta — Return requested within 14-day window, awaiting approval\n- be7b68f6-9305-566b-825e-88a5b899922b — Resuelta — Outer box crushed, inner product compromised\n- 1a99a7aa-74f8-5659-b560-b532b3ac959d — Resuelta — Package held at sorting facility for unknown reason\n- f184dbd2-e01a-5c15-9f6d-cbeffbf6ef3f — Resuelta — Carrier attempted delivery but customer was not notified\n- 2c1a40f2-cfaf-59ae-936c-d445e40872ce — Resuelta — Customer address was truncated in carrier system\n(se muestran los 5 más recientes)"
+      }
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 10,
+      "kind": "node",
+      "name": "propose_memory",
+      "started_at": "2026-11-21T16:23:18.903+00:00",
+      "duration_ms": 25481.891,
+      "status": "ok",
+      "output": {
+        "memory_proposal": {
+          "id": "mem-90bfc9b473",
+          "tipo": "contexto_incidente_recurrente",
+          "accion": "corregir",
+          "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
+          "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+          "carrier": null,
+          "pais": "US",
+          "zona": null,
+          "ruta": "Los Angeles",
+          "cliente_b2b": null,
+          "tickets_relacionados": 3,
+          "vigencia_dias": null
+        },
+        "memory_evaluated_by": "reflect",
+        "memory_proposal_raw": {
+          "tipo": "contexto_incidente_recurrente",
+          "accion": "corregir",
+          "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
+          "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+          "pais": "US",
+          "tickets_relacionados": 3,
+          "ruta": "Los Angeles",
+          "_campos_completados_por_el_sistema": [
+            "pais",
+            "tickets_relacionados",
+            "ruta"
+          ]
+        },
+        "answer": "Hay 95 tickets en el gestor de incidencias (consulta en vivo).\n- d32a9b66-b81b-5dce-b90f-c4e8bfc27161 — Abierta — Return requested within 14-day window, awaiting approval\n- be7b68f6-9305-566b-825e-88a5b899922b — Resuelta — Outer box crushed, inner product compromised\n- 1a99a7aa-74f8-5659-b560-b532b3ac959d — Resuelta — Package held at sorting facility for unknown reason\n- f184dbd2-e01a-5c15-9f6d-cbeffbf6ef3f — Resuelta — Carrier attempted delivery but customer was not notified\n- 2c1a40f2-cfaf-59ae-936c-d445e40872ce — Resuelta — Customer address was truncated in carrier system\n(se muestran los 5 más recientes)\n\n📌 Propuesta de memoria (contexto de incidente recurrente): «Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.». Motivo: Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-90bfc9b473; no se guarda nada hasta que la confirmes)"
+      }
+    }
+  ],
+  "recorded_with": {
+    "recorded_at": "2026-11-21T16:23:44+00:00",
+    "generation_model": "qwen2.5:1.5b",
+    "turn": {
+      "session_id": "eval-memorable-incident-port-strike-la",
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seconds": 26.6,
+      "nodes": [
+        "resolve_pending_memory",
+        "receive_question",
+        "recall_memory",
+        "plan_sources",
+        "mcp_incidents",
+        "compose_answer",
+        "propose_memory"
+      ],
+      "memory_gate": {
+        "open": true,
+        "signals": [
+          "recurrencia"
+        ],
+        "reason": "señales de recurrencia sobre una categoría memorizable",
+        "candidate_type": "contexto_incidente_recurrente",
+        "hints": {
+          "carriers_mencionados": [],
+          "paises_mencionados": [
+            "US"
+          ]
+        }
+      },
+      "recalled": [],
+      "model_proposal_raw": {
+        "tipo": "contexto_incidente_recurrente",
+        "accion": "corregir",
+        "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
+        "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+        "pais": "US",
+        "tickets_relacionados": 3,
+        "ruta": "Los Angeles",
+        "_campos_completados_por_el_sistema": [
+          "pais",
+          "tickets_relacionados",
+          "ruta"
+        ]
+      },
+      "memory_rejection": null,
+      "answer": "Hay 95 tickets en el gestor de incidencias (consulta en vivo).\n- d32a9b66-b81b-5dce-b90f-c4e8bfc27161 — Abierta — Return requested within 14-day window, awaiting approval\n- be7b68f6-9305-566b-825e-88a5b899922b — Resuelta — Outer box crushed, inner product compromised\n- 1a99a7aa-74f8-5659-b560-b532b3ac959d — Resuelta — Package held at sorting facility for unknown reason\n- f184dbd2-e01a-5c15-9f6d-cbeffbf6ef3f — Resuelta — Carrier attempted delivery but customer was not notified\n- 2c1a40f2-cfaf-59ae-936c-d445e40872ce — Resuelta — Customer address was truncated in carrier system\n(se muestran los 5 más recientes)\n\n📌 Propuesta de memoria (contexto de incidente recurrente): «Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.». Motivo: Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-90bfc9b473; no se guarda nada hasta que la confirmes)",
+      "final_node": "compose_answer",
+      "sources": [
+        "incidents"
+      ],
+      "memory_proposal": {
+        "id": "mem-90bfc9b473",
+        "tipo": "contexto_incidente_recurrente",
+        "accion": "corregir",
+        "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
+        "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+        "carrier": null,
+        "pais": "US",
+        "zona": null,
+        "ruta": "Los Angeles",
+        "cliente_b2b": null,
+        "tickets_relacionados": 3,
+        "vigencia_dias": null
+      },
+      "memory_resolution": null,
+      "memory_before": [],
+      "memory_after": []
+    }
+  }
+}

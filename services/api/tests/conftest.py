@@ -5,6 +5,12 @@ from fastapi.testclient import TestClient
 TEST_SECRET = "test-secret-key-with-at-least-32-bytes"
 
 
+@pytest.fixture(autouse=True)
+def _agent_memory_disabled_by_default(monkeypatch):
+    # Ningún test usa el Redis de desarrollo para la memoria del agente.
+    monkeypatch.setenv("AGENT_MEMORY_ENABLED", "0")
+
+
 @pytest.fixture
 def api_client(tmp_path, monkeypatch):
     monkeypatch.setenv("SECRET_KEY", TEST_SECRET)

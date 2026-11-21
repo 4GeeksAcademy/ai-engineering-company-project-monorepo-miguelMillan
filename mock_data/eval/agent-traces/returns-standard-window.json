@@ -7,16 +7,39 @@
   "sources_used": [
     "rag"
   ],
-  "started_at": "2026-11-20T09:54:50.763+00:00",
-  "finished_at": "2026-11-20T09:55:03.902+00:00",
+  "started_at": "2026-11-21T16:31:56.176+00:00",
+  "finished_at": "2026-11-21T16:32:06.111+00:00",
   "steps": [
     {
       "run_id": "eval-returns-standard-window",
       "seq": 0,
       "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T16:31:56.183+00:00",
+      "duration_ms": 0.004,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "eval-returns-standard-window",
+      "seq": 1,
+      "kind": "route",
+      "name": "route_after_resolve",
+      "started_at": "2026-11-21T16:31:56.185+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "receive_question",
+        "reason": "no hay propuesta pendiente, o el mensaje sigue con otra pregunta"
+      }
+    },
+    {
+      "run_id": "eval-returns-standard-window",
+      "seq": 2,
+      "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-20T09:54:50.770+00:00",
-      "duration_ms": 0.014,
+      "started_at": "2026-11-21T16:31:56.187+00:00",
+      "duration_ms": 0.008,
       "status": "ok",
       "output": {
         "question": "¿Cuál es la ventana de devolución estándar?"
@@ -24,24 +47,43 @@
     },
     {
       "run_id": "eval-returns-standard-window",
-      "seq": 1,
+      "seq": 3,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-20T09:54:50.774+00:00",
+      "started_at": "2026-11-21T16:31:56.189+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {
-        "next": "plan_sources",
+        "next": "recall_memory",
         "reason": "pregunta válida"
       }
     },
     {
       "run_id": "eval-returns-standard-window",
-      "seq": 2,
+      "seq": 4,
+      "kind": "node",
+      "name": "recall_memory",
+      "started_at": "2026-11-21T16:31:56.191+00:00",
+      "duration_ms": 0.1,
+      "status": "ok",
+      "output": {
+        "memory_gate": {
+          "open": false,
+          "signals": [],
+          "reason": "sin información nueva ni corregida (consulta o tarea puntual): nada que recordar",
+          "candidate_type": null,
+          "hints": {}
+        },
+        "memories": []
+      }
+    },
+    {
+      "run_id": "eval-returns-standard-window",
+      "seq": 5,
       "kind": "node",
       "name": "plan_sources",
-      "started_at": "2026-11-20T09:54:50.777+00:00",
-      "duration_ms": 6.858,
+      "started_at": "2026-11-21T16:31:56.194+00:00",
+      "duration_ms": 0.042,
       "status": "ok",
       "output": {
         "plan": {
@@ -56,10 +98,10 @@
     },
     {
       "run_id": "eval-returns-standard-window",
-      "seq": 3,
+      "seq": 6,
       "kind": "route",
       "name": "route_after_plan",
-      "started_at": "2026-11-20T09:54:50.786+00:00",
+      "started_at": "2026-11-21T16:31:56.196+00:00",
       "duration_ms": 0.004,
       "status": "ok",
       "output": {
@@ -69,11 +111,11 @@
     },
     {
       "run_id": "eval-returns-standard-window",
-      "seq": 4,
+      "seq": 7,
       "kind": "node",
       "name": "retrieve",
-      "started_at": "2026-11-20T09:54:50.789+00:00",
-      "duration_ms": 1457.709,
+      "started_at": "2026-11-21T16:31:56.198+00:00",
+      "duration_ms": 43.372,
       "status": "ok",
       "output": {
         "context": [
@@ -91,24 +133,24 @@
     },
     {
       "run_id": "eval-returns-standard-window",
-      "seq": 5,
+      "seq": 8,
       "kind": "route",
       "name": "route_after_retrieve",
-      "started_at": "2026-11-20T09:54:52.250+00:00",
-      "duration_ms": 0.003,
+      "started_at": "2026-11-21T16:31:56.243+00:00",
+      "duration_ms": 0.005,
       "status": "ok",
       "output": {
         "next": "generate",
-        "reason": "hay contexto ≥ min_score"
+        "reason": "hay contexto ≥ min_score o memoria aprobada relevante"
       }
     },
     {
       "run_id": "eval-returns-standard-window",
-      "seq": 6,
+      "seq": 9,
       "kind": "node",
       "name": "generate",
-      "started_at": "2026-11-20T09:54:52.256+00:00",
-      "duration_ms": 11639.967,
+      "started_at": "2026-11-21T16:31:56.248+00:00",
+      "duration_ms": 9852.716,
       "status": "ok",
       "output": {
         "answer": "La ventana de devolución estándar para TrackFlow es de 30 días desde la entrega, salvo que el cliente haya especificado una ventana diferente en su contrato."
@@ -116,20 +158,32 @@
     },
     {
       "run_id": "eval-returns-standard-window",
-      "seq": 7,
+      "seq": 10,
       "kind": "route",
       "name": "route_after_generate",
-      "started_at": "2026-11-20T09:55:03.897+00:00",
-      "duration_ms": 0.004,
+      "started_at": "2026-11-21T16:32:06.102+00:00",
+      "duration_ms": 0.005,
       "status": "ok",
       "output": {
-        "next": "__end__",
+        "next": "propose_memory",
         "reason": "solo RAG: la respuesta generada es la final"
+      }
+    },
+    {
+      "run_id": "eval-returns-standard-window",
+      "seq": 11,
+      "kind": "node",
+      "name": "propose_memory",
+      "started_at": "2026-11-21T16:32:06.107+00:00",
+      "duration_ms": 0.031,
+      "status": "ok",
+      "output": {
+        "memory_proposal": null
       }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-20T09:55:03+00:00",
+    "recorded_at": "2026-11-21T16:32:06+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
     "mcp_server_url": "http://127.0.0.1:8090/mcp",
@@ -139,7 +193,13 @@
         "__start__"
       ],
       [
+        "resolve_pending_memory"
+      ],
+      [
         "receive_question"
+      ],
+      [
+        "recall_memory"
       ],
       [
         "plan_sources"
@@ -149,6 +209,9 @@
       ],
       [
         "generate"
+      ],
+      [
+        "propose_memory"
       ],
       []
     ]

@@ -48,19 +48,47 @@ class AgentQuestion(BaseModel):
 
     # Solo límite de transporte; la validez de la pregunta la decide el grafo.
     question: str = Field(max_length=4000)
+    # Conversación: permite que el siguiente mensaje responda a la propuesta de memoria pendiente.
+    conversation_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$")
+
+
+class MemoryProposalOut(BaseModel):
+    """Propuesta de memoria pendiente: NO está guardada hasta que un usuario la confirme."""
+
+    id: str
+    tipo: str
+    accion: str
+    hecho: str
+    motivo: str
+    carrier: str | None = None
+    pais: str | None = None
+    zona: str | None = None
+    ruta: str | None = None
+    cliente_b2b: str | None = None
+
+
+class MemoryResolutionOut(BaseModel):
+    """Cómo se resolvió en este turno la propuesta pendiente de la conversación."""
+
+    proposal_id: str
+    label: str
+    outcome: str
 
 
 class AgentAnswer(BaseModel):
     answer: str
+    memory_proposal: MemoryProposalOut | None = None
+    memory_resolution: MemoryResolutionOut | None = None
 
 
-@router.post("/agent/query", response_model=AgentAnswer)
-def ask_agent(payload: AgentQuestion, response: Response, _user=Depends(get_current_user)) -> AgentAnswer:
+@router.post("/agent/query", response_model=AgentAnswer, response_model_exclude_none=True)
+def ask_agent(payload: AgentQuestion, response: Response, user=Depends(get_current_user)) -> AgentAnswer:
     # Las tools del agente van por el servidor MCP de TrackFlow con la identidad OAuth del propio
     # agente (cliente trackflow-agent, scopes de solo lectura). El JWT de quien pregunta solo
     # autoriza esta petición: no se reenvía (su audiencia es el API, no el servidor MCP).
     try:
-        result = get_agent().run(payload.question)
+        session = f"{getattr(user, 'id', 'u')}:{payload.conversation_id}" if payload.conversation_id else None
+        result = get_agent().run(payload.question, session_id=session, user=_user_label(user))
     except AgentRunError as error:
         logger.error("agent run %s failed at node %s: %r", error.run_id, error.node, error.cause)
         headers = {"X-Agent-Run-Id": error.run_id}
@@ -76,4 +104,60 @@ def ask_agent(payload: AgentQuestion, response: Response, _user=Depends(get_curr
     response.headers["X-Agent-Run-Id"] = result.run_id
     if result.error:
         raise HTTPException(status_code=422, detail=result.answer, headers={"X-Agent-Run-Id": result.run_id})
-    return AgentAnswer(answer=result.answer)
+    proposal = MemoryProposalOut.model_validate(result.memory_proposal) if result.memory_proposal else None
+    resolution = MemoryResolutionOut.model_validate(result.memory_resolution) if result.memory_resolution else None
+    return AgentAnswer(answer=result.answer, memory_proposal=proposal, memory_resolution=resolution)
+
+
+# ----------------------------------------------------------------------------
+# Memoria del agente: el usuario confirma o rechaza lo que el agente propuso.
+# Confirmar es la ÚNICA escritura en memoria (vuelve a pasar los guardrails).
+# ----------------------------------------------------------------------------
+def _memory_store():
+    store = get_agent().memory_store
+    if store is None:
+        raise HTTPException(status_code=503, detail="La memoria del agente no está habilitada.")
+    return store
+
+
+def _user_label(user) -> str:
+    return str(getattr(user, "email", None) or getattr(user, "id", "usuario"))
+
+
+@router.post("/agent/memory/proposals/{proposal_id}/confirm")
+def confirm_memory_proposal(proposal_id: str, user=Depends(get_current_user)):
+    from services.agent.memory import MemoryWriteRejected
+
+    store = _memory_store()
+    try:
+        entry = store.confirm(proposal_id, approved_by=_user_label(user))
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="La propuesta no existe o ya caducó.") from error
+    except MemoryWriteRejected as error:
+        raise HTTPException(status_code=422, detail={"code": "MEMORIA_PROHIBIDA",
+                                                     "violations": [v.model_dump() for v in error.violations]}) from error
+    except Exception as error:  # noqa: BLE001 — Redis caído
+        logger.exception("memory confirm failed")
+        raise HTTPException(status_code=503, detail="La memoria del agente no está disponible.") from error
+    return {"status": "confirmed", "entry": entry.model_dump()}
+
+
+@router.post("/agent/memory/proposals/{proposal_id}/reject")
+def reject_memory_proposal(proposal_id: str, user=Depends(get_current_user)):
+    store = _memory_store()
+    try:
+        store.reject(proposal_id, rejected_by=_user_label(user))
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="La propuesta no existe o ya caducó.") from error
+    return {"status": "rejected", "id": proposal_id}
+
+
+@router.get("/agent/memory")
+def list_agent_memory(_user=Depends(get_current_user)):
+    return {"entries": [entry.model_dump() for entry in _memory_store().entries()]}
+
+
+@router.get("/agent/memory/audit")
+def agent_memory_audit(_user=Depends(get_current_user)):
+    """Registro auditable de cada decisión: propuesta, resultado, mensajes, usuario y marca de tiempo."""
+    return {"decisions": _memory_store().audit_log()}

@@ -7,10 +7,13 @@
       "criteria": {
         "status": "completed",
         "node_order": [
+          "resolve_pending_memory",
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "generate"
+          "generate",
+          "propose_memory"
         ],
         "final_node": "generate",
         "retrieved_includes": [
@@ -37,10 +40,13 @@
       "criteria": {
         "status": "completed",
         "node_order": [
+          "resolve_pending_memory",
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "generate"
+          "generate",
+          "propose_memory"
         ],
         "final_node": "generate",
         "retrieved_includes": [
@@ -121,10 +127,13 @@
       "criteria": {
         "status": "completed",
         "node_order": [
+          "resolve_pending_memory",
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "no_context"
+          "no_context",
+          "propose_memory"
         ],
         "final_node": "no_context",
         "nodes_not_executed": [
@@ -150,6 +159,7 @@
       "criteria": {
         "status": "completed",
         "node_order": [
+          "resolve_pending_memory",
           "receive_question",
           "invalid_question"
         ],
@@ -176,10 +186,13 @@
           "incidents"
         ],
         "node_order": [
+          "resolve_pending_memory",
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "mcp_incidents",
-          "compose_answer"
+          "compose_answer",
+          "propose_memory"
         ],
         "final_node": "compose_answer",
         "nodes_not_executed": [
@@ -249,12 +262,15 @@
           "rag"
         ],
         "node_order": [
+          "resolve_pending_memory",
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "mcp_incidents",
           "retrieve",
           "generate",
-          "compose_answer"
+          "compose_answer",
+          "propose_memory"
         ],
         "final_node": "compose_answer",
         "incident_tool_ok": true,

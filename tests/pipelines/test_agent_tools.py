@@ -265,7 +265,7 @@ def test_ticket_question_uses_only_the_incidents_tool():
     result = agent.run(f"¿En qué estado está el ticket {TICKET_ID}?")
 
     assert src.calls == ["incidents"] and result.sources == ["incidents"]
-    assert executed_nodes(agent.traces.get_trace(result.run_id)) == ["receive_question", "plan_sources", "mcp_incidents", "compose_answer"]
+    assert executed_nodes(agent.traces.get_trace(result.run_id)) == ["resolve_pending_memory", "receive_question", "recall_memory", "plan_sources", "mcp_incidents", "compose_answer", "propose_memory"]
     assert "**En curso**" in result.answer and TICKET_ID in result.answer
 
 

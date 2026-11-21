@@ -44,6 +44,8 @@ services:
       QDRANT_URL: http://qdrant:6333
       EMBEDDING_CACHE_DIR: /var/lib/trackflow/fastembed
       AGENT_DATA_DIR: /var/lib/trackflow/agent
+      # Memoria del agente: Redis del stack, base 2 (Celery usa la 0). Nunca la colección RAG de Qdrant.
+      AGENT_MEMORY_REDIS_URL: redis://redis:6379/2
       # El agente usa las tools a través del servidor MCP (servicio `mcp`), con OAuth client_credentials.
       MCP_SERVER_URL: ${MCP_SERVER_URL:-http://mcp:8090/mcp}
       OIDC_ISSUER: ${OIDC_ISSUER:-}
