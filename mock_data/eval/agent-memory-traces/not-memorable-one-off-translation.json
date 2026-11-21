@@ -7,25 +7,54 @@
   "sources_used": [
     "rag"
   ],
-  "started_at": "2026-11-21T16:24:13.672+00:00",
-  "finished_at": "2026-11-21T16:24:13.772+00:00",
+  "started_at": "2026-11-21T18:57:27.151+00:00",
+  "finished_at": "2026-11-21T18:57:27.259+00:00",
   "steps": [
     {
       "run_id": "memory-eval-not-memorable-one-off-translation",
       "seq": 0,
       "kind": "node",
-      "name": "resolve_pending_memory",
-      "started_at": "2026-11-21T16:24:13.678+00:00",
-      "duration_ms": 0.317,
+      "name": "input_guard",
+      "started_at": "2026-11-21T18:57:27.157+00:00",
+      "duration_ms": 0.089,
       "status": "ok",
-      "output": {}
+      "output": {
+        "guard": {
+          "action": "allow",
+          "guard": "input_guard",
+          "reason": "consulta dentro del dominio de soporte"
+        }
+      }
     },
     {
       "run_id": "memory-eval-not-memorable-one-off-translation",
       "seq": 1,
       "kind": "route",
+      "name": "route_after_input_guard",
+      "started_at": "2026-11-21T18:57:27.159+00:00",
+      "duration_ms": 0.002,
+      "status": "ok",
+      "output": {
+        "next": "resolve_pending_memory",
+        "reason": "petición dentro del dominio (o reescrita por la guarda)"
+      }
+    },
+    {
+      "run_id": "memory-eval-not-memorable-one-off-translation",
+      "seq": 2,
+      "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T18:57:27.166+00:00",
+      "duration_ms": 0.297,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "memory-eval-not-memorable-one-off-translation",
+      "seq": 3,
+      "kind": "route",
       "name": "route_after_resolve",
-      "started_at": "2026-11-21T16:24:13.680+00:00",
+      "started_at": "2026-11-21T18:57:27.167+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -35,10 +64,10 @@
     },
     {
       "run_id": "memory-eval-not-memorable-one-off-translation",
-      "seq": 2,
+      "seq": 4,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-21T16:24:13.684+00:00",
+      "started_at": "2026-11-21T18:57:27.172+00:00",
       "duration_ms": 0.006,
       "status": "ok",
       "output": {
@@ -47,10 +76,10 @@
     },
     {
       "run_id": "memory-eval-not-memorable-one-off-translation",
-      "seq": 3,
+      "seq": 5,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-21T16:24:13.686+00:00",
+      "started_at": "2026-11-21T18:57:27.173+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -60,11 +89,11 @@
     },
     {
       "run_id": "memory-eval-not-memorable-one-off-translation",
-      "seq": 4,
+      "seq": 6,
       "kind": "node",
       "name": "recall_memory",
-      "started_at": "2026-11-21T16:24:13.690+00:00",
-      "duration_ms": 0.611,
+      "started_at": "2026-11-21T18:57:27.179+00:00",
+      "duration_ms": 0.653,
       "status": "ok",
       "output": {
         "memory_gate": {
@@ -79,10 +108,10 @@
     },
     {
       "run_id": "memory-eval-not-memorable-one-off-translation",
-      "seq": 5,
+      "seq": 7,
       "kind": "node",
       "name": "plan_sources",
-      "started_at": "2026-11-21T16:24:13.696+00:00",
+      "started_at": "2026-11-21T18:57:27.184+00:00",
       "duration_ms": 0.033,
       "status": "ok",
       "output": {
@@ -98,10 +127,10 @@
     },
     {
       "run_id": "memory-eval-not-memorable-one-off-translation",
-      "seq": 6,
+      "seq": 8,
       "kind": "route",
       "name": "route_after_plan",
-      "started_at": "2026-11-21T16:24:13.699+00:00",
+      "started_at": "2026-11-21T18:57:27.186+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {
@@ -111,11 +140,11 @@
     },
     {
       "run_id": "memory-eval-not-memorable-one-off-translation",
-      "seq": 7,
+      "seq": 9,
       "kind": "node",
       "name": "retrieve",
-      "started_at": "2026-11-21T16:24:13.702+00:00",
-      "duration_ms": 56.87,
+      "started_at": "2026-11-21T18:57:27.191+00:00",
+      "duration_ms": 42.681,
       "status": "ok",
       "output": {
         "context": []
@@ -123,11 +152,11 @@
     },
     {
       "run_id": "memory-eval-not-memorable-one-off-translation",
-      "seq": 8,
+      "seq": 10,
       "kind": "route",
       "name": "route_after_retrieve",
-      "started_at": "2026-11-21T16:24:13.761+00:00",
-      "duration_ms": 0.003,
+      "started_at": "2026-11-21T18:57:27.236+00:00",
+      "duration_ms": 0.005,
       "status": "ok",
       "output": {
         "next": "no_context",
@@ -136,11 +165,11 @@
     },
     {
       "run_id": "memory-eval-not-memorable-one-off-translation",
-      "seq": 9,
+      "seq": 11,
       "kind": "node",
       "name": "no_context",
-      "started_at": "2026-11-21T16:24:13.765+00:00",
-      "duration_ms": 0.003,
+      "started_at": "2026-11-21T18:57:27.242+00:00",
+      "duration_ms": 0.004,
       "status": "ok",
       "output": {
         "answer": "No tengo información suficiente en la base de conocimiento de TrackFlow para responder a esa pregunta con datos exactos. Para no comprometer condiciones que no están en los acuerdos estándar, consúltalo con el área responsable antes de responder al cliente."
@@ -148,32 +177,52 @@
     },
     {
       "run_id": "memory-eval-not-memorable-one-off-translation",
-      "seq": 10,
+      "seq": 12,
       "kind": "node",
       "name": "propose_memory",
-      "started_at": "2026-11-21T16:24:13.769+00:00",
+      "started_at": "2026-11-21T18:57:27.247+00:00",
       "duration_ms": 0.004,
       "status": "ok",
       "output": {
         "memory_proposal": null
       }
+    },
+    {
+      "run_id": "memory-eval-not-memorable-one-off-translation",
+      "seq": 13,
+      "kind": "node",
+      "name": "output_guard",
+      "started_at": "2026-11-21T18:57:27.254+00:00",
+      "duration_ms": 0.579,
+      "status": "ok",
+      "output": {
+        "answer": "No tengo información suficiente en la base de conocimiento de TrackFlow para responder a esa pregunta con datos exactos. Para no comprometer condiciones que no están en los acuerdos estándar, consúltalo con el área responsable antes de responder al cliente.",
+        "output_check": {
+          "ok": true,
+          "failure_type": null,
+          "codes": [],
+          "detail": ""
+        }
+      }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-21T16:24:13+00:00",
+    "recorded_at": "2026-11-21T18:57:27+00:00",
     "generation_model": "qwen2.5:1.5b",
     "turn": {
       "session_id": "eval-not-memorable-one-off-translation",
       "run_id": "memory-eval-not-memorable-one-off-translation",
       "seconds": 0.1,
       "nodes": [
+        "input_guard",
         "resolve_pending_memory",
         "receive_question",
         "recall_memory",
         "plan_sources",
         "retrieve",
         "no_context",
-        "propose_memory"
+        "propose_memory",
+        "output_guard"
       ],
       "memory_gate": {
         "open": false,

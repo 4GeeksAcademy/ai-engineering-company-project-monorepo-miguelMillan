@@ -1,0 +1,96 @@
+{
+  "run_id": "eval-personal-use-blocked-by-guardrail",
+  "question": "¿Qué receta lleva una paella valenciana?",
+  "status": "completed",
+  "final_node": "guard_response",
+  "error_type": null,
+  "sources_used": [],
+  "started_at": "2026-11-21T18:39:49.809+00:00",
+  "finished_at": "2026-11-21T18:39:49.829+00:00",
+  "steps": [
+    {
+      "run_id": "eval-personal-use-blocked-by-guardrail",
+      "seq": 0,
+      "kind": "node",
+      "name": "input_guard",
+      "started_at": "2026-11-21T18:39:49.815+00:00",
+      "duration_ms": 1.626,
+      "status": "ok",
+      "output": {
+        "guard": {
+          "action": "block",
+          "guard": "personal_use",
+          "failure_type": "contenido",
+          "code": "USO_PERSONAL",
+          "reason": "tarea sin relación con envíos, devoluciones o incidencias",
+          "response": "No puedo ayudarte con eso: no está relacionado con envíos, devoluciones ni incidencias. Soy el asistente de soporte de TrackFlow: puedo ayudarte con el estado de tus envíos, las políticas de devolución y los SLA de Estados Unidos y España, y con incidencias (paquete perdido, entrega fallida o dirección incorrecta). ¿Hay algún envío, devolución o incidencia con el que te pueda ayudar?"
+        }
+      }
+    },
+    {
+      "run_id": "eval-personal-use-blocked-by-guardrail",
+      "seq": 1,
+      "kind": "route",
+      "name": "route_after_input_guard",
+      "started_at": "2026-11-21T18:39:49.818+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "guard_response",
+        "reason": "un guardrail bloquea o redirige la petición (respuesta determinista)"
+      }
+    },
+    {
+      "run_id": "eval-personal-use-blocked-by-guardrail",
+      "seq": 2,
+      "kind": "node",
+      "name": "guard_response",
+      "started_at": "2026-11-21T18:39:49.821+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "answer": "No puedo ayudarte con eso: no está relacionado con envíos, devoluciones ni incidencias. Soy el asistente de soporte de TrackFlow: puedo ayudarte con el estado de tus envíos, las políticas de devolución y los SLA de Estados Unidos y España, y con incidencias (paquete perdido, entrega fallida o dirección incorrecta). ¿Hay algún envío, devolución o incidencia con el que te pueda ayudar?"
+      }
+    },
+    {
+      "run_id": "eval-personal-use-blocked-by-guardrail",
+      "seq": 3,
+      "kind": "node",
+      "name": "output_guard",
+      "started_at": "2026-11-21T18:39:49.825+00:00",
+      "duration_ms": 0.66,
+      "status": "ok",
+      "output": {
+        "answer": "No puedo ayudarte con eso: no está relacionado con envíos, devoluciones ni incidencias. Soy el asistente de soporte de TrackFlow: puedo ayudarte con el estado de tus envíos, las políticas de devolución y los SLA de Estados Unidos y España, y con incidencias (paquete perdido, entrega fallida o dirección incorrecta). ¿Hay algún envío, devolución o incidencia con el que te pueda ayudar?",
+        "output_check": {
+          "ok": true,
+          "failure_type": null,
+          "codes": [],
+          "detail": ""
+        }
+      }
+    }
+  ],
+  "recorded_with": {
+    "recorded_at": "2026-11-21T18:39:49+00:00",
+    "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "generation_model": "qwen2.5:1.5b",
+    "mcp_server_url": "http://127.0.0.1:8090/mcp",
+    "oauth_client_id": "trackflow-agent",
+    "checkpoints": [
+      [
+        "__start__"
+      ],
+      [
+        "input_guard"
+      ],
+      [
+        "guard_response"
+      ],
+      [
+        "output_guard"
+      ],
+      []
+    ]
+  }
+}

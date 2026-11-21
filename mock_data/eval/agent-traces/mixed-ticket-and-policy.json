@@ -8,25 +8,54 @@
     "incidents",
     "rag"
   ],
-  "started_at": "2026-11-21T16:33:07.844+00:00",
-  "finished_at": "2026-11-21T16:33:18.045+00:00",
+  "started_at": "2026-11-21T18:39:55.773+00:00",
+  "finished_at": "2026-11-21T18:40:09.576+00:00",
   "steps": [
     {
       "run_id": "eval-mixed-ticket-and-policy",
       "seq": 0,
       "kind": "node",
-      "name": "resolve_pending_memory",
-      "started_at": "2026-11-21T16:33:07.854+00:00",
-      "duration_ms": 0.005,
+      "name": "input_guard",
+      "started_at": "2026-11-21T18:39:55.780+00:00",
+      "duration_ms": 0.233,
       "status": "ok",
-      "output": {}
+      "output": {
+        "guard": {
+          "action": "allow",
+          "guard": "input_guard",
+          "reason": "consulta dentro del dominio de soporte"
+        }
+      }
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
       "seq": 1,
       "kind": "route",
+      "name": "route_after_input_guard",
+      "started_at": "2026-11-21T18:39:55.781+00:00",
+      "duration_ms": 0.002,
+      "status": "ok",
+      "output": {
+        "next": "resolve_pending_memory",
+        "reason": "petición dentro del dominio (o reescrita por la guarda)"
+      }
+    },
+    {
+      "run_id": "eval-mixed-ticket-and-policy",
+      "seq": 2,
+      "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T18:39:55.843+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "eval-mixed-ticket-and-policy",
+      "seq": 3,
+      "kind": "route",
       "name": "route_after_resolve",
-      "started_at": "2026-11-21T16:33:07.858+00:00",
+      "started_at": "2026-11-21T18:39:55.845+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -36,11 +65,11 @@
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 2,
+      "seq": 4,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-21T16:33:07.866+00:00",
-      "duration_ms": 0.01,
+      "started_at": "2026-11-21T18:39:55.849+00:00",
+      "duration_ms": 0.007,
       "status": "ok",
       "output": {
         "question": "¿En qué estado está el ticket d32a9b66-b81b-5dce-b90f-c4e8bfc27161 y cuál es la ventana de devolución estándar?"
@@ -48,11 +77,11 @@
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 3,
+      "seq": 5,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-21T16:33:07.870+00:00",
-      "duration_ms": 0.003,
+      "started_at": "2026-11-21T18:39:55.850+00:00",
+      "duration_ms": 0.002,
       "status": "ok",
       "output": {
         "next": "recall_memory",
@@ -61,11 +90,11 @@
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 4,
+      "seq": 6,
       "kind": "node",
       "name": "recall_memory",
-      "started_at": "2026-11-21T16:33:07.878+00:00",
-      "duration_ms": 0.136,
+      "started_at": "2026-11-21T18:39:55.855+00:00",
+      "duration_ms": 0.085,
       "status": "ok",
       "output": {
         "memory_gate": {
@@ -80,11 +109,11 @@
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 5,
+      "seq": 7,
       "kind": "node",
       "name": "plan_sources",
-      "started_at": "2026-11-21T16:33:07.888+00:00",
-      "duration_ms": 0.142,
+      "started_at": "2026-11-21T18:39:55.858+00:00",
+      "duration_ms": 0.128,
       "status": "ok",
       "output": {
         "plan": {
@@ -105,10 +134,10 @@
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 6,
+      "seq": 8,
       "kind": "route",
       "name": "route_after_plan",
-      "started_at": "2026-11-21T16:33:07.891+00:00",
+      "started_at": "2026-11-21T18:39:55.860+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {
@@ -118,11 +147,11 @@
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 7,
+      "seq": 9,
       "kind": "node",
       "name": "mcp_incidents",
-      "started_at": "2026-11-21T16:33:07.898+00:00",
-      "duration_ms": 176.284,
+      "started_at": "2026-11-21T18:39:55.863+00:00",
+      "duration_ms": 205.852,
       "status": "ok",
       "output": {
         "incident_result": {
@@ -157,11 +186,11 @@
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 8,
+      "seq": 10,
       "kind": "route",
       "name": "route_after_incidents",
-      "started_at": "2026-11-21T16:33:08.079+00:00",
-      "duration_ms": 0.004,
+      "started_at": "2026-11-21T18:39:56.071+00:00",
+      "duration_ms": 0.005,
       "status": "ok",
       "output": {
         "next": "retrieve",
@@ -170,11 +199,11 @@
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 9,
+      "seq": 11,
       "kind": "node",
       "name": "retrieve",
-      "started_at": "2026-11-21T16:33:08.089+00:00",
-      "duration_ms": 41.331,
+      "started_at": "2026-11-21T18:39:56.074+00:00",
+      "duration_ms": 72.231,
       "status": "ok",
       "output": {
         "context": [
@@ -192,11 +221,11 @@
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 10,
+      "seq": 12,
       "kind": "route",
       "name": "route_after_retrieve",
-      "started_at": "2026-11-21T16:33:08.134+00:00",
-      "duration_ms": 0.004,
+      "started_at": "2026-11-21T18:39:56.148+00:00",
+      "duration_ms": 0.002,
       "status": "ok",
       "output": {
         "next": "generate",
@@ -205,22 +234,22 @@
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 11,
+      "seq": 13,
       "kind": "node",
       "name": "generate",
-      "started_at": "2026-11-21T16:33:08.142+00:00",
-      "duration_ms": 9887.593,
+      "started_at": "2026-11-21T18:39:56.151+00:00",
+      "duration_ms": 13380.134,
       "status": "ok",
       "output": {
-        "answer": "La ventana de devolución estándar para TrackFlow es de 30 días desde la entrega, salvo que el cliente haya especificado una ventana diferente en su contrato."
+        "answer": "La ventana de devolución estándar para los envíos de TrackFlow es de 30 días desde la entrega, salvo que el cliente haya especificado una ventana diferente en su contrato."
       }
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 12,
+      "seq": 14,
       "kind": "route",
       "name": "route_after_generate",
-      "started_at": "2026-11-21T16:33:18.032+00:00",
+      "started_at": "2026-11-21T18:40:09.534+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {
@@ -230,31 +259,49 @@
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 13,
+      "seq": 15,
       "kind": "node",
       "name": "compose_answer",
-      "started_at": "2026-11-21T16:33:18.037+00:00",
-      "duration_ms": 0.045,
+      "started_at": "2026-11-21T18:40:09.542+00:00",
+      "duration_ms": 0.038,
       "status": "ok",
       "output": {
-        "answer": "El ticket d32a9b66-b81b-5dce-b90f-c4e8bfc27161 («Return requested within 14-day window, awaiting approval») está en estado **Abierta**. Categoría: Problema de devolución; origen: Cliente; sede: Zaragoza — Oficina. Creado el 08/01/2024, última actualización el 08/01/2024. (Fuente: gestor de incidencias, consulta en vivo.)\n\nLa ventana de devolución estándar para TrackFlow es de 30 días desde la entrega, salvo que el cliente haya especificado una ventana diferente en su contrato."
+        "answer": "El ticket d32a9b66-b81b-5dce-b90f-c4e8bfc27161 («Return requested within 14-day window, awaiting approval») está en estado **Abierta**. Categoría: Problema de devolución; origen: Cliente; sede: Zaragoza — Oficina. Creado el 08/01/2024, última actualización el 08/01/2024. (Fuente: gestor de incidencias, consulta en vivo.)\n\nLa ventana de devolución estándar para los envíos de TrackFlow es de 30 días desde la entrega, salvo que el cliente haya especificado una ventana diferente en su contrato."
       }
     },
     {
       "run_id": "eval-mixed-ticket-and-policy",
-      "seq": 14,
+      "seq": 16,
       "kind": "node",
       "name": "propose_memory",
-      "started_at": "2026-11-21T16:33:18.040+00:00",
+      "started_at": "2026-11-21T18:40:09.557+00:00",
       "duration_ms": 0.004,
       "status": "ok",
       "output": {
         "memory_proposal": null
       }
+    },
+    {
+      "run_id": "eval-mixed-ticket-and-policy",
+      "seq": 17,
+      "kind": "node",
+      "name": "output_guard",
+      "started_at": "2026-11-21T18:40:09.565+00:00",
+      "duration_ms": 0.746,
+      "status": "ok",
+      "output": {
+        "answer": "El ticket d32a9b66-b81b-5dce-b90f-c4e8bfc27161 («Return requested within 14-day window, awaiting approval») está en estado **Abierta**. Categoría: Problema de devolución; origen: Cliente; sede: Zaragoza — Oficina. Creado el 08/01/2024, última actualización el 08/01/2024. (Fuente: gestor de incidencias, consulta en vivo.)\n\nLa ventana de devolución estándar para los envíos de TrackFlow es de 30 días desde la entrega, salvo que el cliente haya especificado una ventana diferente en su contrato.",
+        "output_check": {
+          "ok": true,
+          "failure_type": null,
+          "codes": [],
+          "detail": ""
+        }
+      }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-21T16:33:18+00:00",
+    "recorded_at": "2026-11-21T18:40:09+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
     "mcp_server_url": "http://127.0.0.1:8090/mcp",
@@ -262,6 +309,9 @@
     "checkpoints": [
       [
         "__start__"
+      ],
+      [
+        "input_guard"
       ],
       [
         "resolve_pending_memory"
@@ -289,6 +339,9 @@
       ],
       [
         "propose_memory"
+      ],
+      [
+        "output_guard"
       ],
       []
     ]

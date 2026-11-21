@@ -41,6 +41,18 @@ CREATE TABLE IF NOT EXISTS agent_trace_steps (
     output      TEXT NOT NULL,
     PRIMARY KEY (run_id, seq)
 );
+CREATE TABLE IF NOT EXISTS guardrail_events (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts           TEXT NOT NULL,
+    run_id       TEXT,
+    session_id   TEXT,
+    guard        TEXT NOT NULL,
+    action       TEXT NOT NULL CHECK (action IN ('block', 'redirect', 'sanitize', 'replace')),
+    failure_type TEXT CHECK (failure_type IN ('estructural', 'contenido', 'seguridad')),
+    code         TEXT,
+    detail       TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_guardrail_events_session ON guardrail_events (session_id);
 """
 
 
@@ -64,6 +76,40 @@ class TraceStore:
             if "sources_used" not in columns:  # migración de traces de la Parte 1
                 self._connection.execute("ALTER TABLE agent_runs ADD COLUMN sources_used TEXT")
         self._next_seq: dict[str, int] = {}
+
+    # ------------------------------------------------------------------ guardrails
+    def record_guardrail(self, *, run_id: str | None, session_id: str | None, guard: str, action: str,
+                         failure_type: str | None, code: str | None, detail: str = "") -> None:
+        """Una fila por cada vez que un guardrail bloquea, redirige, sanea o sustituye algo."""
+        from services.agent.guardrails import log_event
+
+        event = {"ts": _now(), "run_id": run_id, "session_id": session_id, "guard": guard, "action": action,
+                 "failure_type": failure_type, "code": code, "detail": (detail or "")[:500]}
+        with self._lock, self._connection:
+            self._connection.execute(
+                "INSERT INTO guardrail_events (ts, run_id, session_id, guard, action, failure_type, code, detail) "
+                "VALUES (:ts, :run_id, :session_id, :guard, :action, :failure_type, :code, :detail)", event)
+        log_event(event)
+
+    def guardrail_summary(self, session_id: str | None = None, since: str | None = None) -> dict[str, Any]:
+        """Cuántas veces se activó cada guardrail (por guardrail, tipo de fallo y código)."""
+        where, params = [], {}
+        if session_id:
+            where.append("session_id = :session_id")
+            params["session_id"] = session_id
+        if since:
+            where.append("ts >= :since")
+            params["since"] = since
+        clause = f"WHERE {' AND '.join(where)}" if where else ""
+        with self._lock:
+            rows = self._connection.execute(
+                f"SELECT guard, action, failure_type, code, COUNT(*) AS n FROM guardrail_events {clause} "
+                "GROUP BY guard, action, failure_type, code ORDER BY n DESC, guard", params).fetchall()
+            by_type = self._connection.execute(
+                f"SELECT COALESCE(failure_type, 'n/a') AS t, COUNT(*) AS n FROM guardrail_events {clause} GROUP BY t", params).fetchall()
+        return {"session_id": session_id, "since": since, "total": sum(r["n"] for r in rows),
+                "by_failure_type": {r["t"]: r["n"] for r in by_type},
+                "by_guard": [dict(r) for r in rows]}
 
     def start_run(self, run_id: str, question: str) -> None:
         with self._lock, self._connection:

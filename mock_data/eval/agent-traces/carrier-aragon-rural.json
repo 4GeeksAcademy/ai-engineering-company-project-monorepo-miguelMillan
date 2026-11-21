@@ -7,26 +7,55 @@
   "sources_used": [
     "rag"
   ],
-  "started_at": "2026-11-21T16:31:28.298+00:00",
-  "finished_at": "2026-11-21T16:31:56.170+00:00",
+  "started_at": "2026-11-21T18:37:36.665+00:00",
+  "finished_at": "2026-11-21T18:38:29.711+00:00",
   "steps": [
     {
       "run_id": "eval-carrier-aragon-rural",
       "seq": 0,
       "kind": "node",
-      "name": "resolve_pending_memory",
-      "started_at": "2026-11-21T16:31:28.310+00:00",
-      "duration_ms": 0.007,
+      "name": "input_guard",
+      "started_at": "2026-11-21T18:37:36.676+00:00",
+      "duration_ms": 0.198,
       "status": "ok",
-      "output": {}
+      "output": {
+        "guard": {
+          "action": "allow",
+          "guard": "input_guard",
+          "reason": "consulta dentro del dominio de soporte"
+        }
+      }
     },
     {
       "run_id": "eval-carrier-aragon-rural",
       "seq": 1,
       "kind": "route",
+      "name": "route_after_input_guard",
+      "started_at": "2026-11-21T18:37:36.678+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "resolve_pending_memory",
+        "reason": "petición dentro del dominio (o reescrita por la guarda)"
+      }
+    },
+    {
+      "run_id": "eval-carrier-aragon-rural",
+      "seq": 2,
+      "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T18:37:36.681+00:00",
+      "duration_ms": 0.005,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "eval-carrier-aragon-rural",
+      "seq": 3,
+      "kind": "route",
       "name": "route_after_resolve",
-      "started_at": "2026-11-21T16:31:28.312+00:00",
-      "duration_ms": 0.002,
+      "started_at": "2026-11-21T18:37:36.684+00:00",
+      "duration_ms": 0.003,
       "status": "ok",
       "output": {
         "next": "receive_question",
@@ -35,11 +64,11 @@
     },
     {
       "run_id": "eval-carrier-aragon-rural",
-      "seq": 2,
+      "seq": 4,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-21T16:31:28.317+00:00",
-      "duration_ms": 0.009,
+      "started_at": "2026-11-21T18:37:36.688+00:00",
+      "duration_ms": 0.011,
       "status": "ok",
       "output": {
         "question": "¿Qué transportista cubre mejor Aragón rural?"
@@ -47,11 +76,11 @@
     },
     {
       "run_id": "eval-carrier-aragon-rural",
-      "seq": 3,
+      "seq": 5,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-21T16:31:28.319+00:00",
-      "duration_ms": 0.003,
+      "started_at": "2026-11-21T18:37:36.690+00:00",
+      "duration_ms": 0.002,
       "status": "ok",
       "output": {
         "next": "recall_memory",
@@ -60,11 +89,11 @@
     },
     {
       "run_id": "eval-carrier-aragon-rural",
-      "seq": 4,
+      "seq": 6,
       "kind": "node",
       "name": "recall_memory",
-      "started_at": "2026-11-21T16:31:28.322+00:00",
-      "duration_ms": 0.095,
+      "started_at": "2026-11-21T18:37:36.693+00:00",
+      "duration_ms": 0.085,
       "status": "ok",
       "output": {
         "memory_gate": {
@@ -79,11 +108,11 @@
     },
     {
       "run_id": "eval-carrier-aragon-rural",
-      "seq": 5,
+      "seq": 7,
       "kind": "node",
       "name": "plan_sources",
-      "started_at": "2026-11-21T16:31:28.326+00:00",
-      "duration_ms": 0.061,
+      "started_at": "2026-11-21T18:37:36.698+00:00",
+      "duration_ms": 0.039,
       "status": "ok",
       "output": {
         "plan": {
@@ -98,11 +127,11 @@
     },
     {
       "run_id": "eval-carrier-aragon-rural",
-      "seq": 6,
+      "seq": 8,
       "kind": "route",
       "name": "route_after_plan",
-      "started_at": "2026-11-21T16:31:28.328+00:00",
-      "duration_ms": 0.004,
+      "started_at": "2026-11-21T18:37:36.699+00:00",
+      "duration_ms": 0.003,
       "status": "ok",
       "output": {
         "next": "retrieve",
@@ -111,11 +140,11 @@
     },
     {
       "run_id": "eval-carrier-aragon-rural",
-      "seq": 7,
+      "seq": 9,
       "kind": "node",
       "name": "retrieve",
-      "started_at": "2026-11-21T16:31:28.332+00:00",
-      "duration_ms": 2586.906,
+      "started_at": "2026-11-21T18:37:36.702+00:00",
+      "duration_ms": 4857.028,
       "status": "ok",
       "output": {
         "context": [
@@ -133,10 +162,10 @@
     },
     {
       "run_id": "eval-carrier-aragon-rural",
-      "seq": 8,
+      "seq": 10,
       "kind": "route",
       "name": "route_after_retrieve",
-      "started_at": "2026-11-21T16:31:30.921+00:00",
+      "started_at": "2026-11-21T18:37:41.561+00:00",
       "duration_ms": 0.004,
       "status": "ok",
       "output": {
@@ -146,23 +175,23 @@
     },
     {
       "run_id": "eval-carrier-aragon-rural",
-      "seq": 9,
+      "seq": 11,
       "kind": "node",
       "name": "generate",
-      "started_at": "2026-11-21T16:31:30.925+00:00",
-      "duration_ms": 25235.78,
+      "started_at": "2026-11-21T18:37:41.565+00:00",
+      "duration_ms": 48131.632,
       "status": "ok",
       "output": {
-        "answer": "TrackFlow cubre mejor la cobertura en zonas rurales de Aragón con SEUR. Esta compañía tiene una mejor cobertura en áreas menos urbanas y rurales del estado aragonés, lo que la hace más adecuada para el transporte a estos lugares. Sin embargo, MRW ofrece tarifas más competitivas para paquetes pequeños (menores a 2 kg), lo que podría ser un punto favorable si tu cliente está buscando una opción más económica para sus envíos en Zaragoza."
+        "answer": "TrackFlow trabaja con diferentes transportistas según el país. En España, la cobertura de Transportistas es:\n\n- SEUR: Mejor cobertura en zonas rurales de Aragón.\n- MRW: Tarifas más competitivas para paquetes pequeños (menores a 2 kg).\n- Transportistas locales cubren solo la zona metropolitana de Zaragoza, no el resto del país.\n\nEn este caso específico, SEUR cubre mejor las zonas rurales de Aragón."
       }
     },
     {
       "run_id": "eval-carrier-aragon-rural",
-      "seq": 10,
+      "seq": 12,
       "kind": "route",
       "name": "route_after_generate",
-      "started_at": "2026-11-21T16:31:56.163+00:00",
-      "duration_ms": 0.005,
+      "started_at": "2026-11-21T18:38:29.699+00:00",
+      "duration_ms": 0.003,
       "status": "ok",
       "output": {
         "next": "propose_memory",
@@ -171,19 +200,37 @@
     },
     {
       "run_id": "eval-carrier-aragon-rural",
-      "seq": 11,
+      "seq": 13,
       "kind": "node",
       "name": "propose_memory",
-      "started_at": "2026-11-21T16:31:56.166+00:00",
-      "duration_ms": 0.005,
+      "started_at": "2026-11-21T18:38:29.703+00:00",
+      "duration_ms": 0.004,
       "status": "ok",
       "output": {
         "memory_proposal": null
       }
+    },
+    {
+      "run_id": "eval-carrier-aragon-rural",
+      "seq": 14,
+      "kind": "node",
+      "name": "output_guard",
+      "started_at": "2026-11-21T18:38:29.706+00:00",
+      "duration_ms": 0.696,
+      "status": "ok",
+      "output": {
+        "answer": "TrackFlow trabaja con diferentes transportistas según el país. En España, la cobertura de Transportistas es:\n\n- SEUR: Mejor cobertura en zonas rurales de Aragón.\n- MRW: Tarifas más competitivas para paquetes pequeños (menores a 2 kg).\n- Transportistas locales cubren solo la zona metropolitana de Zaragoza, no el resto del país.\n\nEn este caso específico, SEUR cubre mejor las zonas rurales de Aragón.",
+        "output_check": {
+          "ok": true,
+          "failure_type": null,
+          "codes": [],
+          "detail": ""
+        }
+      }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-21T16:31:56+00:00",
+    "recorded_at": "2026-11-21T18:38:29+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
     "mcp_server_url": "http://127.0.0.1:8090/mcp",
@@ -191,6 +238,9 @@
     "checkpoints": [
       [
         "__start__"
+      ],
+      [
+        "input_guard"
       ],
       [
         "resolve_pending_memory"
@@ -212,6 +262,9 @@
       ],
       [
         "propose_memory"
+      ],
+      [
+        "output_guard"
       ],
       []
     ]

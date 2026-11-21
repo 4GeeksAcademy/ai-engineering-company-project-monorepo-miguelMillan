@@ -84,7 +84,7 @@ def test_too_long_question_is_rejected_before_retrieval():
 
 def test_no_context_above_threshold_answers_honestly_without_generation():
     spy = Spy(chunks=[])
-    result = make_agent(spy).run("¿Qué receta lleva una paella valenciana?")
+    result = make_agent(spy).run("¿Cuál es la capital de Mongolia?")  # fuera de dominio, pero no es una tarea personal
 
     assert result.final_node == "no_context"
     assert result.answer == NO_CONTEXT_ANSWER
@@ -165,13 +165,14 @@ def test_each_transition_is_checkpointed_and_inspectable(tmp_path):
 
     checkpoints = agent.checkpoints(result.run_id)
     assert [c["next"] for c in checkpoints] == [
-        ["__start__"], ["resolve_pending_memory"], ["receive_question"], ["recall_memory"], ["plan_sources"], ["retrieve"], ["generate"],
-        ["propose_memory"], [],
+        ["__start__"], ["input_guard"], ["resolve_pending_memory"], ["receive_question"], ["recall_memory"], ["plan_sources"],
+        ["retrieve"], ["generate"], ["propose_memory"], ["output_guard"], [],
     ]
-    assert checkpoints[3]["values"]["question"] == "¿Qué transportista cubre mejor Aragón rural?"
-    assert checkpoints[4]["values"]["memory_gate"]["open"] is False  # consulta sin nada nuevo que recordar
-    assert checkpoints[5]["values"]["plan"]["sources"] == ["rag"]
-    assert checkpoints[6]["values"]["context"] == [SEUR_CHUNK]  # estado tras retrieve, antes de generate
+    assert checkpoints[2]["values"]["guard"]["action"] == "allow"  # guarda de entrada: dentro del dominio
+    assert checkpoints[4]["values"]["question"] == "¿Qué transportista cubre mejor Aragón rural?"
+    assert checkpoints[5]["values"]["memory_gate"]["open"] is False  # consulta sin nada nuevo que recordar
+    assert checkpoints[6]["values"]["plan"]["sources"] == ["rag"]
+    assert checkpoints[7]["values"]["context"] == [SEUR_CHUNK]  # estado tras retrieve, antes de generate
     assert checkpoints[-1]["values"]["answer"].startswith("SEUR")
 
     # Persistente: otro proceso (nuevo checkpointer sobre el mismo archivo) puede inspeccionar la corrida.
@@ -187,14 +188,15 @@ def test_trace_records_nodes_in_order_with_outputs_and_routes(tmp_path):
 
     trace = TraceStore(tmp_path / "traces.sqlite").get_trace(result.run_id)  # consultable después de la corrida
     assert trace["status"] == "completed" and trace["final_node"] == "generate"
-    assert executed_nodes(trace) == ["resolve_pending_memory", "receive_question", "recall_memory", "plan_sources", "retrieve", "generate", "propose_memory"]
+    assert executed_nodes(trace) == ["input_guard", "resolve_pending_memory", "receive_question", "recall_memory", "plan_sources", "retrieve", "generate", "propose_memory", "output_guard"]
     assert trace["sources_used"] == ["rag"]
     assert [(s["kind"], s["name"]) for s in trace["steps"]] == [
+        ("node", "input_guard"), ("route", "route_after_input_guard"),
         ("node", "resolve_pending_memory"), ("route", "route_after_resolve"),
         ("node", "receive_question"), ("route", "route_after_receive"), ("node", "recall_memory"),
         ("node", "plan_sources"), ("route", "route_after_plan"),
         ("node", "retrieve"), ("route", "route_after_retrieve"),
-        ("node", "generate"), ("route", "route_after_generate"), ("node", "propose_memory"),
+        ("node", "generate"), ("route", "route_after_generate"), ("node", "propose_memory"), ("node", "output_guard"),
     ]
     assert node_output(trace, "retrieve")["context"][0]["source_document"] == "carrier-coverage"
     assert node_output(trace, "generate")["answer"] == result.answer

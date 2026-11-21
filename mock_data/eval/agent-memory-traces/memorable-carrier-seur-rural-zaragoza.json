@@ -7,25 +7,54 @@
   "sources_used": [
     "rag"
   ],
-  "started_at": "2026-11-21T16:22:25.446+00:00",
-  "finished_at": "2026-11-21T16:23:17.824+00:00",
+  "started_at": "2026-11-21T18:55:29.586+00:00",
+  "finished_at": "2026-11-21T18:56:29.713+00:00",
   "steps": [
     {
       "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
       "seq": 0,
       "kind": "node",
-      "name": "resolve_pending_memory",
-      "started_at": "2026-11-21T16:22:25.617+00:00",
-      "duration_ms": 0.438,
+      "name": "input_guard",
+      "started_at": "2026-11-21T18:55:29.597+00:00",
+      "duration_ms": 0.222,
       "status": "ok",
-      "output": {}
+      "output": {
+        "guard": {
+          "action": "allow",
+          "guard": "input_guard",
+          "reason": "consulta dentro del dominio de soporte"
+        }
+      }
     },
     {
       "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
       "seq": 1,
       "kind": "route",
+      "name": "route_after_input_guard",
+      "started_at": "2026-11-21T18:55:29.599+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "resolve_pending_memory",
+        "reason": "petición dentro del dominio (o reescrita por la guarda)"
+      }
+    },
+    {
+      "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
+      "seq": 2,
+      "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T18:55:29.602+00:00",
+      "duration_ms": 0.305,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
+      "seq": 3,
+      "kind": "route",
       "name": "route_after_resolve",
-      "started_at": "2026-11-21T16:22:25.619+00:00",
+      "started_at": "2026-11-21T18:55:29.604+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {
@@ -35,11 +64,11 @@
     },
     {
       "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
-      "seq": 2,
+      "seq": 4,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-21T16:22:25.623+00:00",
-      "duration_ms": 0.013,
+      "started_at": "2026-11-21T18:55:29.607+00:00",
+      "duration_ms": 0.008,
       "status": "ok",
       "output": {
         "question": "En realidad SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado."
@@ -47,11 +76,11 @@
     },
     {
       "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
-      "seq": 3,
+      "seq": 5,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-21T16:22:25.712+00:00",
-      "duration_ms": 0.003,
+      "started_at": "2026-11-21T18:55:29.610+00:00",
+      "duration_ms": 0.002,
       "status": "ok",
       "output": {
         "next": "recall_memory",
@@ -60,11 +89,11 @@
     },
     {
       "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
-      "seq": 4,
+      "seq": 6,
       "kind": "node",
       "name": "recall_memory",
-      "started_at": "2026-11-21T16:22:25.716+00:00",
-      "duration_ms": 2.23,
+      "started_at": "2026-11-21T18:55:29.614+00:00",
+      "duration_ms": 2.377,
       "status": "ok",
       "output": {
         "memory_gate": {
@@ -89,11 +118,11 @@
     },
     {
       "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
-      "seq": 5,
+      "seq": 7,
       "kind": "node",
       "name": "plan_sources",
-      "started_at": "2026-11-21T16:22:25.721+00:00",
-      "duration_ms": 0.053,
+      "started_at": "2026-11-21T18:55:29.620+00:00",
+      "duration_ms": 0.045,
       "status": "ok",
       "output": {
         "plan": {
@@ -108,11 +137,11 @@
     },
     {
       "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
-      "seq": 6,
+      "seq": 8,
       "kind": "route",
       "name": "route_after_plan",
-      "started_at": "2026-11-21T16:22:25.811+00:00",
-      "duration_ms": 0.005,
+      "started_at": "2026-11-21T18:55:29.622+00:00",
+      "duration_ms": 0.003,
       "status": "ok",
       "output": {
         "next": "retrieve",
@@ -121,11 +150,11 @@
     },
     {
       "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
-      "seq": 7,
+      "seq": 9,
       "kind": "node",
       "name": "retrieve",
-      "started_at": "2026-11-21T16:22:25.814+00:00",
-      "duration_ms": 5094.472,
+      "started_at": "2026-11-21T18:55:29.625+00:00",
+      "duration_ms": 2918.308,
       "status": "ok",
       "output": {
         "context": [
@@ -143,11 +172,11 @@
     },
     {
       "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
-      "seq": 8,
+      "seq": 10,
       "kind": "route",
       "name": "route_after_retrieve",
-      "started_at": "2026-11-21T16:22:30.911+00:00",
-      "duration_ms": 0.006,
+      "started_at": "2026-11-21T18:55:32.547+00:00",
+      "duration_ms": 0.005,
       "status": "ok",
       "output": {
         "next": "propose_memory",
@@ -156,19 +185,19 @@
     },
     {
       "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
-      "seq": 9,
+      "seq": 11,
       "kind": "node",
       "name": "propose_memory",
-      "started_at": "2026-11-21T16:22:30.916+00:00",
-      "duration_ms": 46899.253,
+      "started_at": "2026-11-21T18:55:32.580+00:00",
+      "duration_ms": 57123.9,
       "status": "ok",
       "output": {
         "memory_proposal": {
-          "id": "mem-d08c920601",
+          "id": "mem-e0cc348187",
           "tipo": "regla_carrier",
           "accion": "corregir",
-          "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
-          "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+          "hecho": "SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado.",
+          "motivo": "Se ha informado sobre la modificación en la cobertura del carrier y se necesita corregir la información para evitar futuros problemas o confusiones.",
           "carrier": "SEUR",
           "pais": "ES",
           "zona": "zona rural de zaragoza",
@@ -177,13 +206,13 @@
           "tickets_relacionados": null,
           "vigencia_dias": null
         },
-        "answer": "Tomo nota de lo que indicas. Todavía no está verificado ni guardado en memoria.\nLo que dice hoy la base de conocimiento: «Cobertura de Transportistas TrackFlow trabaja con transportistas distintos según el país: España (Zaragoza): MRW, SEUR, DHL, y dos transportistas locales de última milla en zona metropolitana de Zaragoza. - SEUR: mejor cobertura en zonas rurales de Aragón. - MRW: tarifas más comp» (carrier-coverage — Cobertura de Transportistas > España (Zaragoza)).\n\n📌 Propuesta de memoria (regla de carrier): «SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.». Motivo: Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-d08c920601; no se guarda nada hasta que la confirmes)",
+        "answer": "Tomo nota de lo que indicas. Todavía no está verificado ni guardado en memoria.\nLo que dice hoy la base de conocimiento: «Cobertura de Transportistas TrackFlow trabaja con transportistas distintos según el país: España (Zaragoza): MRW, SEUR, DHL, y dos transportistas locales de última milla en zona metropolitana de Zaragoza. - SEUR: mejor cobertura en zonas rurales de Aragón. - MRW: tarifas más comp» (carrier-coverage — Cobertura de Transportistas > España (Zaragoza)).\n\n📌 Propuesta de memoria (regla de carrier): «SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado.». Motivo: Se ha informado sobre la modificación en la cobertura del carrier y se necesita corregir la información para evitar futuros problemas o confusiones.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-e0cc348187; no se guarda nada hasta que la confirmes)",
         "memory_evaluated_by": "reflect",
         "memory_proposal_raw": {
           "tipo": "regla_carrier",
           "accion": "corregir",
-          "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
-          "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+          "hecho": "SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado.",
+          "motivo": "Se ha informado sobre la modificación en la cobertura del carrier y se necesita corregir la información para evitar futuros problemas o confusiones.",
           "pais": "ES",
           "carrier": "SEUR",
           "zona": "zona rural de zaragoza",
@@ -194,22 +223,42 @@
           ]
         }
       }
+    },
+    {
+      "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
+      "seq": 12,
+      "kind": "node",
+      "name": "output_guard",
+      "started_at": "2026-11-21T18:56:29.708+00:00",
+      "duration_ms": 0.932,
+      "status": "ok",
+      "output": {
+        "answer": "Tomo nota de lo que indicas. Todavía no está verificado ni guardado en memoria.\nLo que dice hoy la base de conocimiento: «Cobertura de Transportistas TrackFlow trabaja con transportistas distintos según el país: España (Zaragoza): MRW, SEUR, DHL, y dos transportistas locales de última milla en zona metropolitana de Zaragoza. - SEUR: mejor cobertura en zonas rurales de Aragón. - MRW: tarifas más comp» (carrier-coverage — Cobertura de Transportistas > España (Zaragoza)).\n\n📌 Propuesta de memoria (regla de carrier): «SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado.». Motivo: Se ha informado sobre la modificación en la cobertura del carrier y se necesita corregir la información para evitar futuros problemas o confusiones.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-e0cc348187; no se guarda nada hasta que la confirmes)",
+        "output_check": {
+          "ok": true,
+          "failure_type": null,
+          "codes": [],
+          "detail": ""
+        }
+      }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-21T16:23:17+00:00",
+    "recorded_at": "2026-11-21T18:56:29+00:00",
     "generation_model": "qwen2.5:1.5b",
     "turn": {
       "session_id": "eval-memorable-carrier-seur-rural-zaragoza",
       "run_id": "memory-eval-memorable-carrier-seur-rural-zaragoza",
-      "seconds": 52.4,
+      "seconds": 60.1,
       "nodes": [
+        "input_guard",
         "resolve_pending_memory",
         "receive_question",
         "recall_memory",
         "plan_sources",
         "retrieve",
-        "propose_memory"
+        "propose_memory",
+        "output_guard"
       ],
       "memory_gate": {
         "open": true,
@@ -232,8 +281,8 @@
       "model_proposal_raw": {
         "tipo": "regla_carrier",
         "accion": "corregir",
-        "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
-        "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+        "hecho": "SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado.",
+        "motivo": "Se ha informado sobre la modificación en la cobertura del carrier y se necesita corregir la información para evitar futuros problemas o confusiones.",
         "pais": "ES",
         "carrier": "SEUR",
         "zona": "zona rural de zaragoza",
@@ -244,17 +293,17 @@
         ]
       },
       "memory_rejection": null,
-      "answer": "Tomo nota de lo que indicas. Todavía no está verificado ni guardado en memoria.\nLo que dice hoy la base de conocimiento: «Cobertura de Transportistas TrackFlow trabaja con transportistas distintos según el país: España (Zaragoza): MRW, SEUR, DHL, y dos transportistas locales de última milla en zona metropolitana de Zaragoza. - SEUR: mejor cobertura en zonas rurales de Aragón. - MRW: tarifas más comp» (carrier-coverage — Cobertura de Transportistas > España (Zaragoza)).\n\n📌 Propuesta de memoria (regla de carrier): «SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.». Motivo: Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-d08c920601; no se guarda nada hasta que la confirmes)",
+      "answer": "Tomo nota de lo que indicas. Todavía no está verificado ni guardado en memoria.\nLo que dice hoy la base de conocimiento: «Cobertura de Transportistas TrackFlow trabaja con transportistas distintos según el país: España (Zaragoza): MRW, SEUR, DHL, y dos transportistas locales de última milla en zona metropolitana de Zaragoza. - SEUR: mejor cobertura en zonas rurales de Aragón. - MRW: tarifas más comp» (carrier-coverage — Cobertura de Transportistas > España (Zaragoza)).\n\n📌 Propuesta de memoria (regla de carrier): «SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado.». Motivo: Se ha informado sobre la modificación en la cobertura del carrier y se necesita corregir la información para evitar futuros problemas o confusiones.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-e0cc348187; no se guarda nada hasta que la confirmes)",
       "final_node": "propose_memory",
       "sources": [
         "rag"
       ],
       "memory_proposal": {
-        "id": "mem-d08c920601",
+        "id": "mem-e0cc348187",
         "tipo": "regla_carrier",
         "accion": "corregir",
-        "hecho": "SEUR ya no cubre la zona rural de Zaragoza desde el mes pasado.",
-        "motivo": "Señaló un cambio en la cobertura del carrier, necesario para actualizar la información y evitar errores futuros.",
+        "hecho": "SEUR ya no cubre esa zona rural de Zaragoza, hay que usar el carrier local desde el mes pasado.",
+        "motivo": "Se ha informado sobre la modificación en la cobertura del carrier y se necesita corregir la información para evitar futuros problemas o confusiones.",
         "carrier": "SEUR",
         "pais": "ES",
         "zona": "zona rural de zaragoza",

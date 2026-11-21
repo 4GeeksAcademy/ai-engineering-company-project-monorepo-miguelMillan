@@ -1,5 +1,31 @@
 # Progress Log — TrackFlow
 
+## Harness y guardrails del agente de CX (Hito 8, Parte 2), 2026-11-21
+
+- Contexto archivado en `memory-bank/history/AGENT-GUARDRAILS-CONTEXT-2026-11-21.md` (`cmp`). Rama `feature/agent-guardrails` (avanzada a `main` con #40–#42).
+- `services/agent/prompts.py`: `CX_SYSTEM_PROMPT` del agente de primera línea de CX (Valentina Cruz).
+  - Jerarquía de autoridad: el usuario, el RAG, las tools y la memoria viajan en bloques delimitados como datos.
+  - Dominio del CONTEXT: tracking solo de la sesión; políticas y SLA por país sin mezclar; incidencias. Small talk y logística general con redirección; uso personal prohibido; lo que nunca revela.
+  - Mantiene las reglas de negocio (Miguel Torres, Carlos Vega, Sofía Ramos, Black Friday) y un canary.
+- `services/agent/guardrails.py`:
+  - guardas de entrada (estructural, seguridad y contenido);
+  - saneamiento del contenido externo;
+  - validación de la salida (formato, filtración de instrucciones, tarifas de carriers, ubicación de almacenes, términos B2B y pedidos ajenos).
+- Grafo: `input_guard` (primero), `guard_response` y `output_guard` (antes de cada END); saneamiento en `retrieve` y en los nodos MCP. El agente genera con `generate_cx_answer`.
+- Sesión autenticada (`services/agent/session.py`): pedidos autorizados = despachos con tracking de la cuenta del JWT; deny by default.
+- Observabilidad: tabla `guardrail_events` con el tipo de fallo; `python -m services.agent.guardrail_report`; `GET /agent/guardrails/summary`.
+- Tests:
+  - `tests/pipelines/test_agent_guardrails.py`: 109, deterministas, sin LLM.
+  - API: sesión, rechazo por autorización y endpoint de resumen.
+  - `uv run pytest tests -q` → 381 passed; `services/api` → 107 passed.
+- Evidencia real (`docs/pr-evidence/agent-guardrails/`): 21 casos, entre ellos los 4 del CONTEXT, 6 jailbreaks y 2 evasivos; 18 activaciones (seguridad 12, contenido 5). Evals del agente y evidencia de memoria regrabados con el grafo nuevo.
+- Problemas encontrados y corregidos:
+  - el prompt nuevo superaba el timeout de 30 s del cliente en CPU → 240 s sin reintentos en `generate_cx_answer`;
+  - la guarda de salida marcaba como filtración las propias negativas → los patrones exigen datos concretos (regresión con test);
+  - la reescritura del caso 4 atraía el fragmento de devoluciones internacionales → formulación medida contra el RAG.
+- Cambio de comportamiento: «¿Qué receta lleva una paella valenciana?» ahora es uso personal (eval `personal-use-blocked-by-guardrail`); el camino sin contexto se cubre con «¿Cuál es la capital de Mongolia?».
+- Límite: la guarda de salida no corrige errores factuales del LLM de desarrollo. Sin commit hasta el PR.
+
 ## Revisión PR #33 (job nocturno): el lock es el índice único de `processing`, 2026-11-21
 
 - Petición del revisor: quitar `LOCK TABLE`, crear un índice único parcial `(job_name) WHERE status='processing'`, hacer atómica la transición pending → processing y repetir las dos instancias.

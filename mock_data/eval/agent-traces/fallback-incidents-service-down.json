@@ -7,25 +7,54 @@
   "sources_used": [
     "incidents"
   ],
-  "started_at": "2026-11-21T16:33:18.066+00:00",
-  "finished_at": "2026-11-21T16:33:18.155+00:00",
+  "started_at": "2026-11-21T18:40:09.607+00:00",
+  "finished_at": "2026-11-21T18:40:09.752+00:00",
   "steps": [
     {
       "run_id": "eval-fallback-incidents-service-down",
       "seq": 0,
       "kind": "node",
+      "name": "input_guard",
+      "started_at": "2026-11-21T18:40:09.619+00:00",
+      "duration_ms": 0.116,
+      "status": "ok",
+      "output": {
+        "guard": {
+          "action": "allow",
+          "guard": "input_guard",
+          "reason": "consulta dentro del dominio de soporte"
+        }
+      }
+    },
+    {
+      "run_id": "eval-fallback-incidents-service-down",
+      "seq": 1,
+      "kind": "route",
+      "name": "route_after_input_guard",
+      "started_at": "2026-11-21T18:40:09.624+00:00",
+      "duration_ms": 0.002,
+      "status": "ok",
+      "output": {
+        "next": "resolve_pending_memory",
+        "reason": "petición dentro del dominio (o reescrita por la guarda)"
+      }
+    },
+    {
+      "run_id": "eval-fallback-incidents-service-down",
+      "seq": 2,
+      "kind": "node",
       "name": "resolve_pending_memory",
-      "started_at": "2026-11-21T16:33:18.070+00:00",
+      "started_at": "2026-11-21T18:40:09.632+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {}
     },
     {
       "run_id": "eval-fallback-incidents-service-down",
-      "seq": 1,
+      "seq": 3,
       "kind": "route",
       "name": "route_after_resolve",
-      "started_at": "2026-11-21T16:33:18.072+00:00",
+      "started_at": "2026-11-21T18:40:09.636+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -35,10 +64,10 @@
     },
     {
       "run_id": "eval-fallback-incidents-service-down",
-      "seq": 2,
+      "seq": 4,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-21T16:33:18.075+00:00",
+      "started_at": "2026-11-21T18:40:09.644+00:00",
       "duration_ms": 0.006,
       "status": "ok",
       "output": {
@@ -47,10 +76,10 @@
     },
     {
       "run_id": "eval-fallback-incidents-service-down",
-      "seq": 3,
+      "seq": 5,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-21T16:33:18.076+00:00",
+      "started_at": "2026-11-21T18:40:09.648+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -60,11 +89,11 @@
     },
     {
       "run_id": "eval-fallback-incidents-service-down",
-      "seq": 4,
+      "seq": 6,
       "kind": "node",
       "name": "recall_memory",
-      "started_at": "2026-11-21T16:33:18.079+00:00",
-      "duration_ms": 0.094,
+      "started_at": "2026-11-21T18:40:09.655+00:00",
+      "duration_ms": 0.07,
       "status": "ok",
       "output": {
         "memory_gate": {
@@ -79,11 +108,11 @@
     },
     {
       "run_id": "eval-fallback-incidents-service-down",
-      "seq": 5,
+      "seq": 7,
       "kind": "node",
       "name": "plan_sources",
-      "started_at": "2026-11-21T16:33:18.082+00:00",
-      "duration_ms": 0.051,
+      "started_at": "2026-11-21T18:40:09.661+00:00",
+      "duration_ms": 0.05,
       "status": "ok",
       "output": {
         "plan": {
@@ -101,10 +130,10 @@
     },
     {
       "run_id": "eval-fallback-incidents-service-down",
-      "seq": 6,
+      "seq": 8,
       "kind": "route",
       "name": "route_after_plan",
-      "started_at": "2026-11-21T16:33:18.084+00:00",
+      "started_at": "2026-11-21T18:40:09.663+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {
@@ -114,11 +143,11 @@
     },
     {
       "run_id": "eval-fallback-incidents-service-down",
-      "seq": 7,
+      "seq": 9,
       "kind": "node",
       "name": "mcp_incidents",
-      "started_at": "2026-11-21T16:33:18.087+00:00",
-      "duration_ms": 54.771,
+      "started_at": "2026-11-21T18:40:09.670+00:00",
+      "duration_ms": 50.809,
       "status": "ok",
       "output": {
         "incident_result": {
@@ -142,11 +171,11 @@
     },
     {
       "run_id": "eval-fallback-incidents-service-down",
-      "seq": 8,
+      "seq": 10,
       "kind": "route",
       "name": "route_after_incidents",
-      "started_at": "2026-11-21T16:33:18.145+00:00",
-      "duration_ms": 0.004,
+      "started_at": "2026-11-21T18:40:09.723+00:00",
+      "duration_ms": 0.003,
       "status": "ok",
       "output": {
         "next": "compose_answer",
@@ -155,11 +184,11 @@
     },
     {
       "run_id": "eval-fallback-incidents-service-down",
-      "seq": 9,
+      "seq": 11,
       "kind": "node",
       "name": "compose_answer",
-      "started_at": "2026-11-21T16:33:18.148+00:00",
-      "duration_ms": 0.01,
+      "started_at": "2026-11-21T18:40:09.729+00:00",
+      "duration_ms": 0.012,
       "status": "ok",
       "output": {
         "answer": "No pude confirmar el estado de ese ticket ahora mismo: el gestor de incidencias no está disponible. No te doy ningún estado para no inventarlo; inténtalo de nuevo en unos minutos."
@@ -167,19 +196,37 @@
     },
     {
       "run_id": "eval-fallback-incidents-service-down",
-      "seq": 10,
+      "seq": 12,
       "kind": "node",
       "name": "propose_memory",
-      "started_at": "2026-11-21T16:33:18.151+00:00",
+      "started_at": "2026-11-21T18:40:09.739+00:00",
       "duration_ms": 0.004,
       "status": "ok",
       "output": {
         "memory_proposal": null
       }
+    },
+    {
+      "run_id": "eval-fallback-incidents-service-down",
+      "seq": 13,
+      "kind": "node",
+      "name": "output_guard",
+      "started_at": "2026-11-21T18:40:09.745+00:00",
+      "duration_ms": 0.603,
+      "status": "ok",
+      "output": {
+        "answer": "No pude confirmar el estado de ese ticket ahora mismo: el gestor de incidencias no está disponible. No te doy ningún estado para no inventarlo; inténtalo de nuevo en unos minutos.",
+        "output_check": {
+          "ok": true,
+          "failure_type": null,
+          "codes": [],
+          "detail": ""
+        }
+      }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-21T16:33:18+00:00",
+    "recorded_at": "2026-11-21T18:40:09+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
     "mcp_server_url": "http://127.0.0.1:9/mcp",
@@ -187,6 +234,9 @@
     "checkpoints": [
       [
         "__start__"
+      ],
+      [
+        "input_guard"
       ],
       [
         "resolve_pending_memory"
@@ -208,6 +258,9 @@
       ],
       [
         "propose_memory"
+      ],
+      [
+        "output_guard"
       ],
       []
     ]

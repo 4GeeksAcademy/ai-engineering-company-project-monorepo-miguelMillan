@@ -7,25 +7,54 @@
   "sources_used": [
     "incidents"
   ],
-  "started_at": "2026-11-21T16:23:17.829+00:00",
-  "finished_at": "2026-11-21T16:23:44.392+00:00",
+  "started_at": "2026-11-21T18:56:29.719+00:00",
+  "finished_at": "2026-11-21T18:56:56.638+00:00",
   "steps": [
     {
       "run_id": "memory-eval-memorable-incident-port-strike-la",
       "seq": 0,
       "kind": "node",
-      "name": "resolve_pending_memory",
-      "started_at": "2026-11-21T16:23:17.839+00:00",
-      "duration_ms": 0.272,
+      "name": "input_guard",
+      "started_at": "2026-11-21T18:56:29.724+00:00",
+      "duration_ms": 0.181,
       "status": "ok",
-      "output": {}
+      "output": {
+        "guard": {
+          "action": "allow",
+          "guard": "input_guard",
+          "reason": "consulta dentro del dominio de soporte"
+        }
+      }
     },
     {
       "run_id": "memory-eval-memorable-incident-port-strike-la",
       "seq": 1,
       "kind": "route",
+      "name": "route_after_input_guard",
+      "started_at": "2026-11-21T18:56:29.726+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {
+        "next": "resolve_pending_memory",
+        "reason": "petición dentro del dominio (o reescrita por la guarda)"
+      }
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 2,
+      "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T18:56:29.729+00:00",
+      "duration_ms": 0.274,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 3,
+      "kind": "route",
       "name": "route_after_resolve",
-      "started_at": "2026-11-21T16:23:17.841+00:00",
+      "started_at": "2026-11-21T18:56:29.731+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {
@@ -35,10 +64,10 @@
     },
     {
       "run_id": "memory-eval-memorable-incident-port-strike-la",
-      "seq": 2,
+      "seq": 4,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-21T16:23:17.847+00:00",
+      "started_at": "2026-11-21T18:56:29.734+00:00",
       "duration_ms": 0.011,
       "status": "ok",
       "output": {
@@ -47,10 +76,10 @@
     },
     {
       "run_id": "memory-eval-memorable-incident-port-strike-la",
-      "seq": 3,
+      "seq": 5,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-21T16:23:17.849+00:00",
+      "started_at": "2026-11-21T18:56:29.736+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -60,11 +89,11 @@
     },
     {
       "run_id": "memory-eval-memorable-incident-port-strike-la",
-      "seq": 4,
+      "seq": 6,
       "kind": "node",
       "name": "recall_memory",
-      "started_at": "2026-11-21T16:23:17.856+00:00",
-      "duration_ms": 1.687,
+      "started_at": "2026-11-21T18:56:29.738+00:00",
+      "duration_ms": 2.069,
       "status": "ok",
       "output": {
         "memory_gate": {
@@ -86,11 +115,11 @@
     },
     {
       "run_id": "memory-eval-memorable-incident-port-strike-la",
-      "seq": 5,
+      "seq": 7,
       "kind": "node",
       "name": "plan_sources",
-      "started_at": "2026-11-21T16:23:17.863+00:00",
-      "duration_ms": 0.135,
+      "started_at": "2026-11-21T18:56:29.744+00:00",
+      "duration_ms": 0.167,
       "status": "ok",
       "output": {
         "plan": {
@@ -106,10 +135,10 @@
     },
     {
       "run_id": "memory-eval-memorable-incident-port-strike-la",
-      "seq": 6,
+      "seq": 8,
       "kind": "route",
       "name": "route_after_plan",
-      "started_at": "2026-11-21T16:23:17.865+00:00",
+      "started_at": "2026-11-21T18:56:29.745+00:00",
       "duration_ms": 0.004,
       "status": "ok",
       "output": {
@@ -119,11 +148,11 @@
     },
     {
       "run_id": "memory-eval-memorable-incident-port-strike-la",
-      "seq": 7,
+      "seq": 9,
       "kind": "node",
       "name": "mcp_incidents",
-      "started_at": "2026-11-21T16:23:17.871+00:00",
-      "duration_ms": 1016.226,
+      "started_at": "2026-11-21T18:56:29.748+00:00",
+      "duration_ms": 867.101,
       "status": "ok",
       "output": {
         "incident_result": {
@@ -648,10 +677,10 @@
     },
     {
       "run_id": "memory-eval-memorable-incident-port-strike-la",
-      "seq": 8,
+      "seq": 10,
       "kind": "route",
       "name": "route_after_incidents",
-      "started_at": "2026-11-21T16:23:18.895+00:00",
+      "started_at": "2026-11-21T18:56:30.620+00:00",
       "duration_ms": 0.004,
       "status": "ok",
       "output": {
@@ -661,11 +690,11 @@
     },
     {
       "run_id": "memory-eval-memorable-incident-port-strike-la",
-      "seq": 9,
+      "seq": 11,
       "kind": "node",
       "name": "compose_answer",
-      "started_at": "2026-11-21T16:23:18.899+00:00",
-      "duration_ms": 0.025,
+      "started_at": "2026-11-21T18:56:30.625+00:00",
+      "duration_ms": 0.026,
       "status": "ok",
       "output": {
         "answer": "Hay 95 tickets en el gestor de incidencias (consulta en vivo).\n- d32a9b66-b81b-5dce-b90f-c4e8bfc27161 — Abierta — Return requested within 14-day window, awaiting approval\n- be7b68f6-9305-566b-825e-88a5b899922b — Resuelta — Outer box crushed, inner product compromised\n- 1a99a7aa-74f8-5659-b560-b532b3ac959d — Resuelta — Package held at sorting facility for unknown reason\n- f184dbd2-e01a-5c15-9f6d-cbeffbf6ef3f — Resuelta — Carrier attempted delivery but customer was not notified\n- 2c1a40f2-cfaf-59ae-936c-d445e40872ce — Resuelta — Customer address was truncated in carrier system\n(se muestran los 5 más recientes)"
@@ -673,19 +702,19 @@
     },
     {
       "run_id": "memory-eval-memorable-incident-port-strike-la",
-      "seq": 10,
+      "seq": 12,
       "kind": "node",
       "name": "propose_memory",
-      "started_at": "2026-11-21T16:23:18.903+00:00",
-      "duration_ms": 25481.891,
+      "started_at": "2026-11-21T18:56:30.629+00:00",
+      "duration_ms": 25994.192,
       "status": "ok",
       "output": {
         "memory_proposal": {
-          "id": "mem-90bfc9b473",
+          "id": "mem-3479f8e748",
           "tipo": "contexto_incidente_recurrente",
           "accion": "corregir",
-          "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
-          "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+          "hecho": "Los retrasos de Los Ángeles se deben a la huelga portuaria, no al equipo de TrackFlow.",
+          "motivo": "Corrige el patrón de incidencias recurrentes sobre causas externas y proporciona una explicación clara para los clientes.",
           "carrier": null,
           "pais": "US",
           "zona": null,
@@ -698,8 +727,8 @@
         "memory_proposal_raw": {
           "tipo": "contexto_incidente_recurrente",
           "accion": "corregir",
-          "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
-          "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+          "hecho": "Los retrasos de Los Ángeles se deben a la huelga portuaria, no al equipo de TrackFlow.",
+          "motivo": "Corrige el patrón de incidencias recurrentes sobre causas externas y proporciona una explicación clara para los clientes.",
           "pais": "US",
           "tickets_relacionados": 3,
           "ruta": "Los Angeles",
@@ -709,25 +738,45 @@
             "ruta"
           ]
         },
-        "answer": "Hay 95 tickets en el gestor de incidencias (consulta en vivo).\n- d32a9b66-b81b-5dce-b90f-c4e8bfc27161 — Abierta — Return requested within 14-day window, awaiting approval\n- be7b68f6-9305-566b-825e-88a5b899922b — Resuelta — Outer box crushed, inner product compromised\n- 1a99a7aa-74f8-5659-b560-b532b3ac959d — Resuelta — Package held at sorting facility for unknown reason\n- f184dbd2-e01a-5c15-9f6d-cbeffbf6ef3f — Resuelta — Carrier attempted delivery but customer was not notified\n- 2c1a40f2-cfaf-59ae-936c-d445e40872ce — Resuelta — Customer address was truncated in carrier system\n(se muestran los 5 más recientes)\n\n📌 Propuesta de memoria (contexto de incidente recurrente): «Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.». Motivo: Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-90bfc9b473; no se guarda nada hasta que la confirmes)"
+        "answer": "Hay 95 tickets en el gestor de incidencias (consulta en vivo).\n- d32a9b66-b81b-5dce-b90f-c4e8bfc27161 — Abierta — Return requested within 14-day window, awaiting approval\n- be7b68f6-9305-566b-825e-88a5b899922b — Resuelta — Outer box crushed, inner product compromised\n- 1a99a7aa-74f8-5659-b560-b532b3ac959d — Resuelta — Package held at sorting facility for unknown reason\n- f184dbd2-e01a-5c15-9f6d-cbeffbf6ef3f — Resuelta — Carrier attempted delivery but customer was not notified\n- 2c1a40f2-cfaf-59ae-936c-d445e40872ce — Resuelta — Customer address was truncated in carrier system\n(se muestran los 5 más recientes)\n\n📌 Propuesta de memoria (contexto de incidente recurrente): «Los retrasos de Los Ángeles se deben a la huelga portuaria, no al equipo de TrackFlow.». Motivo: Corrige el patrón de incidencias recurrentes sobre causas externas y proporciona una explicación clara para los clientes.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-3479f8e748; no se guarda nada hasta que la confirmes)"
+      }
+    },
+    {
+      "run_id": "memory-eval-memorable-incident-port-strike-la",
+      "seq": 13,
+      "kind": "node",
+      "name": "output_guard",
+      "started_at": "2026-11-21T18:56:56.630+00:00",
+      "duration_ms": 0.925,
+      "status": "ok",
+      "output": {
+        "answer": "Hay 95 tickets en el gestor de incidencias (consulta en vivo).\n- d32a9b66-b81b-5dce-b90f-c4e8bfc27161 — Abierta — Return requested within 14-day window, awaiting approval\n- be7b68f6-9305-566b-825e-88a5b899922b — Resuelta — Outer box crushed, inner product compromised\n- 1a99a7aa-74f8-5659-b560-b532b3ac959d — Resuelta — Package held at sorting facility for unknown reason\n- f184dbd2-e01a-5c15-9f6d-cbeffbf6ef3f — Resuelta — Carrier attempted delivery but customer was not notified\n- 2c1a40f2-cfaf-59ae-936c-d445e40872ce — Resuelta — Customer address was truncated in carrier system\n(se muestran los 5 más recientes)\n\n📌 Propuesta de memoria (contexto de incidente recurrente): «Los retrasos de Los Ángeles se deben a la huelga portuaria, no al equipo de TrackFlow.». Motivo: Corrige el patrón de incidencias recurrentes sobre causas externas y proporciona una explicación clara para los clientes.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-3479f8e748; no se guarda nada hasta que la confirmes)",
+        "output_check": {
+          "ok": true,
+          "failure_type": null,
+          "codes": [],
+          "detail": ""
+        }
       }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-21T16:23:44+00:00",
+    "recorded_at": "2026-11-21T18:56:56+00:00",
     "generation_model": "qwen2.5:1.5b",
     "turn": {
       "session_id": "eval-memorable-incident-port-strike-la",
       "run_id": "memory-eval-memorable-incident-port-strike-la",
-      "seconds": 26.6,
+      "seconds": 26.9,
       "nodes": [
+        "input_guard",
         "resolve_pending_memory",
         "receive_question",
         "recall_memory",
         "plan_sources",
         "mcp_incidents",
         "compose_answer",
-        "propose_memory"
+        "propose_memory",
+        "output_guard"
       ],
       "memory_gate": {
         "open": true,
@@ -747,8 +796,8 @@
       "model_proposal_raw": {
         "tipo": "contexto_incidente_recurrente",
         "accion": "corregir",
-        "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
-        "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+        "hecho": "Los retrasos de Los Ángeles se deben a la huelga portuaria, no al equipo de TrackFlow.",
+        "motivo": "Corrige el patrón de incidencias recurrentes sobre causas externas y proporciona una explicación clara para los clientes.",
         "pais": "US",
         "tickets_relacionados": 3,
         "ruta": "Los Angeles",
@@ -759,17 +808,17 @@
         ]
       },
       "memory_rejection": null,
-      "answer": "Hay 95 tickets en el gestor de incidencias (consulta en vivo).\n- d32a9b66-b81b-5dce-b90f-c4e8bfc27161 — Abierta — Return requested within 14-day window, awaiting approval\n- be7b68f6-9305-566b-825e-88a5b899922b — Resuelta — Outer box crushed, inner product compromised\n- 1a99a7aa-74f8-5659-b560-b532b3ac959d — Resuelta — Package held at sorting facility for unknown reason\n- f184dbd2-e01a-5c15-9f6d-cbeffbf6ef3f — Resuelta — Carrier attempted delivery but customer was not notified\n- 2c1a40f2-cfaf-59ae-936c-d445e40872ce — Resuelta — Customer address was truncated in carrier system\n(se muestran los 5 más recientes)\n\n📌 Propuesta de memoria (contexto de incidente recurrente): «Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.». Motivo: Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-90bfc9b473; no se guarda nada hasta que la confirmes)",
+      "answer": "Hay 95 tickets en el gestor de incidencias (consulta en vivo).\n- d32a9b66-b81b-5dce-b90f-c4e8bfc27161 — Abierta — Return requested within 14-day window, awaiting approval\n- be7b68f6-9305-566b-825e-88a5b899922b — Resuelta — Outer box crushed, inner product compromised\n- 1a99a7aa-74f8-5659-b560-b532b3ac959d — Resuelta — Package held at sorting facility for unknown reason\n- f184dbd2-e01a-5c15-9f6d-cbeffbf6ef3f — Resuelta — Carrier attempted delivery but customer was not notified\n- 2c1a40f2-cfaf-59ae-936c-d445e40872ce — Resuelta — Customer address was truncated in carrier system\n(se muestran los 5 más recientes)\n\n📌 Propuesta de memoria (contexto de incidente recurrente): «Los retrasos de Los Ángeles se deben a la huelga portuaria, no al equipo de TrackFlow.». Motivo: Corrige el patrón de incidencias recurrentes sobre causas externas y proporciona una explicación clara para los clientes.. ¿Quieres que lo recuerde para las próximas conversaciones? (propuesta mem-3479f8e748; no se guarda nada hasta que la confirmes)",
       "final_node": "compose_answer",
       "sources": [
         "incidents"
       ],
       "memory_proposal": {
-        "id": "mem-90bfc9b473",
+        "id": "mem-3479f8e748",
         "tipo": "contexto_incidente_recurrente",
         "accion": "corregir",
-        "hecho": "Los retrasos reportados en incidencias de Los Ángeles esta semana son por la huelga portuaria, no por un problema del equipo de TrackFlow.",
-        "motivo": "Corrige el patrón recurrente de incidentes relacionados con la cobertura de los paquetes y las tiendas locales que se repite en varios tickets.",
+        "hecho": "Los retrasos de Los Ángeles se deben a la huelga portuaria, no al equipo de TrackFlow.",
+        "motivo": "Corrige el patrón de incidencias recurrentes sobre causas externas y proporciona una explicación clara para los clientes.",
         "carrier": null,
         "pais": "US",
         "zona": null,

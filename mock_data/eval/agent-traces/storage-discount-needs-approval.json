@@ -7,25 +7,54 @@
   "sources_used": [
     "rag"
   ],
-  "started_at": "2026-11-21T16:32:06.115+00:00",
-  "finished_at": "2026-11-21T16:32:45.985+00:00",
+  "started_at": "2026-11-21T18:38:42.466+00:00",
+  "finished_at": "2026-11-21T18:39:28.281+00:00",
   "steps": [
     {
       "run_id": "eval-storage-discount-needs-approval",
       "seq": 0,
       "kind": "node",
-      "name": "resolve_pending_memory",
-      "started_at": "2026-11-21T16:32:06.120+00:00",
-      "duration_ms": 0.004,
+      "name": "input_guard",
+      "started_at": "2026-11-21T18:38:42.472+00:00",
+      "duration_ms": 0.131,
       "status": "ok",
-      "output": {}
+      "output": {
+        "guard": {
+          "action": "allow",
+          "guard": "input_guard",
+          "reason": "consulta dentro del dominio de soporte"
+        }
+      }
     },
     {
       "run_id": "eval-storage-discount-needs-approval",
       "seq": 1,
       "kind": "route",
+      "name": "route_after_input_guard",
+      "started_at": "2026-11-21T18:38:42.474+00:00",
+      "duration_ms": 0.002,
+      "status": "ok",
+      "output": {
+        "next": "resolve_pending_memory",
+        "reason": "petición dentro del dominio (o reescrita por la guarda)"
+      }
+    },
+    {
+      "run_id": "eval-storage-discount-needs-approval",
+      "seq": 2,
+      "kind": "node",
+      "name": "resolve_pending_memory",
+      "started_at": "2026-11-21T18:38:42.476+00:00",
+      "duration_ms": 0.003,
+      "status": "ok",
+      "output": {}
+    },
+    {
+      "run_id": "eval-storage-discount-needs-approval",
+      "seq": 3,
+      "kind": "route",
       "name": "route_after_resolve",
-      "started_at": "2026-11-21T16:32:06.121+00:00",
+      "started_at": "2026-11-21T18:38:42.478+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -35,11 +64,11 @@
     },
     {
       "run_id": "eval-storage-discount-needs-approval",
-      "seq": 2,
+      "seq": 4,
       "kind": "node",
       "name": "receive_question",
-      "started_at": "2026-11-21T16:32:06.124+00:00",
-      "duration_ms": 0.008,
+      "started_at": "2026-11-21T18:38:42.481+00:00",
+      "duration_ms": 0.006,
       "status": "ok",
       "output": {
         "question": "Un cliente grande pide un descuento en el almacenamiento, ¿se lo puedo ofrecer?"
@@ -47,10 +76,10 @@
     },
     {
       "run_id": "eval-storage-discount-needs-approval",
-      "seq": 3,
+      "seq": 5,
       "kind": "route",
       "name": "route_after_receive",
-      "started_at": "2026-11-21T16:32:06.125+00:00",
+      "started_at": "2026-11-21T18:38:42.483+00:00",
       "duration_ms": 0.002,
       "status": "ok",
       "output": {
@@ -60,11 +89,11 @@
     },
     {
       "run_id": "eval-storage-discount-needs-approval",
-      "seq": 4,
+      "seq": 6,
       "kind": "node",
       "name": "recall_memory",
-      "started_at": "2026-11-21T16:32:06.128+00:00",
-      "duration_ms": 0.077,
+      "started_at": "2026-11-21T18:38:42.485+00:00",
+      "duration_ms": 0.074,
       "status": "ok",
       "output": {
         "memory_gate": {
@@ -79,11 +108,11 @@
     },
     {
       "run_id": "eval-storage-discount-needs-approval",
-      "seq": 5,
+      "seq": 7,
       "kind": "node",
       "name": "plan_sources",
-      "started_at": "2026-11-21T16:32:06.132+00:00",
-      "duration_ms": 0.044,
+      "started_at": "2026-11-21T18:38:42.488+00:00",
+      "duration_ms": 0.039,
       "status": "ok",
       "output": {
         "plan": {
@@ -98,10 +127,10 @@
     },
     {
       "run_id": "eval-storage-discount-needs-approval",
-      "seq": 6,
+      "seq": 8,
       "kind": "route",
       "name": "route_after_plan",
-      "started_at": "2026-11-21T16:32:06.133+00:00",
+      "started_at": "2026-11-21T18:38:42.490+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {
@@ -111,11 +140,11 @@
     },
     {
       "run_id": "eval-storage-discount-needs-approval",
-      "seq": 7,
+      "seq": 9,
       "kind": "node",
       "name": "retrieve",
-      "started_at": "2026-11-21T16:32:06.136+00:00",
-      "duration_ms": 44.641,
+      "started_at": "2026-11-21T18:38:42.493+00:00",
+      "duration_ms": 48.426,
       "status": "ok",
       "output": {
         "context": [
@@ -160,10 +189,10 @@
     },
     {
       "run_id": "eval-storage-discount-needs-approval",
-      "seq": 8,
+      "seq": 10,
       "kind": "route",
       "name": "route_after_retrieve",
-      "started_at": "2026-11-21T16:32:06.183+00:00",
+      "started_at": "2026-11-21T18:38:42.544+00:00",
       "duration_ms": 0.003,
       "status": "ok",
       "output": {
@@ -173,23 +202,23 @@
     },
     {
       "run_id": "eval-storage-discount-needs-approval",
-      "seq": 9,
+      "seq": 11,
       "kind": "node",
       "name": "generate",
-      "started_at": "2026-11-21T16:32:06.191+00:00",
-      "duration_ms": 39785.227,
+      "started_at": "2026-11-21T18:38:42.551+00:00",
+      "duration_ms": 45709.546,
       "status": "ok",
       "output": {
-        "answer": "No tengo información suficiente en la base de conocimiento para poder ofrecerle un descuento en el almacenamiento a este cliente. Según las políticas establecidas por Miguel Torres, solo se pueden negociar descuentos con él a través de una transacción entre tú y él directamente."
+        "answer": "No tengo información suficiente para poder ofrecerle un descuento de almacenamiento. La tarifa estándar es de 18 USD por metro cúbico al mes (Los Ángeles) o 16 EUR por metro cúbico al mes (Zaragoza). Si necesita una tarifa preferencial, puede considerar contactar con Miguel Torres para negociarla a través del account manager."
       }
     },
     {
       "run_id": "eval-storage-discount-needs-approval",
-      "seq": 10,
+      "seq": 12,
       "kind": "route",
       "name": "route_after_generate",
-      "started_at": "2026-11-21T16:32:45.978+00:00",
-      "duration_ms": 0.005,
+      "started_at": "2026-11-21T18:39:28.264+00:00",
+      "duration_ms": 0.003,
       "status": "ok",
       "output": {
         "next": "propose_memory",
@@ -198,19 +227,37 @@
     },
     {
       "run_id": "eval-storage-discount-needs-approval",
-      "seq": 11,
+      "seq": 13,
       "kind": "node",
       "name": "propose_memory",
-      "started_at": "2026-11-21T16:32:45.981+00:00",
-      "duration_ms": 0.005,
+      "started_at": "2026-11-21T18:39:28.270+00:00",
+      "duration_ms": 0.004,
       "status": "ok",
       "output": {
         "memory_proposal": null
       }
+    },
+    {
+      "run_id": "eval-storage-discount-needs-approval",
+      "seq": 14,
+      "kind": "node",
+      "name": "output_guard",
+      "started_at": "2026-11-21T18:39:28.274+00:00",
+      "duration_ms": 0.672,
+      "status": "ok",
+      "output": {
+        "answer": "No tengo información suficiente para poder ofrecerle un descuento de almacenamiento. La tarifa estándar es de 18 USD por metro cúbico al mes (Los Ángeles) o 16 EUR por metro cúbico al mes (Zaragoza). Si necesita una tarifa preferencial, puede considerar contactar con Miguel Torres para negociarla a través del account manager.",
+        "output_check": {
+          "ok": true,
+          "failure_type": null,
+          "codes": [],
+          "detail": ""
+        }
+      }
     }
   ],
   "recorded_with": {
-    "recorded_at": "2026-11-21T16:32:45+00:00",
+    "recorded_at": "2026-11-21T18:39:28+00:00",
     "embedding_model": "fastembed/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "generation_model": "qwen2.5:1.5b",
     "mcp_server_url": "http://127.0.0.1:8090/mcp",
@@ -218,6 +265,9 @@
     "checkpoints": [
       [
         "__start__"
+      ],
+      [
+        "input_guard"
       ],
       [
         "resolve_pending_memory"
@@ -239,6 +289,9 @@
       ],
       [
         "propose_memory"
+      ],
+      [
+        "output_guard"
       ],
       []
     ]
