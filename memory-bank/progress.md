@@ -1,5 +1,15 @@
 # Progress Log — TrackFlow
 
+## Fix de evidencia del PR #24 (almacenamiento de telemetría), 2026-11-22
+
+- **Observación de la revisión:** la evidencia solo mostraba eventos técnicos y un lote sin rechazos (`3/3/0`).
+- **Diagnóstico:** el endpoint y la UI ya cumplían. La UI emite eventos de negocio (`inbound_order_created`, `outbound_order_created`, …) que pasan el contrato, pero en Supabase no había ninguno porque nunca se había registrado una operación de inventario con la telemetría activa. No hizo falta cambiar el endpoint.
+- **Evidencia real en `docs/pr-evidence/telemetry-storage/`**, generada con `scripts/telemetry_storage_smoke.cjs`:
+  - Entrada de stock por la UI (orden 16): el lote de la UI respondió `7/7/0`, y la fila `inbound_order_created` está en `telemetry_events` con sus `tags`.
+  - Lote mixto: respondió `received 5 · stored 2 · rejected 3`. Se comprobó en Supabase por `event_id` que los 2 válidos están y los 3 inválidos no.
+- **Test nuevo** `services/api/tests/test_telemetry_events.py` (lote mixto, lote solo con inválidos, reenvío idempotente): 3 passed, y 7 passed junto con `test_inventory_telemetry.py`.
+- Rama `fix/telemetry-storage-evidence`, creada desde `main` después de mergear el #44.
+
 ## Revisión del checklist de la Parte 1 de RFP, 2026-11-22
 
 - Los 12 puntos del checklist se cumplen. Evidencia: un solo API (8081), POST 202 en 280–460 ms, datos en Supabase (metadatos y legibilidad en 9/9 tickets terminados, 0 secciones en los descartados), `rfp_handoff.v1` con contacto y responsables, y nodos separados `classify`/`orchestrate`/`department_worker`/`synthesize`.

@@ -1,0 +1,88 @@
+{
+  "status": 200,
+  "request": {
+    "events": [
+      {
+        "eventId": "dfe1878c-845b-4d11-9f13-7866e53ee913",
+        "requestId": "ef46e74a-55d8-4a43-b5d2-b7906fc08b0a",
+        "timestamp": "2026-11-22T10:02:54.147Z",
+        "sessionId": "e8669991-0b05-4fc1-aac9-3c9e3d3b1d4f",
+        "userId": null,
+        "schemaVersion": "1.0.0",
+        "event_type": "backoffice_section_viewed",
+        "properties": {
+          "section": "inventory_inbound"
+        }
+      },
+      {
+        "eventId": "340ae496-e1a9-44a6-a7c1-4a4a0fb8e2c3",
+        "requestId": "2127a49e-18fa-4268-81dd-b01748a10ff7",
+        "timestamp": "2026-11-22T10:02:54.147Z",
+        "sessionId": "e8669991-0b05-4fc1-aac9-3c9e3d3b1d4f",
+        "userId": null,
+        "schemaVersion": "1.0.0",
+        "event_type": "frontend_retry_requested",
+        "properties": {
+          "section": "inventory_inbound"
+        }
+      },
+      {
+        "eventId": "4f11d117-b2e4-455a-b6d0-ccb57ed5dab1",
+        "requestId": "4eac9f09-1009-4f2b-afb1-3e84fe9c6591",
+        "timestamp": "2026-11-22T10:02:54.147Z",
+        "sessionId": "e8669991-0b05-4fc1-aac9-3c9e3d3b1d4f",
+        "userId": null,
+        "schemaVersion": "1.0.0",
+        "event_type": "inbound_order_created",
+        "properties": {
+          "warehouse": "LA",
+          "client_id": "purestep_footwear",
+          "product_id": "CLT-SNK-W-42-Z",
+          "product_category": "fashion",
+          "quantity": 3,
+          "order_id": 1
+        }
+      },
+      {
+        "eventId": "11c9df83-b420-410a-9d9f-b8d703e658af",
+        "requestId": "72c335de-ea15-42b6-b5ed-0755d4bb47b1",
+        "timestamp": "2026-11-22T10:02:54.147Z",
+        "sessionId": "e8669991-0b05-4fc1-aac9-3c9e3d3b1d4f",
+        "userId": null,
+        "schemaVersion": "1.0.0",
+        "event_type": "pedido_creado",
+        "properties": {
+          "section": "inventory_inbound"
+        }
+      },
+      {
+        "eventId": "0b6a7318-6d80-47b2-a04e-915b33eef91e",
+        "requestId": "7c1781dc-2fb4-4c2d-bcd9-7730375e4e14",
+        "timestamp": "2026-11-22T10:02:54.147Z",
+        "sessionId": "e8669991-0b05-4fc1-aac9-3c9e3d3b1d4f",
+        "userId": "cliente@example.com",
+        "schemaVersion": "1.0.0",
+        "event_type": "backoffice_section_viewed",
+        "properties": {
+          "section": "inventory_inbound"
+        }
+      }
+    ]
+  },
+  "response": {
+    "received": 5,
+    "stored": 2,
+    "rejected": 3
+  },
+  "expected": {
+    "valid": [
+      "dfe1878c-845b-4d11-9f13-7866e53ee913",
+      "340ae496-e1a9-44a6-a7c1-4a4a0fb8e2c3"
+    ],
+    "invalid": [
+      "4f11d117-b2e4-455a-b6d0-ccb57ed5dab1",
+      "11c9df83-b420-410a-9d9f-b8d703e658af",
+      "0b6a7318-6d80-47b2-a04e-915b33eef91e"
+    ]
+  }
+}
