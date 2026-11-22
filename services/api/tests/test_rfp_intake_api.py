@@ -22,6 +22,8 @@ def client(tmp_path, monkeypatch):
     enqueued = []
     monkeypatch.setattr(rfp_routes, "_enqueue", lambda ticket_id, force_accept=False: enqueued.append((ticket_id, force_accept)))
     monkeypatch.setattr(rfp_routes, "_enqueue_generation", lambda ticket_id: enqueued.append((ticket_id, "generate")))
+    monkeypatch.setattr(rfp_routes, "_enqueue_approval_resume",
+                        lambda ticket_id, department_id, decision: enqueued.append((ticket_id, department_id, decision)))
     with TestClient(create_app(tmp_path / "users.json")) as api:
         api.post("/users", json={"email": "ventas@example.com", "password": "correct-horse-battery"})
         token = api.post("/auth/login", json={"email": "ventas@example.com", "password": "correct-horse-battery"}).json()["access_token"]
@@ -99,3 +101,49 @@ def test_part2_generate_endpoint_and_detail_with_drafts_and_evaluations(client):
     for section in detail["sections"]:
         assert section["section_status"] == "evaluacion_superada" and section["draft_content"].startswith("## ")
         assert section["evaluation_result"]["overall_pass"] is True and section["evaluation_history"][0]["iteration"] == 1
+
+
+def test_part3_decision_endpoint_validates_resumes_and_exposes_final_document_and_trace(client):
+    import sqlite3
+
+    from langgraph.checkpoint.sqlite import SqliteSaver
+
+    from mock_data.pipelines.rfp_intake.approval_graph import resume_approval, start_approval
+    from mock_data.pipelines.rfp_intake.graph import run_ticket
+    from mock_data.pipelines.rfp_intake.repository import RfpRepository
+    from mock_data.pipelines.rfp_intake.response_graph import run_response
+
+    ticket_id = client.post("/rfp-intake/tickets", files={"file": ("trackflow-request-1.pdf", PDF)}).json()["ticket_id"]
+    repo, saver = RfpRepository(client.app.state.engine), SqliteSaver(sqlite3.connect(":memory:", check_same_thread=False))
+    run_ticket(ticket_id, repo, llm_fn=None, converter=lambda _p: FORMAL_FIXTURE.read_text(encoding="utf-8"))
+    run_response(ticket_id, repo, llm_fn=None)
+    start_approval(ticket_id, repo, llm_fn=None, checkpointer=saver)          # lo que hace el worker
+
+    detail = client.get(f"/rfp-intake/tickets/{ticket_id}").json()
+    assert detail["status"] == "esperando_aprobación" and detail["approval_stage"] == "esperando"
+    assert detail["approval_thread_id"] == f"rfp-{ticket_id}:approval-1"
+    sections = {s["department_id"]: s for s in detail["sections"]}
+    assert sections["warehouse"]["approval_request"]["approver"] == "Ana Whitfield"
+
+    wrong = client.post(f"/rfp-intake/tickets/{ticket_id}/sections/warehouse/decision",
+                        json={"decision": "approve", "approver": "Carlos Vega", "section_version": 1})
+    assert wrong.status_code == 422 and "Ana Whitfield" in wrong.json()["detail"]["errors"][0]
+    assert client.get(f"/rfp-intake/tickets/{ticket_id}/final-document").status_code == 404
+    for dept, owner in (("warehouse", "Ana Whitfield"), ("reverse", "Sofía Ramos")):
+        response = client.post(f"/rfp-intake/tickets/{ticket_id}/sections/{dept}/decision",
+                               json={"decision": "approve", "approver": owner, "section_version": 1})
+        assert response.status_code == 202 and response.json()["approval_status"] == "procesando"
+        queued = client.enqueued[-1]
+        assert queued[:2] == (ticket_id, dept) and queued[2]["decided_by"] == "ventas@example.com"
+        resume_approval(ticket_id, dept, queued[2], repo, llm_fn=None, checkpointer=saver)   # lo que hace el worker
+
+    detail = client.get(f"/rfp-intake/tickets/{ticket_id}").json()
+    assert detail["status"] == "terminado" and detail["final_document"]["currency"] == "EUR"
+    document = client.get(f"/rfp-intake/tickets/{ticket_id}/final-document").json()
+    assert {a["approver"] for a in document["approvals"]} == {"Ana Whitfield", "Sofía Ramos"}
+    markdown = client.get(f"/rfp-intake/tickets/{ticket_id}/final-document", params={"format": "md"})
+    assert markdown.headers["content-type"].startswith("text/markdown") and "# Propuesta económica de TrackFlow" in markdown.text
+    agents = [e["agent"] for e in client.get(f"/rfp-intake/tickets/{ticket_id}/trace").json()["events"]]
+    assert agents[0] == "markitdown_converter" and agents[-1] == "document_assembler"
+    assert client.post(f"/rfp-intake/tickets/{ticket_id}/sections/warehouse/decision",
+                       json={"decision": "approve", "approver": "Ana Whitfield", "section_version": 1}).status_code == 409

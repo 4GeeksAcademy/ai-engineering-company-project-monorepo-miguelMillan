@@ -37,6 +37,7 @@ from mock_data.pipelines.rfp_intake.generation import HandoffError, SectionInput
 from mock_data.pipelines.rfp_intake.generators import generator_for
 from mock_data.pipelines.rfp_intake.llm import LlmFn, chat_json
 from mock_data.pipelines.rfp_intake.repository import RfpRepository
+from mock_data.pipelines.rfp_intake.tracing import traced
 
 logger = logging.getLogger("trackflow.rfp_response")
 RESPONSE_CONTRACT = "rfp_response_handoff.v1"
@@ -70,6 +71,11 @@ class SectionState(TypedDict):
     feedback: NotRequired[str]
     history: NotRequired[list[dict[str, Any]]]
     final_status: NotRequired[str]
+    # La Parte 3 reutiliza este ciclo para revisar una sección: no cambia el estado del ticket (sigue en
+    # esperando_aprobación) y la traza se etiqueta como «approval».
+    update_ticket_status: NotRequired[bool]
+    trace_part: NotRequired[str]
+    trace: Annotated[list[dict[str, Any]], operator.add]
 
 
 class ResponseState(TypedDict):
@@ -79,6 +85,7 @@ class ResponseState(TypedDict):
     inputs: list[dict[str, Any]]
     sections: Annotated[list[dict[str, Any]], operator.add]
     response_handoff: NotRequired[dict[str, Any]]
+    trace: Annotated[list[dict[str, Any]], operator.add]
 
 
 def build_section_graph(repo: RfpRepository, llm_fn: LlmFn | None):
@@ -92,7 +99,8 @@ def build_section_graph(repo: RfpRepository, llm_fn: LlmFn | None):
         # El borrador ya existe: pasa a evaluación (el ticket también, la primera vez que ocurre).
         repo.update_section(state["ticket_id"], inp.department_id, section_status="en_evaluacion", draft_content=draft.content,
                             iterations=iteration)
-        repo.update_ticket(state["ticket_id"], status="en_evaluación", response_stage="evaluando")
+        if state.get("update_ticket_status", True):
+            repo.update_ticket(state["ticket_id"], status="en_evaluación", response_stage="evaluando")
         return {"iteration": iteration, "draft": draft.content, "narrative": draft.narrative, "generator_meta": draft.meta}
 
     # Cada evaluador recibe solo lo que necesita y devuelve solo su propia clave.
@@ -133,10 +141,15 @@ def build_section_graph(repo: RfpRepository, llm_fn: LlmFn | None):
     def route(state: SectionState) -> str:
         return END if state.get("final_status") else "generate"
 
+    agents_by_node = {"generate": lambda s: f"{s['inp']['department_id']}_generator",
+                      "eval_readability": "readability_evaluator", "eval_relevance": "relevance_evaluator",
+                      "eval_compliance": "compliance_evaluator", "judge": "evaluation_judge"}
+    part = lambda s: s.get("trace_part") or "response"  # noqa: E731
     builder = StateGraph(SectionState)
     for name, fn in (("generate", generate), ("eval_readability", eval_readability), ("eval_relevance", eval_relevance),
                      ("eval_compliance", eval_compliance), ("judge", judge)):
-        builder.add_node(name, fn)
+        builder.add_node(name, traced(repo, part, name, agents_by_node[name], fn,
+                                      input_keys=("ticket_id", "run", "iteration", "feedback", "draft", "inp")))
     builder.add_edge(START, "generate")
     for evaluator in ("eval_readability", "eval_relevance", "eval_compliance"):
         builder.add_edge("generate", evaluator)
@@ -160,8 +173,8 @@ def build_response_graph(repo: RfpRepository, llm_fn: LlmFn | None = chat_json):
 
     def department_section(payload: dict[str, Any]) -> dict[str, Any]:
         steps = 6 * payload["max_iterations"] + 5
-        final = section_graph.invoke({**payload, "iteration": 0}, {"recursion_limit": steps})
-        return {"sections": [{"department_id": payload["inp"]["department_id"], "language": payload["inp"]["language"],
+        final = section_graph.invoke({**payload, "iteration": 0, "trace": []}, {"recursion_limit": steps})
+        return {"trace": final.get("trace") or [], "sections": [{"department_id": payload["inp"]["department_id"], "language": payload["inp"]["language"],
                               "currency": SectionInput(**payload["inp"]).currency, "status": final["final_status"],
                               "iterations": final["iteration"], "draft_content": final["draft"],
                               "evaluation_result": final["evaluation"], "history": final["history"],
@@ -197,9 +210,9 @@ def build_response_graph(repo: RfpRepository, llm_fn: LlmFn | None = chat_json):
         return {"response_handoff": handoff}
 
     builder = StateGraph(ResponseState)
-    builder.add_node("load_handoff", load_handoff)
-    builder.add_node("department_section", department_section)
-    builder.add_node("assemble", assemble)
+    builder.add_node("load_handoff", traced(repo, "response", "load_handoff", "response_coordinator", load_handoff))
+    builder.add_node("department_section", department_section)  # su subgrafo traza cada nodo
+    builder.add_node("assemble", traced(repo, "response", "assemble", "response_assembler", assemble))
     builder.add_edge(START, "load_handoff")
     builder.add_conditional_edges("load_handoff", fan_out, ["department_section", "assemble"])
     builder.add_edge("department_section", "assemble")
@@ -228,7 +241,7 @@ def run_response(ticket_id: str, repo: RfpRepository, llm_fn: LlmFn | None = cha
     graph = build_response_graph(repo, llm_fn)
     try:
         state = graph.invoke({"ticket_id": str(ticket_id), "run": run, "max_iterations": max_iterations,
-                              "inputs": [inp.to_dict() for inp in inputs], "sections": []})
+                              "inputs": [inp.to_dict() for inp in inputs], "sections": [], "trace": []})
     except Exception as error:
         logger.exception("Parte 2 falló; ticket=%s", ticket_id)
         repo.update_ticket(ticket_id, response_stage="fallido", last_error=f"{type(error).__name__}: {str(error)[:900]}")

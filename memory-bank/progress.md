@@ -1,5 +1,35 @@
 # Progress Log — TrackFlow
 
+## Aprobación humana por departamento y cierre (Hito 9, Parte 3), 2026-11-22
+
+- **Contexto y rama:** contexto archivado en `memory-bank/history/RFP-APPROVAL-CONTEXT-2026-11-22.md`. Rama `feature/rfp-approval-completion`, desde `main` con el #46 mergeado.
+- **Grafo `approval_graph.py`:**
+  - ramas por departamento (subgrafo con `interrupt()` en cada rama) → `arbitrate` (triggers de §7 sobre hechos estructurados; árbitro fijo Miguel Torres, o Sofía Ramos si solo incumple `reverse`) → `final_document` o `block`;
+  - puntos de entrada explícitos `start_approval` y `resume_approval` (este último reanuda solo una rama);
+  - la respuesta humana se valida en la API, en el worker y en el nodo.
+- **Límites:** rondas de cambios (`RFP_MAX_APPROVAL_ROUNDS` = 3) y rondas de arbitraje (`RFP_MAX_ARBITRATION_ROUNDS` = 2).
+- **Checkpointer:** `PostgresSaver` sobre Supabase (dependencias con `uv add langgraph-checkpoint-postgres`; `psycopg[binary]` en `services/api`), con candado por ticket (`pg_advisory_xact_lock`). `SqliteSaver` en tests. `thread_id` = `rfp-{ticket_id}:approval-{run}`.
+- **Trazabilidad:** agente, input, output y timestamps de cada nodo de las tres partes, en el estado y en `rfp_trace_events`.
+- **Migración** `20261122200000_rfp_approval.sql`, **aplicada en Supabase**: aprobación por sección, `rfp_final_documents`, `rfp_trace_events` y RLS en las tablas del checkpointer.
+- **Backend, UI y scripts:**
+  - tareas de Celery `rfp_approval.start` y `rfp_approval.resume` (la Parte 2 encadena la 3);
+  - rutas `POST …/sections/{dept}/decision`, `POST …/approval/start`, `GET …/final-document` y `GET …/trace`;
+  - componentes de UI `ApprovalPanel`, `FinalDocumentPanel`, `TracePanel` y `DraftView`;
+  - CLI `approval-start` y `decide`; scripts `rfp_e2e.py` y `rfp_ui_approval.cjs`.
+- **Correcciones de transición entre partes:**
+  - durante una revisión de la Parte 3, el ticket ya no salta a `en_evaluación`;
+  - el aviso de provisional se oculta en `terminado`;
+  - «Regenerar» queda bloqueado una vez empieza la aprobación;
+  - la narrativa en inglés sin LLM ya no mezcla aspectos en español;
+  - el repositorio serializa las lecturas con SQLite.
+- **Validación:**
+  - `tests/pipelines` → 369 passed (11 de aprobación y 2 E2E de las Partes 1→3);
+  - `services/api` → 118 passed;
+  - jest → 5 passed en `rfps.test.ts`;
+  - build OK.
+- **E2E real:** Luna con el LLM real y Supabase → `terminado`, con arbitraje `volume-vs-capacity`. La ejecución por la UI completó el mismo recorrido; Ollama y Chromium se quedaron sin memoria a mitad y se retomó desde el checkpoint. Evidencia en `docs/pr-evidence/rfp-approval/`.
+- **Pendiente:** commit y PR cuando el desarrollador lo pida.
+
 ## Generación y evaluación de respuestas a RFP (Hito 9, Parte 2), 2026-11-22
 
 - **Contexto y rama:** contexto archivado en `memory-bank/history/RFP-GENERATION-CONTEXT-2026-11-22.md`. Rama `feature/rfp-response-generation`, creada desde `main` después de mergear los PR #44 y #45.

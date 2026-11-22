@@ -1,6 +1,6 @@
 jest.mock('../utils/auth', () => ({ apiRequest: jest.fn(), apiFetch: jest.fn() }))
 
-import { canGenerate, isPending, parseDraft, validateRfpFile, MAX_RFP_BYTES } from '../utils/rfps'
+import { approvalProgress, canGenerate, canStartApproval, isPending, parseDraft, validateRfpFile, MAX_RFP_BYTES } from '../utils/rfps'
 
 const file = (name: string, size = 10) => ({ name, size } as File)
 
@@ -36,5 +36,18 @@ describe('recepción de RFP (utils)', () => {
     const blocks = parseDraft('## Warehouse — Propuesta\n\nTexto.\n\n| A | B |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n\n- SLA **90 %**')
     expect(blocks.map((b) => b.kind)).toEqual(['heading', 'paragraph', 'table', 'list'])
     expect(blocks[2]).toEqual({ kind: 'table', header: ['A', 'B'], rows: [['1', '2'], ['3', '4']] })
+  })
+
+  it('Parte 3: refresca mientras el worker reanuda, no deja regenerar y reinicia la aprobación solo si falló o se bloqueó', () => {
+    const t = (status: string, approval_stage: string | null) => ({ status, pipeline_stage: 'handoff', response_stage: 'handoff', approval_stage })
+    expect(isPending(t('esperando_aprobación', 'iniciando'))).toBe(true)
+    expect(isPending(t('esperando_aprobación', 'en_curso'))).toBe(true)
+    expect(isPending(t('esperando_aprobación', 'esperando'))).toBe(false)   // espera humana: no hace falta sondear
+    expect(isPending(t('terminado', 'completado'))).toBe(false)
+    expect(canGenerate(t('esperando_aprobación', 'esperando'))).toBe(false)
+    expect(canGenerate(t('needs_human_review', 'bloqueado'))).toBe(false)
+    expect(canStartApproval({ ...t('needs_human_review', 'bloqueado'), response_handoff: {} })).toBe(true)
+    expect(canStartApproval({ ...t('esperando_aprobación', 'esperando'), response_handoff: {} })).toBe(false)
+    expect(approvalProgress([{ approval_status: 'aprobada' }, { approval_status: 'esperando_aprobación' }])).toEqual({ approved: 1, total: 2 })
   })
 })

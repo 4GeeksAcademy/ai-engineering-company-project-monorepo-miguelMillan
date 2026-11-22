@@ -30,7 +30,7 @@ class LastMileGenerator(DepartmentGenerator):
               f"By destination, weight and urgency; volume of {volume} orders/month.") if volume else
              ("Según destino, peso y urgencia." if es else "By destination, weight and urgency.")),
             ("Transportistas disponibles" if es else "Available carriers",
-             rc.CARRIERS.get(inp.client.get("country") or "", "Según destino" if es else "By destination"),
+             (rc.CARRIERS if es else rc.CARRIERS_EN).get(inp.client.get("country") or "", "Según destino" if es else "By destination"),
              "El sistema elige el transportista según destino, peso y urgencia." if es else
              "The system picks the carrier by destination, weight and urgency."),
             ("Tiempos de entrega" if es else "Delivery times", rc.DELIVERY_TIMES[inp.language], "Mismo país." if es else "Same country."),

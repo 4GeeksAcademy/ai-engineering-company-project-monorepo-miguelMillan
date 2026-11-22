@@ -1,10 +1,16 @@
 import { FileUp, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { ApprovalPanel } from './ApprovalPanel'
+import { FinalDocumentPanel } from './FinalDocumentPanel'
 import { SectionDraft } from './SectionDraft'
+import { TracePanel } from './TracePanel'
 import {
   DEPARTMENT_LABELS,
   STATUS_LABELS,
+  approvalProgress,
   canGenerate,
+  canStartApproval,
+  startApproval,
   generateRfpResponse,
   generationFailed,
   getRfpTicket,
@@ -22,14 +28,17 @@ const POLL_MS = 3000
 function StatusBadge({ ticket }: { ticket: RfpTicketSummary }) {
   const failed = ticket.status === 'analizando' && ticket.pipeline_stage === 'fallido'
   const genFailed = generationFailed(ticket)
-  const tone = failed || genFailed ? 'bg-rose-100 text-rose-900'
+  const approvalFailed = ticket.approval_stage === 'fallido'
+  const tone = failed || genFailed || approvalFailed ? 'bg-rose-100 text-rose-900'
+    : ticket.status === 'terminado' ? 'bg-emerald-700 text-white'
     : ['analisis_completo', 'esperando_aprobación'].includes(ticket.status) ? 'bg-emerald-100 text-emerald-900'
       : ticket.status === 'needs_human_review' ? 'bg-orange-100 text-orange-950'
         : ticket.status === 'descartado' ? 'bg-slate-200 text-slate-800' : 'bg-amber-100 text-amber-900'
-  const stage = ticket.status === 'analizando' ? ticket.pipeline_stage : ticket.response_stage
+  const stage = ticket.status === 'analizando' ? ticket.pipeline_stage
+    : ticket.approval_stage && ['iniciando', 'en_curso'].includes(ticket.approval_stage) ? `aprobación ${ticket.approval_stage}` : ticket.response_stage
   return (
     <span data-testid="rfp-status" className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>
-      {failed ? 'Análisis fallido' : genFailed ? 'Generación fallida' : STATUS_LABELS[ticket.status] ?? ticket.status}
+      {failed ? 'Análisis fallido' : genFailed ? 'Generación fallida' : approvalFailed ? 'Aprobación fallida' : STATUS_LABELS[ticket.status] ?? ticket.status}
       {isPending(ticket) && stage && <span className="ml-1 font-normal">· {stage}</span>}
     </span>
   )
@@ -45,7 +54,7 @@ function TicketDetail({ ticketId, onReprocess, refreshKey }: { ticketId: string;
     load()
     const timer = window.setInterval(() => { if (!detail || isPending(detail)) load() }, POLL_MS)
     return () => { cancelled = true; window.clearInterval(timer) }
-  }, [ticketId, detail?.status, detail?.pipeline_stage, detail?.response_stage, refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ticketId, detail?.status, detail?.pipeline_stage, detail?.response_stage, detail?.approval_stage, refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) return <p role="alert" className="text-sm text-rose-800">{error}</p>
   if (!detail) return <p role="status" className="text-sm text-slate-600">Cargando ticket…</p>
@@ -67,7 +76,7 @@ function TicketDetail({ ticketId, onReprocess, refreshKey }: { ticketId: string;
             className="mt-2 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-800">Es una RFP: aceptar y analizar</button>
         </div>
       )}
-      {detail.last_error && !generationFailed(detail) && (
+      {detail.last_error && !generationFailed(detail) && detail.approval_stage !== 'fallido' && (
         <div role="alert" className="rounded-md bg-rose-50 p-3 text-sm text-rose-900">
           <p><strong>El análisis falló</strong> (etapa {detail.pipeline_stage}): {detail.last_error}</p>
           <button type="button" onClick={() => reprocessRfpTicket(detail.ticket_id).then(onReprocess)}
@@ -77,7 +86,7 @@ function TicketDetail({ ticketId, onReprocess, refreshKey }: { ticketId: string;
       {generationFailed(detail) && (
         <p role="alert" className="rounded-md bg-rose-50 p-3 text-sm text-rose-900"><strong>La generación de borradores falló:</strong> {detail.last_error}</p>
       )}
-      {detail.response_handoff?.needs_human_review && (
+      {detail.response_handoff?.needs_human_review && detail.status !== 'terminado' && (
         <div role="alert" data-testid="rfp-needs-human-review" className="rounded-md border border-orange-300 bg-orange-50 p-3 text-sm text-orange-950">
           <p className="font-semibold">Revisión humana necesaria antes de enviar la propuesta</p>
           <p>Borradores PROVISIONALES (no superaron la evaluación tras {detail.response_handoff.max_iterations} iteraciones):{' '}
@@ -85,6 +94,33 @@ function TicketDetail({ ticketId, onReprocess, refreshKey }: { ticketId: string;
             Pasan igual a aprobación con su último borrador y su evaluación.</p>
         </div>
       )}
+      {detail.approval_thread_id && (
+        <p data-testid="rfp-approval-progress" className="text-sm text-slate-700">
+          <strong>Aprobación por departamento:</strong> {approvalProgress(detail.sections).approved}/{approvalProgress(detail.sections).total} aprobadas
+          {detail.status === 'esperando_aprobación' && ' · el documento final se genera solo cuando aprueben todos los responsables'}
+        </p>
+      )}
+      {detail.approval_stage === 'bloqueado' && detail.approval_note && (
+        <p role="alert" className="rounded-md border border-orange-300 bg-orange-50 p-3 text-sm text-orange-950">{detail.approval_note}</p>
+      )}
+      {detail.approval_stage === 'fallido' && (
+        <p role="alert" className="rounded-md bg-rose-50 p-3 text-sm text-rose-900"><strong>La aprobación falló:</strong> {detail.last_error}</p>
+      )}
+      {canStartApproval(detail) && (
+        <button type="button" onClick={() => startApproval(detail.ticket_id).then(onReprocess).catch((e: Error) => setError(e.message))}
+          className="rounded-md bg-sky-800 px-3 py-1.5 text-xs font-semibold text-white">Reiniciar aprobación (hilo nuevo)</button>
+      )}
+      {detail.arbitration.length > 0 && (
+        <div data-testid="rfp-arbitration" className="rounded-md border border-orange-200 bg-orange-50/60 p-3 text-sm">
+          <h3 className="font-semibold text-orange-950">Arbitraje (BRIEFING §7)</h3>
+          <ul className="list-disc pl-5">
+            {detail.arbitration.map((a, i) => (
+              <li key={i}><strong>{a.trigger}</strong> · ronda {a.round} · árbitro {a.arbiter} · afecta a {a.affected_departments.join(', ')}: {a.resolution}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {detail.final_document && <FinalDocumentPanel ticketId={detail.ticket_id} />}
       {canGenerate(detail) && (
         <button type="button" onClick={() => generateRfpResponse(detail.ticket_id).then(onReprocess).catch((e: Error) => setError(e.message))}
           className="rounded-md bg-emerald-800 px-3 py-1.5 text-xs font-semibold text-white">
@@ -127,8 +163,10 @@ function TicketDetail({ ticketId, onReprocess, refreshKey }: { ticketId: string;
               <ul className="list-disc pl-5">{section.open_questions.map((q) => <li key={q}>{q}</li>)}</ul></div>
           )}
           <SectionDraft section={section} maxIterations={detail.response_handoff?.max_iterations ?? null} />
+          <ApprovalPanel ticketId={detail.ticket_id} section={section} onDecided={onReprocess} />
         </article>
       ))}
+      <TracePanel key={`${detail.status}-${detail.approval_stage}`} ticketId={detail.ticket_id} />
     </section>
   )
 }
@@ -175,7 +213,7 @@ export function RfpIntake() {
     <main className="mx-auto w-full max-w-6xl space-y-6 px-6 py-8">
       <header>
         <h1 className="text-2xl font-semibold text-slate-900">Recepción de RFP</h1>
-        <p className="text-sm text-slate-600">Sube las RFP en PDF: cada documento crea un ticket que se analiza en segundo plano (analizando → análisis completo o descartado) y, si es una RFP, genera y evalúa un borrador por departamento (generando borrador → en evaluación → esperando aprobación o revisión humana).</p>
+        <p className="text-sm text-slate-600">Sube las RFP en PDF: cada documento crea un ticket que se analiza en segundo plano (analizando → análisis completo o descartado) y, si es una RFP, genera y evalúa un borrador por departamento (generando borrador → en evaluación); después cada responsable aprueba su sección (esperando aprobación) y el documento final se genera solo (terminado).</p>
       </header>
 
       <form onSubmit={handleUpload} className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">

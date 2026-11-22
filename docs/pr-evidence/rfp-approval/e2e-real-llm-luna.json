@@ -1,0 +1,494 @@
+{
+  "ticket_id": "33ec3e39-ec8d-44ee-9f4c-23a3d50d0c7c",
+  "thread_id": "rfp-33ec3e39-ec8d-44ee-9f4c-23a3d50d0c7c:approval-1",
+  "final_status": "terminado",
+  "arbitration": [
+    {
+      "trigger": "volume-vs-capacity",
+      "arbiter": "Miguel Torres",
+      "evidence": {
+        "warehouse_capacity_monthly_orders": 4000,
+        "lastmile_assumed_monthly_volume": 5000
+      },
+      "affected_departments": [
+        "lastmile"
+      ],
+      "resolution": "Limitar el volumen de la propuesta a la capacidad de warehouse (4000 pedidos/mes); lastmile revisa volumen y costo a la baja.",
+      "feedback": "[Arbitraje volume-vs-capacity · árbitro Miguel Torres] Warehouse solo compromete 4000 pedidos/mes: cotiza la última milla para 4000 pedidos/mes (no 5000) y revisa el costo a la baja.",
+      "overrides": {
+        "lastmile": {
+          "monthly_volume": 4000
+        }
+      },
+      "round": 1,
+      "decided_at": "2026-11-22T21:03:43.433604+00:00"
+    }
+  ],
+  "timeline": [
+    {
+      "at": "2026-11-22T20:55:57+00:00",
+      "step": "subida",
+      "status": "analizando",
+      "pipeline_stage": "recibido",
+      "response_stage": null,
+      "approval_stage": null,
+      "sections": {}
+    },
+    {
+      "at": "2026-11-22T20:59:12+00:00",
+      "step": "Parte 1: recepción",
+      "status": "analisis_completo",
+      "pipeline_stage": "handoff",
+      "response_stage": null,
+      "approval_stage": null,
+      "sections": {
+        "lastmile": "pendiente",
+        "warehouse": "pendiente"
+      }
+    },
+    {
+      "at": "2026-11-22T21:03:31+00:00",
+      "step": "Parte 2: generación y evaluación",
+      "status": "esperando_aprobación",
+      "pipeline_stage": "handoff",
+      "response_stage": "handoff",
+      "approval_stage": null,
+      "sections": {
+        "lastmile": "pendiente",
+        "warehouse": "pendiente"
+      }
+    },
+    {
+      "at": "2026-11-22T21:03:37+00:00",
+      "step": "Parte 3: aprobación iniciada",
+      "status": "esperando_aprobación",
+      "pipeline_stage": "handoff",
+      "response_stage": "handoff",
+      "approval_stage": "esperando",
+      "sections": {
+        "lastmile": "esperando_aprobación",
+        "warehouse": "esperando_aprobación"
+      }
+    },
+    {
+      "at": "2026-11-22T21:03:40+00:00",
+      "step": "lastmile: aprobada por Carlos Vega",
+      "status": "esperando_aprobación",
+      "pipeline_stage": "handoff",
+      "response_stage": "handoff",
+      "approval_stage": "esperando",
+      "sections": {
+        "lastmile": "aprobada",
+        "warehouse": "esperando_aprobación"
+      }
+    },
+    {
+      "at": "2026-11-22T21:04:33+00:00",
+      "step": "warehouse: aprobada por Ana Whitfield",
+      "status": "esperando_aprobación",
+      "pipeline_stage": "handoff",
+      "response_stage": "handoff",
+      "approval_stage": "esperando",
+      "sections": {
+        "lastmile": "esperando_aprobación",
+        "warehouse": "aprobada"
+      }
+    },
+    {
+      "at": "2026-11-22T21:04:38+00:00",
+      "step": "lastmile: aprobada tras arbitraje",
+      "status": "terminado",
+      "pipeline_stage": "handoff",
+      "response_stage": "handoff",
+      "approval_stage": "completado",
+      "sections": {
+        "lastmile": "aprobada",
+        "warehouse": "aprobada"
+      }
+    }
+  ],
+  "trace": [
+    {
+      "part": "intake",
+      "node": "convert",
+      "agent": "markitdown_converter",
+      "department_id": null,
+      "finished_at": "2026-11-22T20:55:59.629039+00:00"
+    },
+    {
+      "part": "intake",
+      "node": "extract",
+      "agent": "metadata_extractor",
+      "department_id": null,
+      "finished_at": "2026-11-22T20:56:01.149452+00:00"
+    },
+    {
+      "part": "intake",
+      "node": "classify",
+      "agent": "classifier",
+      "department_id": null,
+      "finished_at": "2026-11-22T20:56:52.614761+00:00"
+    },
+    {
+      "part": "intake",
+      "node": "orchestrate",
+      "agent": "orchestrator",
+      "department_id": null,
+      "finished_at": "2026-11-22T20:56:53.095505+00:00"
+    },
+    {
+      "part": "intake",
+      "node": "department_worker",
+      "agent": "warehouse_worker",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T20:57:50.147840+00:00"
+    },
+    {
+      "part": "intake",
+      "node": "department_worker",
+      "agent": "lastmile_worker",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T20:59:10.451782+00:00"
+    },
+    {
+      "part": "intake",
+      "node": "synthesize",
+      "agent": "synthesizer",
+      "department_id": null,
+      "finished_at": "2026-11-22T20:59:11.379026+00:00"
+    },
+    {
+      "part": "intake",
+      "node": "handoff",
+      "agent": "router",
+      "department_id": null,
+      "finished_at": "2026-11-22T20:59:11.820012+00:00"
+    },
+    {
+      "part": "response",
+      "node": "load_handoff",
+      "agent": "response_coordinator",
+      "department_id": null,
+      "finished_at": "2026-11-22T20:59:13.910969+00:00"
+    },
+    {
+      "part": "response",
+      "node": "generate",
+      "agent": "warehouse_generator",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:00:11.131165+00:00"
+    },
+    {
+      "part": "response",
+      "node": "eval_compliance",
+      "agent": "compliance_evaluator",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:00:11.269256+00:00"
+    },
+    {
+      "part": "response",
+      "node": "eval_relevance",
+      "agent": "relevance_evaluator",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:00:11.272600+00:00"
+    },
+    {
+      "part": "response",
+      "node": "eval_readability",
+      "agent": "readability_evaluator",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:00:11.276092+00:00"
+    },
+    {
+      "part": "response",
+      "node": "judge",
+      "agent": "evaluation_judge",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:00:12.251886+00:00"
+    },
+    {
+      "part": "response",
+      "node": "generate",
+      "agent": "lastmile_generator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:01:18.685128+00:00"
+    },
+    {
+      "part": "response",
+      "node": "eval_compliance",
+      "agent": "compliance_evaluator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:01:18.823248+00:00"
+    },
+    {
+      "part": "response",
+      "node": "eval_relevance",
+      "agent": "relevance_evaluator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:01:18.825951+00:00"
+    },
+    {
+      "part": "response",
+      "node": "eval_readability",
+      "agent": "readability_evaluator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:01:18.832863+00:00"
+    },
+    {
+      "part": "response",
+      "node": "judge",
+      "agent": "evaluation_judge",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:01:19.801906+00:00"
+    },
+    {
+      "part": "response",
+      "node": "generate",
+      "agent": "warehouse_generator",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:02:15.635539+00:00"
+    },
+    {
+      "part": "response",
+      "node": "eval_compliance",
+      "agent": "compliance_evaluator",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:02:15.773407+00:00"
+    },
+    {
+      "part": "response",
+      "node": "eval_relevance",
+      "agent": "relevance_evaluator",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:02:15.780908+00:00"
+    },
+    {
+      "part": "response",
+      "node": "eval_readability",
+      "agent": "readability_evaluator",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:02:15.791457+00:00"
+    },
+    {
+      "part": "response",
+      "node": "judge",
+      "agent": "evaluation_judge",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:02:16.763665+00:00"
+    },
+    {
+      "part": "response",
+      "node": "generate",
+      "agent": "lastmile_generator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:03:29.622817+00:00"
+    },
+    {
+      "part": "response",
+      "node": "eval_compliance",
+      "agent": "compliance_evaluator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:03:29.764560+00:00"
+    },
+    {
+      "part": "response",
+      "node": "eval_relevance",
+      "agent": "relevance_evaluator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:03:29.765388+00:00"
+    },
+    {
+      "part": "response",
+      "node": "eval_readability",
+      "agent": "readability_evaluator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:03:29.771158+00:00"
+    },
+    {
+      "part": "response",
+      "node": "judge",
+      "agent": "evaluation_judge",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:03:30.737653+00:00"
+    },
+    {
+      "part": "response",
+      "node": "assemble",
+      "agent": "response_assembler",
+      "department_id": null,
+      "finished_at": "2026-11-22T21:03:31.308927+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "start",
+      "agent": "approval_coordinator",
+      "department_id": null,
+      "finished_at": "2026-11-22T21:03:34.187869+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "prepare",
+      "agent": "approval_gate",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:03:34.659936+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "prepare",
+      "agent": "approval_gate",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:03:34.979626+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "request_approval",
+      "agent": "approval_gate",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:03:35.237058+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "request_approval",
+      "agent": "approval_gate",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:03:35.819810+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "await_decision",
+      "agent": "human:Carlos Vega",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:03:38.873028+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "apply_decision",
+      "agent": "approval_gate",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:03:39.455398+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "await_decision",
+      "agent": "human:Ana Whitfield",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:03:42.505969+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "apply_decision",
+      "agent": "approval_gate",
+      "department_id": "warehouse",
+      "finished_at": "2026-11-22T21:03:43.088804+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "arbitrate",
+      "agent": "arbiter:Miguel Torres",
+      "department_id": null,
+      "finished_at": "2026-11-22T21:03:44.050267+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "prepare",
+      "agent": "approval_gate",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:03:44.496696+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "generate",
+      "agent": "lastmile_generator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:04:30.372446+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "eval_compliance",
+      "agent": "compliance_evaluator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:04:30.515446+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "eval_relevance",
+      "agent": "relevance_evaluator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:04:30.517388+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "eval_readability",
+      "agent": "readability_evaluator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:04:30.521621+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "judge",
+      "agent": "evaluation_judge",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:04:31.509495+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "revise",
+      "agent": "lastmile_generator",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:04:31.721952+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "request_approval",
+      "agent": "approval_gate",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:04:32.304891+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "await_decision",
+      "agent": "human:Carlos Vega",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:04:35.575699+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "apply_decision",
+      "agent": "approval_gate",
+      "department_id": "lastmile",
+      "finished_at": "2026-11-22T21:04:36.159939+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "arbitrate",
+      "agent": "arbiter:Miguel Torres",
+      "department_id": null,
+      "finished_at": "2026-11-22T21:04:36.571148+00:00"
+    },
+    {
+      "part": "approval",
+      "node": "final_document",
+      "agent": "document_assembler",
+      "department_id": null,
+      "finished_at": "2026-11-22T21:04:37.466781+00:00"
+    }
+  ],
+  "final_document": {
+    "currency": "USD",
+    "approvals": [
+      {
+        "department_id": "lastmile",
+        "approver": "Carlos Vega",
+        "approved_at": "2026-11-22T21:04:35.851058+00:00",
+        "version": 2
+      },
+      {
+        "department_id": "warehouse",
+        "approver": "Ana Whitfield",
+        "approved_at": "2026-11-22T21:03:42.781331+00:00",
+        "version": 1
+      }
+    ],
+    "content": "# TrackFlow pricing proposal — Luna Cosmetics\n\n- **RFP reference:** RFP-E2E-33EC3E\n- **Ticket:** 33ec3e39-ec8d-44ee-9f4c-23a3d50d0c7c\n- **Currency:** USD\n- **Generated:** 2026-11-22T21:04:36.844852+00:00\n- **Proposal volume:** 4000 orders/month (capped by arbitration; the RFP asked for 5000)\n\n## Approvals\n\n| Department | Owner | Approved | Version |\n|---|---|---|---|\n| Last Mile and Carrier Management | Carlos Vega | 2026-11-22T21:04:35.851058+00:00 | 2 |\n| Warehouse Operations | Ana Whitfield | 2026-11-22T21:03:42.781331+00:00 | 1 |\n\n## Resolved arbitration\n\n- **volume-vs-capacity** (árbitro: Miguel Torres): Limitar el volumen de la propuesta a la capacidad de warehouse (4000 pedidos/mes); lastmile revisa volumen y costo a la baja.\n\n## Last Mile and Carrier Management — Pricing proposal\n\n**Client:** Luna Cosmetics · **Country:** United States · **Currency:** USD · **TrackFlow owner:** Carlos Vega\n\n### Scope and approach\n\nThe cost to the customer includes shipping products across different regions of the country with a delivery SLA established to ensure timely deliveries. The provided data by the client is crucial for planning and execution, including monthly volume, USD pricing, and destination-specific delivery times.\n\n### Pricing items (USD)\n\n| Item | Price (USD) | Basis |\n|---|---|---|\n| Cost per shipment | To be quoted by Carlos Vega (final cost to the client) | By destination, weight and urgency; volume of 4000 orders/month. |\n| Available carriers | UPS, FedEx and DHL (Los Angeles) | The system picks the carrier by destination, weight and urgency. |\n| Delivery times | standard 3 to 5 business days within the same country; express 24 to 48 hours in metro areas (Los Angeles and Zaragoza-Madrid) | Same country. |\n\n### Volume discounts\n\n| Monthly volume | Discount on rate |\n|---|---|\n| Up to 2,000 orders/month | Pending approval by Miguel Torres |\n| 2,001 to 10,000 orders/month | Pending approval by Miguel Torres |\n| Over 10,000 orders/month | Pending approval by Miguel Torres |\n\n### Service level\n\n- On-time delivery SLA: **90 %** of deliveries on time per month, measured per country.\n- If a country falls below 90 % for two months in a row, we credit 5 % of that country's monthly fee.\n- On peak days, times can grow by up to 40 % and the SLA does not apply.\n\n### Assumptions and open questions\n\n- ¿Qué plazo de entrega esperan (estándar, express) y qué peso/tamaño medio tienen los paquetes?\n- ¿Cuál es el costo por envío para las diferentes regiones del US?\n\n## Warehouse Operations — Pricing proposal\n\n**Client:** Luna Cosmetics · **Country:** United States · **Currency:** USD · **TrackFlow owner:** Ana Whitfield\n\n### Scope and approach\n\nAlmacenamiento: Capacidad para el volumen/SKU del cliente; Tiempo de onboarding hasta operar. TrackFlow factura por m³ ocupado al mes, no por pallet ni por SKU. No hablemos de devoluciones, transporte ni última milla: los redactan Reverse Logistics y Last Mile.\n\n### Pricing items (USD)\n\n| Item | Price (USD) | Basis |\n|---|---|---|\n| Storage | 18 USD per m³ per month | Billed by occupied volume, not per unit. First 30 days free of charge. |\n| Long-term inventory | 150 % of the standard rate | From day 181 without movement. |\n| Cost per pallet / SKU | No per-unit rate: billed per m³ | The client did not state the SKU count. |\n| Capacity and onboarding | To be confirmed by Ana Whitfield | RFP volume: 5000 orders/month. RFP deadline: August 24th. |\n\n### Volume discounts\n\n| Monthly volume | Discount on rate |\n|---|---|\n| Up to 2,000 orders/month | Pending approval by Miguel Torres |\n| 2,001 to 10,000 orders/month | Pending approval by Miguel Torres |\n| Over 10,000 orders/month | Pending approval by Miguel Torres |\n\n### Service level\n\n- On-time delivery SLA: **90 %** of deliveries on time per month, measured per country.\n- If a country falls below 90 % for two months in a row, we credit 5 % of that country's monthly fee.\n- On peak days, times can grow by up to 40 % and the SLA does not apply.\n\n### Assumptions and open questions\n\n- ¿Cuál es el costo por pallet/SKU?\n"
+  }
+}

@@ -25,6 +25,7 @@ from mock_data.pipelines.rfp_intake.departments import DEPARTMENTS
 from mock_data.pipelines.rfp_intake.ingest import RfpMetadata, convert_pdf, extract_metadata, readability_metrics
 from mock_data.pipelines.rfp_intake.llm import LlmFn, chat_json
 from mock_data.pipelines.rfp_intake.repository import RfpRepository
+from mock_data.pipelines.rfp_intake.tracing import traced
 
 logger = logging.getLogger("trackflow.rfp_intake")
 
@@ -40,6 +41,7 @@ class IntakeState(TypedDict):
     force_accept: NotRequired[bool]
     sections: Annotated[list[dict[str, Any]], operator.add]
     handoff: NotRequired[dict[str, Any]]
+    trace: Annotated[list[dict[str, Any]], operator.add]   # agente, input, output y timestamp de cada nodo
 
 
 class WorkerInput(TypedDict):
@@ -122,11 +124,15 @@ def build_graph(repo: RfpRepository, llm_fn: LlmFn | None = chat_json, converter
         stage(state, "handoff", status="analisis_completo", handoff=state["handoff"], last_error=None, discard_reason=None)
         return {}
 
+    agents_by_node = {"convert": "markitdown_converter", "extract": "metadata_extractor", "classify": "classifier",
+                      "discard": "classifier", "orchestrate": "orchestrator",
+                      "department_worker": lambda s: f"{s['subtask']['department_id']}_worker",
+                      "synthesize": "synthesizer", "handoff": "router"}
     builder = StateGraph(IntakeState)
     for name, fn in (("convert", convert), ("extract", extract), ("classify", classify), ("discard", discard),
                      ("orchestrate", orchestrate), ("department_worker", department_worker),
                      ("synthesize", synthesize), ("handoff", handoff)):
-        builder.add_node(name, fn)
+        builder.add_node(name, traced(repo, "intake", name, agents_by_node[name], fn))
     builder.add_edge(START, "convert")
     builder.add_edge("convert", "extract")
     builder.add_edge("extract", "classify")
@@ -151,7 +157,7 @@ def run_ticket(ticket_id: str, repo: RfpRepository, llm_fn: LlmFn | None = chat_
     graph = build_graph(repo, llm_fn, converter)
     try:
         state = graph.invoke({"ticket_id": str(ticket_id), "rfp_id": ticket.rfp_id, "raw_pdf_path": ticket.raw_pdf_path,
-                              "force_accept": force_accept, "sections": []})
+                              "force_accept": force_accept, "sections": [], "trace": []})
     except Exception as error:
         logger.exception("pipeline RFP falló; ticket=%s", ticket_id)
         repo.update_ticket(ticket_id, pipeline_stage="fallido", last_error=f"{type(error).__name__}: {str(error)[:900]}")
