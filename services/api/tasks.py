@@ -113,3 +113,55 @@ def _analyze_stored_csv(task_id: str) -> dict:
     result = {"report": report, "results_csv": results_csv_text(report)}
     delete_task_input(task_id)
     return result
+
+
+# ----------------------------------------------------------------------------
+# Recepción de RFP (Hito 9, Parte 1): el pipeline agéntico corre en el worker de Celery
+# ----------------------------------------------------------------------------
+class RfpIntakeTask(Task):
+    """Reintenta errores transitorios (LLM o base de datos caídos). El ticket siempre refleja la verdad:
+    ``run_ticket`` deja ``pipeline_stage='fallido'`` + ``last_error`` en cada fallo, y al agotar los reintentos
+    la tarea queda además en ``task_dead_letters``."""
+
+    max_retries = 2
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        try:
+            engine = create_sql_engine()
+            try:
+                with Session(engine) as session:
+                    session.execute(text(
+                        """INSERT INTO public.task_dead_letters (task_id, task_name, attempts, error, failed_at)
+                           VALUES (:task_id, :task_name, :attempts, :error, :failed_at)
+                           ON CONFLICT (task_id) DO UPDATE SET attempts = EXCLUDED.attempts, error = EXCLUDED.error,
+                                                               failed_at = EXCLUDED.failed_at"""),
+                        {"task_id": task_id, "task_name": self.name,
+                         "attempts": getattr(self.request, "retries", self.max_retries) + 1,
+                         "error": "".join(einfo.traceback) if einfo and einfo.traceback else str(exc),
+                         "failed_at": datetime.now(timezone.utc)})
+                    session.commit()
+            finally:
+                engine.dispose()
+        except Exception:
+            logger.exception("No se pudo persistir la tarea RFP agotada en la DLQ; task_id=%s", task_id)
+        super().on_failure(exc, task_id, args, kwargs, einfo)
+
+
+@app.task(bind=True, base=RfpIntakeTask, name="rfp_intake.process_ticket")
+def process_rfp_ticket(self, ticket_id: str, force_accept: bool = False) -> dict:
+    from mock_data.pipelines.rfp_intake.graph import run_ticket
+    from mock_data.pipelines.rfp_intake.repository import RfpRepository
+
+    engine = create_sql_engine()
+    try:
+        result = run_ticket(ticket_id, RfpRepository(engine), force_accept=force_accept)
+        return {k: result[k] for k in ("ticket_id", "status", "pipeline_stage")}
+    except KeyError:
+        logger.error("Ticket RFP inexistente; ticket_id=%s", ticket_id)
+        raise
+    except Exception as error:
+        if self.request.retries >= self.max_retries:
+            raise
+        raise self.retry(exc=error, countdown=retry_countdown(self.request.retries))
+    finally:
+        engine.dispose()

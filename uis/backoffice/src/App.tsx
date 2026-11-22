@@ -13,6 +13,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 const IncidentAnalysis = lazy(() => import('./components/IncidentAnalysis').then((module) => ({ default: module.IncidentAnalysis })))
 const SupplierDirectory = lazy(() => import('./app/suppliers/SupplierDirectory').then((module) => ({ default: module.SupplierDirectory })))
 const InventoryPage = lazy(() => import('./app/inventory/InventoryPages').then((module) => ({ default: module.InventoryPage })))
+const RfpIntake = lazy(() => import('./app/rfps/RfpIntake').then((module) => ({ default: module.RfpIntake })))
 const KnowledgeAssistant = lazy(() => import('./app/knowledge/KnowledgeAssistant').then((module) => ({ default: module.KnowledgeAssistant })))
 
 const kpis = [
@@ -49,6 +50,7 @@ function App() {
             : path.startsWith('/backoffice/inventory/orders') || path.startsWith('/backoffice/inventory/audits') ? 'inventory_orders'
               : path === '/reporting' ? 'reporting'
               : path === '/knowledge' ? 'other'
+              : path === '/rfps' ? 'other'
               : isPublicPath ? 'login'
                 : activeView === 'incidents' ? 'incident_analysis'
                   : activeView === 'incident-registration' ? 'incident_registration'
@@ -100,6 +102,7 @@ function App() {
             <button type="button" aria-current={activeView === 'incident-registration' ? 'page' : undefined} onClick={() => setActiveView('incident-registration')} className={`rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${activeView === 'incident-registration' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>Registrar incidencia</button>
             <a href="/backoffice/inventory/products" aria-current={path.startsWith('/backoffice/inventory/') ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Inventario</a>
             <a href="/reporting" aria-current={path === '/reporting' ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Desempeño</a>
+            <a href="/rfps" aria-current={path === '/rfps' ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">RFP</a>
             <a href="/knowledge" aria-current={path === '/knowledge' ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Asistente comercial</a>
             <a href="/account/profile" className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Mi perfil</a>
             <a href="/telemetry" aria-current={path === '/telemetry' ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Telemetría</a>
@@ -138,6 +141,8 @@ function App() {
         <main className="mx-auto w-full max-w-6xl px-6 py-8"><InventoryPage path={path} /></main>
       ) : path === '/reporting' ? (
         <main className="mx-auto w-full max-w-6xl px-6 py-8"><ReportingPage /></main>
+      ) : path === '/rfps' ? (
+        <RfpIntake />
       ) : path === '/knowledge' ? (
         <main className="mx-auto w-full max-w-4xl px-6 py-8"><KnowledgeAssistant /></main>
       ) : path === '/account/profile' ? (

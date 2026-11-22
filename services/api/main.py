@@ -23,6 +23,7 @@ from routes.suppliers import router
 from routes.telemetry import router as telemetry_router
 from routes.tasks import router as tasks_router
 from routes.users import router as users_router
+from routes.rfp_intake import router as rfp_intake_router
 
 logger = logging.getLogger("uvicorn.error.timing")
 
@@ -93,6 +94,7 @@ def create_app(path: Path | None = None) -> FastAPI:
     application.include_router(tasks_router)
     application.include_router(knowledge_router)
     application.include_router(agent_router)
+    application.include_router(rfp_intake_router)
     application.include_router(reporting_router)
     return application
 
