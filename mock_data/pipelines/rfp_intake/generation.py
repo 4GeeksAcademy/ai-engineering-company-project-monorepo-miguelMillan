@@ -228,8 +228,18 @@ class DepartmentGenerator:
         """Narrativa sin LLM: solo con los ``key_aspects`` de la Parte 1."""
         es, name = inp.language == "es", inp.client.get("name") or ("el cliente" if inp.language == "es" else "the client")
         intro = (f"{name} pide a {inp.department} lo siguiente." if es else f"{name} asks {inp.department} for the following.")
-        facts = [f"{a.get('aspecto')}: {str(a.get('detalle')).rstrip('.')}." for a in inp.key_aspects[:5]
-                 if a.get("aspecto") and a.get("detalle")]
+        if es:
+            facts = [f"{a.get('aspecto')}: {str(a.get('detalle')).rstrip('.')}." for a in inp.key_aspects[:5]
+                     if a.get("aspecto") and a.get("detalle")]
+        else:  # los key_aspects de la Parte 1 están en español: en inglés se usan los metadatos estructurados
+            m, country = inp.metadata, {"US": "the United States", "ES": "Spain"}.get(inp.client.get("country") or "", "the client's country")
+            facts = [f"Operation in {country}, quoted in {inp.currency}."]
+            if m.get("monthly_volume"):
+                facts.append(f"Expected volume: {m['monthly_volume']} orders/month.")
+            if m.get("sku_count"):
+                facts.append(f"Catalog: {m['sku_count']} SKUs.")
+            if m.get("deadline") or m.get("deadline_text"):
+                facts.append(f"RFP deadline: {m.get('deadline') or m.get('deadline_text')}.")
         close = ("Las cifras pendientes se confirmarán con el cliente antes de cerrar la propuesta." if es else
                  "Pending figures will be confirmed with the client before the proposal is final.")
         return "\n\n".join([intro, " ".join(facts), close]).strip()

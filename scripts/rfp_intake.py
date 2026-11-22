@@ -4,6 +4,9 @@
     uv run python scripts/rfp_intake.py reprocess <ticket_id> [--force-accept]   # en primer plano
     uv run python scripts/rfp_intake.py process ruta/a/rfp.pdf                   # crea ticket y lo procesa aquí
     uv run python scripts/rfp_intake.py generate <ticket_id> [--max-iterations 3] # Parte 2 en primer plano
+    uv run python scripts/rfp_intake.py approval-start <ticket_id>                # Parte 3: arranca y se pausa
+    uv run python scripts/rfp_intake.py decide <ticket_id> <department> approve|reject|request_changes \
+        [--comment …] [--commitment capacity_monthly_orders=4000]                 # reanuda SOLO esa rama
 
 Usa la misma base (``DATABASE_URL``, PostgreSQL/Supabase) y el mismo pipeline (``mock_data/pipelines/rfp_intake``)
 que el backend y el worker de Celery.
@@ -29,6 +32,8 @@ from sqlmodel import create_engine  # noqa: E402
 from mock_data.pipelines.rfp_intake.graph import run_ticket  # noqa: E402
 from mock_data.pipelines.rfp_intake.repository import RfpRepository  # noqa: E402
 from mock_data.pipelines.rfp_intake.response_graph import run_response  # noqa: E402
+from mock_data.pipelines.rfp_intake.approval_graph import resume_approval, start_approval  # noqa: E402
+from mock_data.pipelines.rfp_intake.departments import DEPARTMENTS  # noqa: E402
 
 
 def engine():
@@ -56,12 +61,30 @@ def main() -> int:
     generate = sub.add_parser("generate")
     generate.add_argument("ticket_id")
     generate.add_argument("--max-iterations", type=int, default=None)
+    approval_start = sub.add_parser("approval-start")
+    approval_start.add_argument("ticket_id")
+    decide = sub.add_parser("decide")
+    decide.add_argument("ticket_id")
+    decide.add_argument("department", choices=sorted(DEPARTMENTS))
+    decide.add_argument("decision", choices=["approve", "reject", "request_changes"])
+    decide.add_argument("--comment", default="")
+    decide.add_argument("--commitment", action="append", default=[], help="clave=entero, p. ej. capacity_monthly_orders=4000")
     args = parser.parse_args()
     repo = RfpRepository(engine())
     if args.command == "list":
         for ticket in repo.list_tickets():
             print(f"{ticket.ticket_id}  {ticket.status:20} {ticket.pipeline_stage:11} {ticket.response_stage or '—':10} "
                   f"{ticket.rfp_id:22} {ticket.original_filename}")
+        return 0
+    if args.command == "approval-start":
+        print(json.dumps(start_approval(args.ticket_id, repo), ensure_ascii=False))
+        return 0
+    if args.command == "decide":
+        section = repo.get_section(args.ticket_id, args.department)
+        decision = {"decision": args.decision, "approver": DEPARTMENTS[args.department].owner,
+                    "section_version": (section.approval_request or {}).get("version", 0), "comment": args.comment,
+                    "commitments": {k: int(v) for k, v in (c.split("=", 1) for c in args.commitment)}, "decided_by": "cli"}
+        print(json.dumps(resume_approval(args.ticket_id, args.department, decision, repo), ensure_ascii=False))
         return 0
     if args.command == "generate":
         result = run_response(args.ticket_id, repo, max_iterations=args.max_iterations)

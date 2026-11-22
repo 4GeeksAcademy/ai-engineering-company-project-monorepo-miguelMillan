@@ -8,6 +8,8 @@ Tablas (migración ``supabase/migrations/20261122100000_create_rfp_intake.sql``)
   y su ``EvaluationResult`` (Parte 2) y la aprobación (Parte 3).
 * ``rfp_section_evaluations`` (Parte 2, migración ``20261122150000_rfp_response_generation.sql``): historial de cada
   iteración del ciclo generador-evaluador: el borrador y su ``EvaluationResult`` estructurado.
+* Parte 3 (migración ``20261122200000_rfp_approval.sql``): aprobación por departamento en la sección, arbitraje en el
+  ticket, ``rfp_final_documents`` (FinalDocument del BRIEFING §2.3) y ``rfp_trace_events`` (qué agente hizo qué).
 
 TinyDB y los archivos JSON no son fuente de verdad de estas entidades.
 """
@@ -31,6 +33,9 @@ PIPELINE_STAGES = ("recibido", "convertido", "metadatos", "clasificado", "orques
 RESPONSE_STAGES = ("generando", "evaluando", "handoff", "fallido")
 # Estado de cada sección en la Parte 2.
 SECTION_STATUSES = ("pendiente", "generando", "en_evaluacion", "evaluacion_superada", "needs_human_review")
+# Parte 3: aprobación humana por sección y etapa del flujo de aprobación del ticket.
+APPROVAL_STATUSES = ("pendiente", "esperando_aprobación", "procesando", "en_revision", "aprobada", "rechazada")
+APPROVAL_STAGES = ("iniciando", "en_curso", "esperando", "completado", "bloqueado", "fallido")
 
 
 def _now() -> datetime:
@@ -60,6 +65,12 @@ class RfpTicket(SQLModel, table=True):
     response_stage: Optional[str] = Field(default=None, max_length=16)
     response_attempts: int = Field(default=0)
     response_handoff: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    # Parte 3: hilo del checkpointer (namespaced por ticket), etapa del flujo de aprobación y arbitrajes.
+    approval_thread_id: Optional[str] = Field(default=None, max_length=120)
+    approval_run: int = Field(default=0)
+    approval_stage: Optional[str] = Field(default=None, max_length=16)
+    approval_note: Optional[str] = Field(default=None)
+    arbitration: list = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     created_at: datetime = _ts()
     updated_at: datetime = _ts()
 
@@ -101,10 +112,16 @@ class DepartmentSection(SQLModel, table=True):
     section_status: str = Field(default="pendiente", max_length=24)
     iterations: int = Field(default=0)
     needs_human_review: bool = Field(default=False)
-    # Parte 3
+    # Parte 3: aprobación humana por departamento (approver = responsable del BRIEFING §2.1).
     approval_status: str = Field(default="pendiente", max_length=24)
-    approver: Optional[str] = Field(default=None, max_length=120)  # responsable del BRIEFING §2.1
+    approver: Optional[str] = Field(default=None, max_length=120)
     approved_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+    approval_round: int = Field(default=0)
+    approval_request: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    decision_history: list = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    commitments: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    approved_content: Optional[str] = None
+    decided_by: Optional[str] = Field(default=None, max_length=255)
     created_at: datetime = _ts()
 
 
@@ -127,3 +144,37 @@ class SectionEvaluation(SQLModel, table=True):
     feedback_for_generator: str = ""
     generator_meta: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     created_at: datetime = _ts()
+
+
+class FinalDocument(SQLModel, table=True):
+    """Documento final (BRIEFING §2.3: ticket_id, sections, currency, generated_at) con las secciones aprobadas."""
+
+    __tablename__ = "rfp_final_documents"
+
+    ticket_id: uuid.UUID = Field(primary_key=True, foreign_key="rfp_tickets.ticket_id")
+    rfp_id: str = Field(max_length=80)
+    currency: str = Field(max_length=3)
+    sections: list = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    approvals: list = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    arbitration: list = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    content: str
+    generated_at: datetime = _ts()
+
+
+class TraceEvent(SQLModel, table=True):
+    """Una ejecución de nodo de cualquier parte del flujo: agente, input, output y timestamp."""
+
+    __tablename__ = "rfp_trace_events"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ticket_id: uuid.UUID = Field(foreign_key="rfp_tickets.ticket_id", index=True)
+    part: str = Field(max_length=16)                    # intake | response | approval
+    thread_id: Optional[str] = Field(default=None, max_length=120)
+    node: str = Field(max_length=64)
+    agent: str = Field(max_length=80)
+    department_id: Optional[str] = Field(default=None, max_length=16)
+    status: str = Field(default="ok", max_length=16)    # ok | error
+    input: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    output: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    started_at: datetime = _ts()
+    finished_at: datetime = _ts()

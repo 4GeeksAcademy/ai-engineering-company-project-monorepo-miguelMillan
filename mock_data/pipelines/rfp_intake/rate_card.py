@@ -36,6 +36,10 @@ CARRIERS = {
     "US": "UPS, FedEx y DHL (Los Ángeles)",
     "ES": "MRW, SEUR, DHL y transportistas locales del área metropolitana de Zaragoza",
 }
+CARRIERS_EN = {
+    "US": "UPS, FedEx and DHL (Los Angeles)",
+    "ES": "MRW, SEUR, DHL and local last-mile carriers in the Zaragoza metro area",
+}
 DELIVERY_TIMES = {
     "es": "estándar de 3 a 5 días hábiles en el mismo país; express de 24 a 48 horas en zonas metropolitanas "
           "(Los Ángeles y Zaragoza-Madrid)",

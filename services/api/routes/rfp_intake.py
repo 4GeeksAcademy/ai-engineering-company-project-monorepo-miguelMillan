@@ -7,6 +7,11 @@ agentes vive en ``mock_data/pipelines/rfp_intake/`` (el ``data/pipelines/`` del 
 Parte 2: cuando la Parte 1 deja el ticket en ``analisis_completo``, el worker encola sola la generación
 (``rfp_response.generate_ticket``). ``POST /tickets/{id}/generate`` la relanza (tras un fallo o una revisión humana)
 y el detalle del ticket expone borradores, ``EvaluationResult`` y el handoff a la Parte 3.
+
+Parte 3: al terminar la Parte 2, el worker arranca el grafo de aprobación (``rfp_approval.start``), que se pausa por
+departamento. ``POST /tickets/{id}/sections/{department_id}/decision`` valida la decisión del responsable y reanuda
+SOLO esa rama (``rfp_approval.resume``). ``GET /tickets/{id}/final-document`` y ``GET /tickets/{id}/trace`` exponen el
+documento final y la traza de agentes.
 """
 
 import logging
@@ -18,6 +23,8 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel, Field
 
 from security import get_current_user
 
@@ -28,6 +35,8 @@ if str(REPOSITORY_ROOT) not in sys.path:
 from mock_data.pipelines.rfp_intake.models import RfpTicket  # noqa: E402,F401  (registra las tablas en SQLModel)
 from mock_data.pipelines.rfp_intake.repository import RfpRepository  # noqa: E402
 from mock_data.pipelines.rfp_intake.response_graph import GENERATION_ENTRY_STATUSES  # noqa: E402
+from mock_data.pipelines.rfp_intake import approval as approval_rules  # noqa: E402
+from mock_data.pipelines.rfp_intake.approval_graph import APPROVAL_ENTRY_STATUSES, section_input  # noqa: E402
 
 logger = logging.getLogger("trackflow.rfp_intake")
 router = APIRouter(prefix="/rfp-intake", tags=["rfp intake"])
@@ -101,6 +110,8 @@ def _summary(repo: RfpRepository, ticket) -> dict:
             "created_at": ticket.created_at.isoformat(), "updated_at": ticket.updated_at.isoformat(),
             "attempts": ticket.attempts, "last_error": ticket.last_error, "discard_reason": ticket.discard_reason,
             "response_stage": ticket.response_stage, "response_attempts": ticket.response_attempts,
+            "approval_stage": ticket.approval_stage, "approval_thread_id": ticket.approval_thread_id,
+            "approval_note": ticket.approval_note,
             "client_name": meta.client_name if meta else None, "client_country": meta.client_country if meta else None,
             "departments_needed": meta.departments_needed if meta else []}
 
@@ -128,7 +139,10 @@ def get_rfp_ticket(ticket_id: uuid.UUID, request: Request, _user=Depends(get_cur
             "feedback_for_generator": evaluation.feedback_for_generator, "created_at": evaluation.created_at.isoformat()})
     return {
         **_summary(repo, ticket), "raw_pdf_path": ticket.raw_pdf_path, "handoff": ticket.handoff,
-        "response_handoff": ticket.response_handoff,
+        "response_handoff": ticket.response_handoff, "arbitration": ticket.arbitration or [],
+        "final_document": None if (document := repo.get_final_document(ticket_id)) is None else {
+            "currency": document.currency, "generated_at": document.generated_at.isoformat(),
+            "approvals": document.approvals, "url": f"/rfp-intake/tickets/{ticket_id}/final-document"},
         "metadata": None if meta is None else {
             "client_name": meta.client_name, "client_country": meta.client_country, "currency": meta.currency,
             "services_requested": meta.services_requested, "monthly_volume": meta.monthly_volume, "sku_count": meta.sku_count,
@@ -139,7 +153,10 @@ def get_rfp_ticket(ticket_id: uuid.UUID, request: Request, _user=Depends(get_cur
                       "approver": s.approver, "approval_status": s.approval_status, "worker_meta": s.worker_meta,
                       "section_status": s.section_status, "iterations": s.iterations,
                       "needs_human_review": s.needs_human_review, "draft_content": s.draft_content,
-                      "evaluation_result": s.evaluation_results, "evaluation_history": history.get(s.department_id, [])}
+                      "evaluation_result": s.evaluation_results, "evaluation_history": history.get(s.department_id, []),
+                      "approval_round": s.approval_round, "approval_request": s.approval_request,
+                      "decision_history": s.decision_history or [], "commitments": s.commitments or {},
+                      "approved_at": s.approved_at.isoformat() if s.approved_at else None}
                      for s in sections],
     }
 
@@ -188,3 +205,102 @@ async def generate_rfp_response(ticket_id: uuid.UUID, request: Request, _user=De
                                                            last_error=f"No se pudo encolar la generación: {type(error).__name__}"))
         raise HTTPException(status_code=503, detail="La cola de generación no está disponible.") from error
     return {"ticket_id": str(ticket_id), "status": ticket.status, "response_stage": "generando"}
+
+
+
+# ============================================================================
+# Parte 3: aprobación humana por departamento, documento final y traza
+# ============================================================================
+class DecisionIn(BaseModel):
+    decision: str
+    approver: str
+    section_version: int
+    comment: str = ""
+    commitments: dict[str, int] = Field(default_factory=dict)
+    edited_content: str | None = None
+
+
+def _enqueue_approval_resume(ticket_id: str, department_id: str, decision: dict) -> None:
+    from tasks import enqueue_rfp_approval_resume
+
+    enqueue_rfp_approval_resume(ticket_id, department_id, decision)
+
+
+def _enqueue_approval_start(ticket_id: str) -> None:
+    from tasks import enqueue_rfp_approval_start
+
+    enqueue_rfp_approval_start(ticket_id)
+
+
+@router.post("/tickets/{ticket_id}/sections/{department_id}/decision", status_code=202)
+async def decide_section(ticket_id: uuid.UUID, department_id: str, body: DecisionIn, request: Request,
+                         user=Depends(get_current_user)):
+    """El responsable del departamento aprueba, rechaza o pide cambios. Se valida AQUÍ (y otra vez en el grafo)
+    antes de reanudar solo su rama."""
+    repo = _repo(request)
+    ticket = repo.get_ticket(ticket_id)
+    section = repo.get_section(ticket_id, department_id) if ticket else None
+    if ticket is None or section is None:
+        raise HTTPException(status_code=404, detail="Ticket o sección no encontrados.")
+    if section.approval_status != "esperando_aprobación" or not section.approval_request:
+        raise HTTPException(status_code=409, detail="Esta sección no está esperando una decisión.")
+    pending = {**section.approval_request,
+               "section_input": section_input(repo, str(ticket_id), department_id, None).to_dict()}
+    decision = {**body.model_dump(), "decided_by": _user_label(user)}
+    try:
+        validated = approval_rules.validate_decision(decision, pending)
+    except approval_rules.DecisionError as error:
+        raise HTTPException(status_code=422, detail={"message": "Decisión no válida.", "errors": error.errors}) from error
+    # Antes de encolar: así el worker nunca encuentra un estado más viejo que el que deja él.
+    await run_in_threadpool(lambda: repo.update_section(ticket_id, department_id, approval_status="procesando"))
+    await run_in_threadpool(lambda: repo.update_ticket(ticket_id, approval_stage="en_curso"))
+    try:
+        await run_in_threadpool(_enqueue_approval_resume, str(ticket_id), department_id, validated.model_dump())
+    except Exception as error:  # noqa: BLE001
+        logger.exception("No se pudo encolar la reanudación; ticket=%s", ticket_id)
+        await run_in_threadpool(lambda: repo.update_section(ticket_id, department_id, approval_status="esperando_aprobación"))
+        await run_in_threadpool(lambda: repo.update_ticket(ticket_id, approval_stage="esperando"))
+        raise HTTPException(status_code=503, detail="La cola de aprobación no está disponible.") from error
+    return {"ticket_id": str(ticket_id), "department_id": department_id, "decision": validated.decision,
+            "approval_status": "procesando"}
+
+
+@router.post("/tickets/{ticket_id}/approval/start", status_code=202)
+async def start_ticket_approval(ticket_id: uuid.UUID, request: Request, _user=Depends(get_current_user)):
+    """Arranca (o vuelve a arrancar tras un fallo o un bloqueo) el flujo de aprobación en un hilo nuevo."""
+    repo = _repo(request)
+    ticket = repo.get_ticket(ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket RFP no encontrado.")
+    if ticket.status not in APPROVAL_ENTRY_STATUSES or not ticket.response_handoff or ticket.response_stage != "handoff":
+        raise HTTPException(status_code=409, detail="La aprobación arranca cuando la Parte 2 dejó las secciones listas.")
+    if ticket.approval_stage in ("iniciando", "en_curso", "esperando", "completado"):
+        raise HTTPException(status_code=409, detail="El flujo de aprobación ya está en marcha: se reanuda por departamento.")
+    await run_in_threadpool(lambda: repo.update_ticket(ticket_id, approval_stage="iniciando", approval_thread_id=None))
+    await run_in_threadpool(_enqueue_approval_start, str(ticket_id))
+    return {"ticket_id": str(ticket_id), "approval_stage": "iniciando"}
+
+
+@router.get("/tickets/{ticket_id}/final-document")
+def get_final_document(ticket_id: uuid.UUID, request: Request, format: str = "json", _user=Depends(get_current_user)):
+    repo = _repo(request)
+    document = repo.get_final_document(ticket_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="El documento final todavía no existe: faltan aprobaciones.")
+    if format == "md":
+        return PlainTextResponse(document.content, media_type="text/markdown; charset=utf-8", headers={
+            "Content-Disposition": f'attachment; filename="propuesta-{document.rfp_id}.md"'})
+    return {"ticket_id": str(document.ticket_id), "rfp_id": document.rfp_id, "currency": document.currency,
+            "generated_at": document.generated_at.isoformat(), "sections": document.sections, "approvals": document.approvals,
+            "arbitration": document.arbitration, "content": document.content}
+
+
+@router.get("/tickets/{ticket_id}/trace")
+def get_trace(ticket_id: uuid.UUID, request: Request, _user=Depends(get_current_user)):
+    repo = _repo(request)
+    if repo.get_ticket(ticket_id) is None:
+        raise HTTPException(status_code=404, detail="Ticket RFP no encontrado.")
+    return {"events": [{"id": e.id, "part": e.part, "node": e.node, "agent": e.agent, "department_id": e.department_id,
+                        "status": e.status, "thread_id": e.thread_id, "input": e.input, "output": e.output,
+                        "started_at": e.started_at.isoformat(), "finished_at": e.finished_at.isoformat()}
+                       for e in repo.get_trace(ticket_id)]}

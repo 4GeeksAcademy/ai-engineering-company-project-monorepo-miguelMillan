@@ -132,7 +132,7 @@ def test_lastmile_generator_quotes_in_usd_for_a_us_client_and_works_without_llm(
     inp = inputs_for(repo, INFORMAL)["lastmile"]
     draft = generate_section(inp, None)
     assert inp.language == "en" and "**Currency:** USD" in draft.content and "EUR" not in draft.content
-    assert "5000 orders/month" in draft.content and "UPS, FedEx y DHL" in draft.content
+    assert "5000 orders/month" in draft.content and "UPS, FedEx and DHL" in draft.content
     assert draft.meta["narrative"] == "determinista"
 
 

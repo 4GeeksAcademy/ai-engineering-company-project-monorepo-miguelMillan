@@ -193,7 +193,17 @@ def generate_rfp_response(self, ticket_id: str) -> dict:
 
     engine = create_sql_engine()
     try:
-        result = run_response(ticket_id, RfpRepository(engine))
+        repo = RfpRepository(engine)
+        result = run_response(ticket_id, repo)
+        if result["status"] in ("esperando_aprobación", "needs_human_review") and os.environ.get("RFP_AUTO_APPROVAL", "1") != "0":
+            # Enrutamiento a la Parte 3: el handoff rfp_response_handoff.v1 deja cada sección lista para su responsable.
+            try:
+                repo.update_ticket(ticket_id, approval_stage="iniciando")   # la UI sigue refrescando
+                enqueue_rfp_approval_start(ticket_id)
+            except Exception as error:  # noqa: BLE001 — la Parte 2 terminó bien; no se repite por un fallo de la cola
+                logger.exception("No se pudo encolar la Parte 3; ticket_id=%s", ticket_id)
+                repo.update_ticket(ticket_id, approval_stage="fallido",
+                                   last_error=f"No se pudo iniciar la aprobación: {type(error).__name__}")
         return {k: result[k] for k in ("ticket_id", "status", "response_stage")}
     except (KeyError, HandoffError):
         logger.error("Ticket RFP no listo para la Parte 2; ticket_id=%s", ticket_id)
@@ -204,3 +214,49 @@ def generate_rfp_response(self, ticket_id: str) -> dict:
         raise self.retry(exc=error, countdown=retry_countdown(self.request.retries))
     finally:
         engine.dispose()
+
+
+
+# ----------------------------------------------------------------------------
+# Aprobación humana y cierre (Hito 9, Parte 3): el grafo se pausa por departamento y se reanuda con cada decisión
+# ----------------------------------------------------------------------------
+def enqueue_rfp_approval_start(ticket_id: str) -> None:
+    start_rfp_approval.apply_async(args=[ticket_id], task_id=f"rfp-approval-{ticket_id}-{uuid.uuid4().hex[:8]}")
+
+
+def enqueue_rfp_approval_resume(ticket_id: str, department_id: str, decision: dict) -> None:
+    resume_rfp_approval.apply_async(args=[ticket_id, department_id, decision],
+                                    task_id=f"rfp-resume-{ticket_id}-{department_id}-{uuid.uuid4().hex[:8]}")
+
+
+def _run_approval(task, fn, ticket_id: str, *args) -> dict:
+    from mock_data.pipelines.rfp_intake.approval import DecisionError
+    from mock_data.pipelines.rfp_intake.generation import HandoffError
+    from mock_data.pipelines.rfp_intake.repository import RfpRepository
+
+    engine = create_sql_engine()
+    try:
+        return fn(ticket_id, *args, repo=RfpRepository(engine))
+    except (KeyError, HandoffError, DecisionError):
+        logger.error("Operación de aprobación no válida; ticket_id=%s", ticket_id)
+        raise
+    except Exception as error:
+        if task.request.retries >= task.max_retries:
+            raise
+        raise task.retry(exc=error, countdown=retry_countdown(task.request.retries))
+    finally:
+        engine.dispose()
+
+
+@app.task(bind=True, base=RfpIntakeTask, name="rfp_approval.start")
+def start_rfp_approval(self, ticket_id: str) -> dict:
+    from mock_data.pipelines.rfp_intake.approval_graph import start_approval
+
+    return _run_approval(self, start_approval, ticket_id)
+
+
+@app.task(bind=True, base=RfpIntakeTask, name="rfp_approval.resume")
+def resume_rfp_approval(self, ticket_id: str, department_id: str, decision: dict) -> dict:
+    from mock_data.pipelines.rfp_intake.approval_graph import resume_approval
+
+    return _run_approval(self, resume_approval, ticket_id, department_id, decision)
