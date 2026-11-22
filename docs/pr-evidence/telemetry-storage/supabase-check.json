@@ -1,0 +1,62 @@
+{
+  "business_rows": [
+    {
+      "event_id": "7b26936a-24d6-464e-9dea-eb4b6a932ea1",
+      "event_type": "inbound_order_created",
+      "timestamp": "2026-11-22T10:02:45.335000+00:00",
+      "tags": {
+        "order_id": 16,
+        "quantity": 3,
+        "client_id": "purestep_footwear",
+        "warehouse": "zaragoza",
+        "product_id": "CLT-SNK-W-42-Z",
+        "product_category": "fashion"
+      }
+    }
+  ],
+  "ui_batch_rows": [
+    {
+      "event_id": "37ae2528-bfee-4666-a79e-da56ee77c4df",
+      "event_type": "frontend_web_vital_recorded"
+    },
+    {
+      "event_id": "55ca2b28-23f7-4b30-b99c-9e8c06e44721",
+      "event_type": "backoffice_section_viewed"
+    },
+    {
+      "event_id": "b8ad4ec0-3f18-45c7-a82d-a570d0818910",
+      "event_type": "backoffice_section_viewed"
+    },
+    {
+      "event_id": "d432911b-64c7-45af-8658-ba1dd100eccd",
+      "event_type": "api_request_completed"
+    },
+    {
+      "event_id": "c2da1fe8-f6d1-4c88-a8af-c52d5db0a49a",
+      "event_type": "api_request_completed"
+    },
+    {
+      "event_id": "bb20d90a-3b74-445e-a6fc-d0fa5b0eb587",
+      "event_type": "api_request_completed"
+    },
+    {
+      "event_id": "7b26936a-24d6-464e-9dea-eb4b6a932ea1",
+      "event_type": "inbound_order_created"
+    }
+  ],
+  "mixed_valid_stored": [
+    true,
+    true
+  ],
+  "mixed_invalid_stored": [
+    false,
+    false,
+    false
+  ],
+  "business_event_counts": [
+    [
+      "inbound_order_created",
+      1
+    ]
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "status": 200,
+  "request": {
+    "events": [
+      {
+        "eventId": "37ae2528-bfee-4666-a79e-da56ee77c4df",
+        "timestamp": "2026-11-22T10:02:43.158Z",
+        "sessionId": "92d5ca07-f6b4-414a-a4ae-2f968b4d44ef",
+        "userId": "u_<sha256 redactado>",
+        "event_type": "frontend_web_vital_recorded",
+        "schemaVersion": "1.0.0",
+        "requestId": "df5fd930-63ec-4f07-a3b2-fc1509cd7705",
+        "properties": {
+          "metric": "TTFB",
+          "value": 86.09999999962747,
+          "page": "inventory_inbound"
+        }
+      },
+      {
+        "eventId": "55ca2b28-23f7-4b30-b99c-9e8c06e44721",
+        "timestamp": "2026-11-22T10:02:43.168Z",
+        "sessionId": "92d5ca07-f6b4-414a-a4ae-2f968b4d44ef",
+        "userId": "u_<sha256 redactado>",
+        "event_type": "backoffice_section_viewed",
+        "schemaVersion": "1.0.0",
+        "requestId": "ae29db33-b025-4382-a398-a0c430f6bdfb",
+        "properties": {
+          "section": "inventory_inbound"
+        }
+      },
+      {
+        "eventId": "b8ad4ec0-3f18-45c7-a82d-a570d0818910",
+        "timestamp": "2026-11-22T10:02:43.169Z",
+        "sessionId": "92d5ca07-f6b4-414a-a4ae-2f968b4d44ef",
+        "userId": "u_<sha256 redactado>",
+        "event_type": "backoffice_section_viewed",
+        "schemaVersion": "1.0.0",
+        "requestId": "30b0291f-a4b6-47b2-a432-963b11393d02",
+        "properties": {
+          "section": "inventory_inbound"
+        }
+      },
+      {
+        "eventId": "d432911b-64c7-45af-8658-ba1dd100eccd",
+        "timestamp": "2026-11-22T10:02:43.194Z",
+        "sessionId": "92d5ca07-f6b4-414a-a4ae-2f968b4d44ef",
+        "userId": "u_<sha256 redactado>",
+        "event_type": "api_request_completed",
+        "schemaVersion": "1.0.0",
+        "requestId": "589663ac-7ab7-4b0e-a7d6-0bd70db4e51d",
+        "properties": {
+          "route_group": "auth_me",
+          "method": "GET",
+          "status_code": 200,
+          "duration_ms": 23.799999999813735
+        }
+      },
+      {
+        "eventId": "c2da1fe8-f6d1-4c88-a8af-c52d5db0a49a",
+        "timestamp": "2026-11-22T10:02:44.386Z",
+        "sessionId": "92d5ca07-f6b4-414a-a4ae-2f968b4d44ef",
+        "userId": "u_<sha256 redactado>",
+        "event_type": "api_request_completed",
+        "schemaVersion": "1.0.0",
+        "requestId": "5dcab634-5603-4615-a41c-ea3565e707db",
+        "properties": {
+          "route_group": "inventory_products",
+          "method": "GET",
+          "status_code": 200,
+          "duration_ms": 845.2999999998137
+        }
+      },
+      {
+        "eventId": "bb20d90a-3b74-445e-a6fc-d0fa5b0eb587",
+        "timestamp": "2026-11-22T10:02:45.335Z",
+        "sessionId": "92d5ca07-f6b4-414a-a4ae-2f968b4d44ef",
+        "userId": "u_<sha256 redactado>",
+        "event_type": "api_request_completed",
+        "schemaVersion": "1.0.0",
+        "requestId": "86765e1d-458f-46ec-9d4f-747166c01d05",
+        "properties": {
+          "route_group": "inventory_inbound",
+          "method": "POST",
+          "status_code": 201,
+          "duration_ms": 312.79999999981374
+        }
+      },
+      {
+        "eventId": "7b26936a-24d6-464e-9dea-eb4b6a932ea1",
+        "timestamp": "2026-11-22T10:02:45.335Z",
+        "sessionId": "92d5ca07-f6b4-414a-a4ae-2f968b4d44ef",
+        "userId": "u_<sha256 redactado>",
+        "event_type": "inbound_order_created",
+        "schemaVersion": "1.0.0",
+        "requestId": "0841901a-7879-4698-b73d-89703bf444c4",
+        "properties": {
+          "warehouse": "zaragoza",
+          "client_id": "purestep_footwear",
+          "product_id": "CLT-SNK-W-42-Z",
+          "product_category": "fashion",
+          "quantity": 3,
+          "order_id": 16
+        }
+      }
+    ]
+  },
+  "response": {
+    "received": 7,
+    "stored": 7,
+    "rejected": 0
+  }
+}
