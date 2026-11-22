@@ -46,6 +46,7 @@ services:
       AGENT_DATA_DIR: /var/lib/trackflow/agent
       # Memoria del agente: Redis del stack, base 2 (Celery usa la 0). Nunca la colección RAG de Qdrant.
       AGENT_MEMORY_REDIS_URL: redis://redis:6379/2
+      RFP_RAW_DIR: /app/mock_data/raw/rfp
       # El agente usa las tools a través del servidor MCP (servicio `mcp`), con OAuth client_credentials.
       MCP_SERVER_URL: ${MCP_SERVER_URL:-http://mcp:8090/mcp}
       OIDC_ISSUER: ${OIDC_ISSUER:-}
@@ -73,6 +74,8 @@ services:
       - ./scripts:/app/scripts:ro
       - ./packages/shared:/app/packages/shared:ro
       - ./mock_data:/app/mock_data:ro
+      # Recepción de RFP: los PDF subidos se guardan aquí (data/raw del BRIEFING); escribible y compartido con el worker.
+      - ./mock_data/raw/rfp:/app/mock_data/raw/rfp
       - ./services/agent:/app/services/agent:ro
       - ./docs/company-knowledge-base:/app/docs/company-knowledge-base:ro
       - backend_data:/var/lib/trackflow
@@ -155,10 +158,17 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Configura DATABASE_URL en Codespaces}
       TASKS_INTERNAL_TOKEN: ${TASKS_INTERNAL_TOKEN:?Configura TASKS_INTERNAL_TOKEN en .env}
       TASK_INPUT_DIR: /var/lib/trackflow/task-inputs
+      # Pipeline de recepción de RFP (mock_data/pipelines/rfp_intake): LLM de generación y PDFs subidos.
+      RFP_RAW_DIR: /app/mock_data/raw/rfp
+      LLM_API_URL: ${LLM_API_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      GENERATION_MODEL: ${GENERATION_MODEL:-}
     volumes:
       - ./services/api:/app/services/api
       - ./scripts:/app/scripts:ro
       - ./packages/shared:/app/packages/shared:ro
+      - ./mock_data:/app/mock_data:ro
+      - ./mock_data/raw/rfp:/app/mock_data/raw/rfp
       - backend_data:/var/lib/trackflow
     networks:
       - trackflow

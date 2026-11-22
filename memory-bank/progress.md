@@ -1,5 +1,45 @@
 # Progress Log — TrackFlow
 
+## Revisión del checklist de la Parte 1 de RFP, 2026-11-22
+
+- Los 12 puntos del checklist se cumplen. Evidencia: un solo API (8081), POST 202 en 280–460 ms, datos en Supabase (metadatos y legibilidad en 9/9 tickets terminados, 0 secciones en los descartados), `rfp_handoff.v1` con contacto y responsables, y nodos separados `classify`/`orchestrate`/`department_worker`/`synthesize`.
+- Prueba de orden: se subió primero el pitch inválido (9a3064c3) y quedó `descartado` en 68 s. Después, la RFP formal (d44f3f6a) llegó a `analisis_completo` en 128 s. Un descarte no bloquea la cola.
+- Tests: `tests/pipelines/test_rfp_intake.py` 22 passed; `services/api/tests/test_rfp_intake_api.py` 6 passed; `rfps.test.ts` 2 passed.
+- Sin cambios de código. Pendiente: commit y PR cuando el desarrollador lo pida.
+
+## Recepción de RFP (Hito 9, Parte 1), 2026-11-22
+
+- Contexto archivado en `memory-bank/history/RFP-INTAKE-CONTEXT-2026-11-22.md` (`cmp`). Rama `feature/rfp-intake` (al día con `main` tras #43). `data/` del BRIEFING = `mock_data/` en el repo.
+- Dependencias con `uv add` (raíz y `services/api`): `markitdown[pdf]` y `py-readability-metrics`.
+- Pipeline `mock_data/pipelines/rfp_intake/` (grafo LangGraph dedicado, sin relación con el grafo de CX):
+  - convert (MarkItDown) → extract (metadatos deterministas con evidencia + legibilidad) → classify;
+  - orchestrate → workers por departamento en paralelo (`Send`) → synthesize → handoff (`rfp_handoff.v1`).
+  - Departamentos exactos del BRIEFING (warehouse / lastmile / reverse); lo que no cubren va a `out_of_scope_requests`.
+  - Los workers solo reciben metadatos y extractos de su departamento, descartan cifras o aspectos sin cita y convierten los datos que faltan en preguntas abiertas.
+  - El synthesizer señala contradicciones (`conflicts`) sin resolverlas.
+- Clasificador: agente LLM (veredicto categórico) + señales deterministas, con tabla de decisión documentada. Los falsos negativos se evitan aceptando las dudas con `needs_sales_review`; un descarte se puede forzar a aceptado (`forzado_por_humano`). Un pitch de proveedor domina; un «RFP» suelto no cuenta (inyección detectada en un test).
+- Persistencia en PostgreSQL (Supabase) vía SQLModel: `rfp_tickets`, `rfp_metadata`, `rfp_department_sections`. Migración `20261122100000_create_rfp_intake.sql`, **aplicada en Supabase**.
+- Backend existente: `routes/rfp_intake.py`.
+  - `POST /rfp-intake/tickets` (202): valida PDF, guarda en `mock_data/raw/rfp/`, ticket `analizando`, encola en Celery.
+  - `GET` de lista y detalle; `POST …/reprocess`.
+  - Tarea Celery `rfp_intake.process_ticket` con reintentos y DLQ.
+  - Un fallo técnico deja `analizando` + `pipeline_stage=fallido` + `last_error`, nunca `descartado`.
+- UI `uis/backoffice` `/rfps`: subida múltiple, tabla con estados y refresco automático, detalle con resumen para Ventas, reintento y «aceptar y analizar». Proxy Vite `/rfp-intake`.
+- Otros cambios:
+  - CLI `scripts/rfp_intake.py` (list / reprocess / process) y `scripts/rfp_ui_smoke.cjs`;
+  - compose: el worker monta `mock_data` y el directorio de PDF, y el backend el directorio de PDF escribible;
+  - `.gitignore`: `mock_data/raw/rfp/`.
+- Validación:
+  - `tests/pipelines/test_rfp_intake.py` (22: clasificador y workers incluidos) y `services/api/tests/test_rfp_intake_api.py` (6); Jest `rfps.test.ts` (2).
+  - `uv run pytest tests -q` → 403 passed; `services/api` → 113 passed; `tsc -b` OK.
+  - **Los tres PDF de muestra se subieron por la UI** y terminaron así: formal → analisis_completo (warehouse + reverse, EUR); informal → analisis_completo (warehouse + lastmile, USD); pitch → descartado. Evidencia en `docs/pr-evidence/rfp-intake/`.
+- Hallazgos corregidos:
+  - el LLM de 1,5 B devolvía `es_rfp:false` con un esquema booleano; la tabla de decisión salvó las RFP y se pasó a un veredicto categórico, con el que coincide en los 3 casos;
+  - el motivo de descarte pasa a ser el de las reglas;
+  - el script de smoke esperaba a los tickets de otra pasada.
+- Entorno: un `pkill -f`/`pgrep -f` se mató a sí mismo dos veces (el patrón aparecía en su propio comando); los procesos se detienen ahora por ruta del ejecutable.
+- Sin commit.
+
 ## Harness y guardrails del agente de CX (Hito 8, Parte 2), 2026-11-21
 
 - Contexto archivado en `memory-bank/history/AGENT-GUARDRAILS-CONTEXT-2026-11-21.md` (`cmp`). Rama `feature/agent-guardrails` (avanzada a `main` con #40–#42).

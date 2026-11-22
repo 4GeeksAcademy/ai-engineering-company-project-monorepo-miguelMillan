@@ -37,6 +37,11 @@ export default defineConfig(({ mode }) => {
           target: process.env.AUTH_PROXY_TARGET ?? 'http://127.0.0.1:8081',
           changeOrigin: true,
         },
+        // API de recepción de RFP. La página es '/rfps': el prefijo distinto evita que el proxy la capture.
+        '/rfp-intake': {
+          target: process.env.AUTH_PROXY_TARGET ?? 'http://127.0.0.1:8081',
+          changeOrigin: true,
+        },
         '/telemetry': {
           target: process.env.AUTH_PROXY_TARGET ?? 'http://127.0.0.1:8081',
           changeOrigin: true,

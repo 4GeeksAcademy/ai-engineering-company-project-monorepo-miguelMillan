@@ -1,0 +1,732 @@
+[
+  {
+    "ticket": {
+      "ticket_id": "415ebc28-1504-4f06-a441-6d7147d405eb",
+      "rfp_id": "MV-LOG-2026-03",
+      "status": "analisis_completo",
+      "pipeline_stage": "handoff",
+      "original_filename": "trackflow-request-1.pdf",
+      "attempts": 1,
+      "last_error": null,
+      "discard_reason": null,
+      "handoff": {
+        "contract": "rfp_handoff.v1",
+        "ticket_id": "415ebc28-1504-4f06-a441-6d7147d405eb",
+        "rfp_id": "MV-LOG-2026-03",
+        "next_status": "generando_borrador",
+        "sales_summary": "RFP de ModaViva, S.L. (ES, cotizar en EUR). Departamentos activos: Warehouse Operations, Reverse Logistics. Pedir a Ana Whitfield (Warehouse Operations): Capacidad de almacenamiento disponible para el volumen/SKU del cliente; Costo por pallet / por SKU; Tiempo de onboarding hasta operar. Pedir a Sofía Ramos (Reverse Logistics): Costo de procesamiento por devolución; Tiempo de procesamiento de devoluciones (nunca menos de 48 h, BRIEFING §5); Proceso de inspección / reacondicionamiento / restock. Fuera de alcance por decisión del cliente: last_mile. Pedidos sin departamento en TrackFlow (decide Ventas): Integración tecnológica (ERP/API).",
+        "client": {
+          "name": "ModaViva, S.L.",
+          "country": "ES",
+          "currency": "EUR",
+          "contact": "Elena Bosch — Directora de Operaciones, ModaViva"
+        },
+        "metadata": {
+          "rfp_reference": "MV-LOG-2026-03",
+          "client_name": "ModaViva, S.L.",
+          "client_country": "ES",
+          "currency": "EUR",
+          "services_requested": [
+            "warehousing",
+            "reverse_logistics"
+          ],
+          "monthly_volume": null,
+          "sku_count": 15000,
+          "deadline": "2026-08-28",
+          "deadline_text": "August 28, 2026",
+          "budget_range": null,
+          "excluded_services": [
+            "last_mile"
+          ]
+        },
+        "workstreams": [
+          {
+            "department_id": "warehouse",
+            "department": "Warehouse Operations",
+            "owner": "Ana Whitfield",
+            "ask": [
+              "Capacidad de almacenamiento disponible para el volumen/SKU del cliente",
+              "Costo por pallet / por SKU",
+              "Tiempo de onboarding hasta operar"
+            ],
+            "key_aspects": [
+              {
+                "aspecto": "País y moneda",
+                "detalle": "España (operación desde Zaragoza); cotizar en EUR",
+                "cita": null,
+                "origen": "metadatos"
+              },
+              {
+                "aspecto": "Catálogo a almacenar",
+                "detalle": "15000 SKU",
+                "cita": null,
+                "origen": "metadatos"
+              },
+              {
+                "aspecto": "Plazo",
+                "detalle": "2026-08-28",
+                "cita": null,
+                "origen": "metadatos"
+              },
+              {
+                "aspecto": "Capacidad de almacenamiento",
+                "detalle": "Almacenamiento de aproximadamente 15.000 SKUs en un centro cercano a Zaragoza",
+                "cita": "Solicitud de Propuesta — Almacenamiento y Gestión de Devoluciones",
+                "origen": "worker_llm"
+              }
+            ],
+            "open_questions": [
+              "¿Cuál es el volumen mensual de pedidos (para dimensionar picking y onboarding)?",
+              "¿Qué tipo de tecnología se utilizará para la integración con nuestro ERP vía API?"
+            ]
+          },
+          {
+            "department_id": "reverse",
+            "department": "Reverse Logistics",
+            "owner": "Sofía Ramos",
+            "ask": [
+              "Costo de procesamiento por devolución",
+              "Tiempo de procesamiento de devoluciones (nunca menos de 48 h, BRIEFING §5)",
+              "Proceso de inspección / reacondicionamiento / restock"
+            ],
+            "key_aspects": [
+              {
+                "aspecto": "País y moneda",
+                "detalle": "España (operación desde Zaragoza); cotizar en EUR",
+                "cita": null,
+                "origen": "metadatos"
+              },
+              {
+                "aspecto": "Costo",
+                "detalle": "Precio por unidad de producto para la gestión de devoluciones.",
+                "cita": "Solicitud de Propuesta — Almacenamiento y Gestión de Devoluciones",
+                "origen": "worker_llm"
+              }
+            ],
+            "open_questions": [
+              "¿Qué volumen o tasa de devoluciones esperan al mes?",
+              "¿Cuál es el costo estimado por unidad de producto para la gestión de devoluciones?"
+            ]
+          }
+        ],
+        "out_of_scope_requests": [
+          "Integración tecnológica (ERP/API)"
+        ],
+        "conflicts": [],
+        "general_open_questions": [
+          "¿Tienen un presupuesto de referencia?"
+        ],
+        "business_constraints": [
+          "Moneda según client_country: USD para Estados Unidos, EUR para España.",
+          "Indicar el SLA de entrega a tiempo (%) comprometido.",
+          "Nunca prometer procesamiento de devoluciones en menos de 48 horas.",
+          "Incluir una tabla de descuentos por volumen.",
+          "No revelar tarifas negociadas con transportistas específicos: solo el costo final al cliente."
+        ],
+        "classification": {
+          "document_type": "rfp_formal",
+          "needs_sales_review": false
+        },
+        "source": {
+          "markdown": "rfp_metadata.markdown",
+          "note": "La Parte 2 no necesita volver a parsear el PDF."
+        }
+      },
+      "created_at": "2026-11-22 09:25:10.433644+00",
+      "updated_at": "2026-11-22 09:27:08.030897+00",
+      "raw_pdf_path": "mock_data/raw/rfp/415ebc28-1504-4f06-a441-6d7147d405eb.pdf"
+    },
+    "rfp_metadata": {
+      "client_name": "ModaViva, S.L.",
+      "client_country": "ES",
+      "currency": "EUR",
+      "services_requested": [
+        "warehousing",
+        "reverse_logistics"
+      ],
+      "monthly_volume": null,
+      "sku_count": 15000,
+      "deadline": "2026-08-28",
+      "deadline_text": "August 28, 2026",
+      "budget_range": null,
+      "departments_needed": [
+        "warehouse",
+        "reverse"
+      ],
+      "readability": {
+        "words": 198,
+        "sentences": 47,
+        "characters": 1372,
+        "estimated_tokens": 343,
+        "list_items": 4,
+        "fernandez_huerta": 69.8,
+        "flesch": 28.7,
+        "flesch_kincaid_grade": 10.3,
+        "gunning_fog": 6.8,
+        "ari": 7.2,
+        "coleman_liau": 10.2,
+        "readability_note": null,
+        "processing_cost": "bajo"
+      },
+      "details": {
+        "rfp_reference": "MV-LOG-2026-03",
+        "excluded_services": [
+          "last_mile"
+        ],
+        "contact": "Elena Bosch — Directora de Operaciones, ModaViva",
+        "out_of_scope_requests": [
+          "Integración tecnológica (ERP/API)"
+        ],
+        "evidence": {
+          "rfp_reference": "RFP Reference No.: MV-LOG-2026-03",
+          "client_name": "Issuing Organization: ModaViva, S.L.",
+          "client_country": "s.l.",
+          "service:warehousing": "almacenamiento",
+          "excluded:last_mile": "no se requiere gestion de transportistas ni ultima milla",
+          "service:reverse_logistics": "gestion de devoluciones",
+          "out_of_scope:Integración tecnológica (ERP/API)": "integracion con nuestro erp",
+          "sku_count": "15.000 skus",
+          "deadline": "Proposal Due Date: August 28, 2026"
+        }
+      },
+      "classification": {
+        "is_rfp": true,
+        "document_type": "rfp_formal",
+        "decision_rule": "reglas_y_llm_coinciden",
+        "reason": "Propuesta de servicios logísticos para almacenamiento y gestión de devoluciones",
+        "needs_sales_review": false,
+        "signals": {
+          "client_request": [
+            "proposals must be submitted",
+            "request for proposal",
+            "solicitud de propuesta"
+          ],
+          "logistics_scope": [
+            "almacen",
+            "almacenamiento",
+            "devoluciones",
+            "reparto",
+            "ultima milla"
+          ],
+          "vendor_pitch": []
+        },
+        "llm": {
+          "es_rfp": true,
+          "veredicto": "rfp_de_cliente",
+          "tipo_documento": "rfp_formal",
+          "solicitante": "ModaViva, S.L.",
+          "motivo": "Propuesta de servicios logísticos para almacenamiento y gestión de devoluciones",
+          "model": "qwen2.5:1.5b"
+        }
+      },
+      "markdown_chars": 1372
+    },
+    "department_sections": [
+      {
+        "department_id": "reverse",
+        "key_aspects": [
+          {
+            "aspecto": "País y moneda",
+            "detalle": "España (operación desde Zaragoza); cotizar en EUR",
+            "cita": null,
+            "origen": "metadatos"
+          },
+          {
+            "aspecto": "Costo",
+            "detalle": "Precio por unidad de producto para la gestión de devoluciones.",
+            "cita": "Solicitud de Propuesta — Almacenamiento y Gestión de Devoluciones",
+            "origen": "worker_llm"
+          }
+        ],
+        "open_questions": [
+          "¿Qué volumen o tasa de devoluciones esperan al mes?",
+          "¿Cuál es el costo estimado por unidad de producto para la gestión de devoluciones?"
+        ],
+        "worker_meta": {
+          "llm_used": true,
+          "dropped_unsupported": [],
+          "excerpts": 4,
+          "model": "qwen2.5:1.5b",
+          "facts": {}
+        },
+        "approver": "Sofía Ramos",
+        "approval_status": "pendiente"
+      },
+      {
+        "department_id": "warehouse",
+        "key_aspects": [
+          {
+            "aspecto": "País y moneda",
+            "detalle": "España (operación desde Zaragoza); cotizar en EUR",
+            "cita": null,
+            "origen": "metadatos"
+          },
+          {
+            "aspecto": "Catálogo a almacenar",
+            "detalle": "15000 SKU",
+            "cita": null,
+            "origen": "metadatos"
+          },
+          {
+            "aspecto": "Plazo",
+            "detalle": "2026-08-28",
+            "cita": null,
+            "origen": "metadatos"
+          },
+          {
+            "aspecto": "Capacidad de almacenamiento",
+            "detalle": "Almacenamiento de aproximadamente 15.000 SKUs en un centro cercano a Zaragoza",
+            "cita": "Solicitud de Propuesta — Almacenamiento y Gestión de Devoluciones",
+            "origen": "worker_llm"
+          }
+        ],
+        "open_questions": [
+          "¿Cuál es el volumen mensual de pedidos (para dimensionar picking y onboarding)?",
+          "¿Qué tipo de tecnología se utilizará para la integración con nuestro ERP vía API?"
+        ],
+        "worker_meta": {
+          "llm_used": true,
+          "dropped_unsupported": [],
+          "excerpts": 7,
+          "model": "qwen2.5:1.5b",
+          "facts": {
+            "sku_count": 15000
+          }
+        },
+        "approver": "Ana Whitfield",
+        "approval_status": "pendiente"
+      }
+    ]
+  },
+  {
+    "ticket": {
+      "ticket_id": "520f0886-85c7-49d6-bf04-7d1ce8ce9d16",
+      "rfp_id": "RFP-20261122-520F08",
+      "status": "analisis_completo",
+      "pipeline_stage": "handoff",
+      "original_filename": "trackflow-request-2.pdf",
+      "attempts": 1,
+      "last_error": null,
+      "discard_reason": null,
+      "handoff": {
+        "contract": "rfp_handoff.v1",
+        "ticket_id": "520f0886-85c7-49d6-bf04-7d1ce8ce9d16",
+        "rfp_id": "RFP-20261122-520F08",
+        "next_status": "generando_borrador",
+        "sales_summary": "RFP de Luna Cosmetics (US, cotizar en USD). Departamentos activos: Warehouse Operations, Last Mile and Carrier Management. Pedir a Ana Whitfield (Warehouse Operations): Capacidad de almacenamiento disponible para el volumen/SKU del cliente; Costo por pallet / por SKU; Tiempo de onboarding hasta operar. Pedir a Carlos Vega (Last Mile and Carrier Management): Costo por envío según destino y volumen; Transportistas disponibles para los destinos del cliente; SLA de entrega a tiempo (%) comprometido.",
+        "client": {
+          "name": "Luna Cosmetics",
+          "country": "US",
+          "currency": "USD",
+          "contact": "Maya Chen — Founder, Luna Cosmetics"
+        },
+        "metadata": {
+          "rfp_reference": null,
+          "client_name": "Luna Cosmetics",
+          "client_country": "US",
+          "currency": "USD",
+          "services_requested": [
+            "warehousing",
+            "last_mile"
+          ],
+          "monthly_volume": 5000,
+          "sku_count": null,
+          "deadline": null,
+          "deadline_text": "August 24th",
+          "budget_range": null,
+          "excluded_services": []
+        },
+        "workstreams": [
+          {
+            "department_id": "warehouse",
+            "department": "Warehouse Operations",
+            "owner": "Ana Whitfield",
+            "ask": [
+              "Capacidad de almacenamiento disponible para el volumen/SKU del cliente",
+              "Costo por pallet / por SKU",
+              "Tiempo de onboarding hasta operar"
+            ],
+            "key_aspects": [
+              {
+                "aspecto": "País y moneda",
+                "detalle": "Estados Unidos (operación desde Los Ángeles); cotizar en USD",
+                "cita": null,
+                "origen": "metadatos"
+              },
+              {
+                "aspecto": "Volumen mensual",
+                "detalle": "5000 pedidos/mes",
+                "cita": null,
+                "origen": "metadatos"
+              },
+              {
+                "aspecto": "Plazo",
+                "detalle": "August 24th",
+                "cita": null,
+                "origen": "metadatos"
+              },
+              {
+                "aspecto": "Capacidad de almacenamiento",
+                "detalle": "5000 pedidos por mes",
+                "cita": "We're Luna Cosmetics, a small direct-to-consumer skincare brand out of LA. We've been doing our own fulfillment out of a garage (seriously) but we just crossed 5,000 orders a month and it's not sustainable anymore.",
+                "origen": "worker_llm"
+              },
+              {
+                "aspecto": "Tiempo de onboarding",
+                "detalle": "3 semanas para estar listas (hasta agosto 24th)",
+                "cita": "Could you send over a proposal? We're hoping to be up and running within the next 3 weeks (around August 24th) since the holidays are coming and we can't keep doing this by hand.",
+                "origen": "worker_llm"
+              }
+            ],
+            "open_questions": [
+              "¿Cuál es el costo por pallet/SKU?"
+            ]
+          },
+          {
+            "department_id": "lastmile",
+            "department": "Last Mile and Carrier Management",
+            "owner": "Carlos Vega",
+            "ask": [
+              "Costo por envío según destino y volumen",
+              "Transportistas disponibles para los destinos del cliente",
+              "SLA de entrega a tiempo (%) comprometido"
+            ],
+            "key_aspects": [
+              {
+                "aspecto": "País y moneda",
+                "detalle": "Estados Unidos (operación desde Los Ángeles); cotizar en USD",
+                "cita": null,
+                "origen": "metadatos"
+              },
+              {
+                "aspecto": "Volumen mensual",
+                "detalle": "5000 pedidos/mes",
+                "cita": null,
+                "origen": "metadatos"
+              },
+              {
+                "aspecto": "Costo por envío",
+                "detalle": "Precio de envío para las diferentes regiones del US.",
+                "cita": "We're Luna Cosmetics, a small direct-to-consumer skincare brand out of LA. We've been doing\nour own fulfillment out of a garage (seriously) but we just crossed 5,000 orders a month and it's not\nsustainable anymore.\n\nWe need someone to handle warehousing and shipping for us across the US — ideally so",
+                "origen": "worker_llm"
+              },
+              {
+                "aspecto": "transportistas disponibles según destino",
+                "detalle": "Lista de transportistas disponibles para cada región del US.",
+                "cita": "We're Luna Cosmetics, a small direct-to-consumer skincare brand out of LA. We've been doing\nour own fulfillment out of a garage (seriously) but we just crossed 5,000 orders a month and it's not\nsustainable anymore.\n\nWe need someone to handle warehousing and shipping for us across the US — ideally so",
+                "origen": "worker_llm"
+              },
+              {
+                "aspecto": "SLA de entrega",
+                "detalle": "Establecimiento del servicio al cliente (SLA) para la entrega.",
+                "cita": "We're Luna Cosmetics, a small direct-to-consumer skincare brand out of LA. We've been doing\nour own fulfillment out of a garage (seriously) but we just crossed 5,000 orders a month and it's not\nsustainable anymore.\n\nWe need someone to handle warehousing and shipping for us across the US — ideally so",
+                "origen": "worker_llm"
+              }
+            ],
+            "open_questions": [
+              "¿Qué plazo de entrega esperan (estándar, express) y qué peso/tamaño medio tienen los paquetes?",
+              "¿Cuál es el costo por envío para las diferentes regiones del US?"
+            ]
+          }
+        ],
+        "out_of_scope_requests": [],
+        "conflicts": [],
+        "general_open_questions": [
+          "¿Tienen un presupuesto de referencia?",
+          "Confirmar la fecha exacta (la RFP dice «August 24th», sin año)."
+        ],
+        "business_constraints": [
+          "Moneda según client_country: USD para Estados Unidos, EUR para España.",
+          "Indicar el SLA de entrega a tiempo (%) comprometido.",
+          "Nunca prometer procesamiento de devoluciones en menos de 48 horas.",
+          "Incluir una tabla de descuentos por volumen.",
+          "No revelar tarifas negociadas con transportistas específicos: solo el costo final al cliente."
+        ],
+        "classification": {
+          "document_type": "rfp_formal",
+          "needs_sales_review": false
+        },
+        "source": {
+          "markdown": "rfp_metadata.markdown",
+          "note": "La Parte 2 no necesita volver a parsear el PDF."
+        }
+      },
+      "created_at": "2026-11-22 09:25:10.869373+00",
+      "updated_at": "2026-11-22 09:30:21.002798+00",
+      "raw_pdf_path": "mock_data/raw/rfp/520f0886-85c7-49d6-bf04-7d1ce8ce9d16.pdf"
+    },
+    "rfp_metadata": {
+      "client_name": "Luna Cosmetics",
+      "client_country": "US",
+      "currency": "USD",
+      "services_requested": [
+        "warehousing",
+        "last_mile"
+      ],
+      "monthly_volume": 5000,
+      "sku_count": null,
+      "deadline": null,
+      "deadline_text": "August 24th",
+      "budget_range": null,
+      "departments_needed": [
+        "warehouse",
+        "lastmile"
+      ],
+      "readability": {
+        "words": 127,
+        "sentences": 9,
+        "characters": 702,
+        "estimated_tokens": 175,
+        "list_items": 0,
+        "fernandez_huerta": 99.8,
+        "flesch": 64.5,
+        "flesch_kincaid_grade": 7.5,
+        "gunning_fog": 8.7,
+        "ari": 7.1,
+        "coleman_liau": 9.3,
+        "readability_note": null,
+        "processing_cost": "bajo"
+      },
+      "details": {
+        "rfp_reference": null,
+        "excluded_services": [],
+        "contact": "Maya Chen — Founder, Luna Cosmetics",
+        "out_of_scope_requests": [],
+        "evidence": {
+          "client_name": "Luna Cosmetics — Los Angeles, CA, USA",
+          "client_country": "los angeles",
+          "service:warehousing": "fulfillment",
+          "service:last_mile": "shipping",
+          "monthly_volume": "5,000 orders a month",
+          "deadline": "within the next 3 weeks (around August 24th) since the holidays are coming and we can't keep do"
+        }
+      },
+      "classification": {
+        "is_rfp": true,
+        "document_type": "rfp_formal",
+        "decision_rule": "reglas_y_llm_coinciden",
+        "reason": "Propuesta de servicios logísticos para la gestión de almacenamiento y envíos en EE. UU.",
+        "needs_sales_review": false,
+        "signals": {
+          "client_request": [
+            "could you send over a proposal",
+            "looking for a 3pl",
+            "we need someone"
+          ],
+          "logistics_scope": [
+            "3pl",
+            "carrier selection",
+            "fulfillment",
+            "shipping",
+            "warehousing"
+          ],
+          "vendor_pitch": []
+        },
+        "llm": {
+          "es_rfp": true,
+          "veredicto": "rfp_de_cliente",
+          "tipo_documento": "rfp_formal",
+          "solicitante": "Luna Cosmetics",
+          "motivo": "Propuesta de servicios logísticos para la gestión de almacenamiento y envíos en EE. UU.",
+          "model": "qwen2.5:1.5b"
+        }
+      },
+      "markdown_chars": 702
+    },
+    "department_sections": [
+      {
+        "department_id": "lastmile",
+        "key_aspects": [
+          {
+            "aspecto": "País y moneda",
+            "detalle": "Estados Unidos (operación desde Los Ángeles); cotizar en USD",
+            "cita": null,
+            "origen": "metadatos"
+          },
+          {
+            "aspecto": "Volumen mensual",
+            "detalle": "5000 pedidos/mes",
+            "cita": null,
+            "origen": "metadatos"
+          },
+          {
+            "aspecto": "Costo por envío",
+            "detalle": "Precio de envío para las diferentes regiones del US.",
+            "cita": "We're Luna Cosmetics, a small direct-to-consumer skincare brand out of LA. We've been doing\nour own fulfillment out of a garage (seriously) but we just crossed 5,000 orders a month and it's not\nsustainable anymore.\n\nWe need someone to handle warehousing and shipping for us across the US — ideally so",
+            "origen": "worker_llm"
+          },
+          {
+            "aspecto": "transportistas disponibles según destino",
+            "detalle": "Lista de transportistas disponibles para cada región del US.",
+            "cita": "We're Luna Cosmetics, a small direct-to-consumer skincare brand out of LA. We've been doing\nour own fulfillment out of a garage (seriously) but we just crossed 5,000 orders a month and it's not\nsustainable anymore.\n\nWe need someone to handle warehousing and shipping for us across the US — ideally so",
+            "origen": "worker_llm"
+          },
+          {
+            "aspecto": "SLA de entrega",
+            "detalle": "Establecimiento del servicio al cliente (SLA) para la entrega.",
+            "cita": "We're Luna Cosmetics, a small direct-to-consumer skincare brand out of LA. We've been doing\nour own fulfillment out of a garage (seriously) but we just crossed 5,000 orders a month and it's not\nsustainable anymore.\n\nWe need someone to handle warehousing and shipping for us across the US — ideally so",
+            "origen": "worker_llm"
+          }
+        ],
+        "open_questions": [
+          "¿Qué plazo de entrega esperan (estándar, express) y qué peso/tamaño medio tienen los paquetes?",
+          "¿Cuál es el costo por envío para las diferentes regiones del US?"
+        ],
+        "worker_meta": {
+          "llm_used": true,
+          "dropped_unsupported": [],
+          "excerpts": 2,
+          "model": "qwen2.5:1.5b",
+          "facts": {
+            "monthly_volume": 5000
+          }
+        },
+        "approver": "Carlos Vega",
+        "approval_status": "pendiente"
+      },
+      {
+        "department_id": "warehouse",
+        "key_aspects": [
+          {
+            "aspecto": "País y moneda",
+            "detalle": "Estados Unidos (operación desde Los Ángeles); cotizar en USD",
+            "cita": null,
+            "origen": "metadatos"
+          },
+          {
+            "aspecto": "Volumen mensual",
+            "detalle": "5000 pedidos/mes",
+            "cita": null,
+            "origen": "metadatos"
+          },
+          {
+            "aspecto": "Plazo",
+            "detalle": "August 24th",
+            "cita": null,
+            "origen": "metadatos"
+          },
+          {
+            "aspecto": "Capacidad de almacenamiento",
+            "detalle": "5000 pedidos por mes",
+            "cita": "We're Luna Cosmetics, a small direct-to-consumer skincare brand out of LA. We've been doing our own fulfillment out of a garage (seriously) but we just crossed 5,000 orders a month and it's not sustainable anymore.",
+            "origen": "worker_llm"
+          },
+          {
+            "aspecto": "Tiempo de onboarding",
+            "detalle": "3 semanas para estar listas (hasta agosto 24th)",
+            "cita": "Could you send over a proposal? We're hoping to be up and running within the next 3 weeks (around August 24th) since the holidays are coming and we can't keep doing this by hand.",
+            "origen": "worker_llm"
+          }
+        ],
+        "open_questions": [
+          "¿Cuál es el costo por pallet/SKU?"
+        ],
+        "worker_meta": {
+          "llm_used": true,
+          "dropped_unsupported": [
+            {
+              "aspecto": "Costo por pallet/SKU",
+              "detalle": "No especificado en los extractos recibidos.",
+              "motivo": "sin cita literal de la RFP"
+            }
+          ],
+          "excerpts": 3,
+          "model": "qwen2.5:1.5b",
+          "facts": {
+            "monthly_volume": 5000
+          }
+        },
+        "approver": "Ana Whitfield",
+        "approval_status": "pendiente"
+      }
+    ]
+  },
+  {
+    "ticket": {
+      "ticket_id": "58d3a666-6264-4512-8925-21265b87160a",
+      "rfp_id": "RFP-20261122-58D3A6",
+      "status": "descartado",
+      "pipeline_stage": "clasificado",
+      "original_filename": "trackflow-request-3.pdf",
+      "attempts": 1,
+      "last_error": null,
+      "discard_reason": "Es un proveedor ofreciendo sus servicios o tarifas a TrackFlow, no un cliente pidiendo una propuesta.",
+      "handoff": null,
+      "created_at": "2026-11-22 09:25:11.162658+00",
+      "updated_at": "2026-11-22 09:30:59.479223+00",
+      "raw_pdf_path": "mock_data/raw/rfp/58d3a666-6264-4512-8925-21265b87160a.pdf"
+    },
+    "rfp_metadata": {
+      "client_name": null,
+      "client_country": null,
+      "currency": null,
+      "services_requested": [
+        "last_mile"
+      ],
+      "monthly_volume": 10000,
+      "sku_count": null,
+      "deadline": null,
+      "deadline_text": null,
+      "budget_range": null,
+      "departments_needed": [
+        "lastmile"
+      ],
+      "readability": {
+        "words": 65,
+        "sentences": 7,
+        "characters": 404,
+        "estimated_tokens": 101,
+        "list_items": 0,
+        "fernandez_huerta": 92.1,
+        "flesch": null,
+        "flesch_kincaid_grade": null,
+        "gunning_fog": null,
+        "ari": null,
+        "coleman_liau": null,
+        "readability_note": "py-readability-metrics: 100 words required.",
+        "processing_cost": "bajo"
+      },
+      "details": {
+        "rfp_reference": null,
+        "excluded_services": [],
+        "contact": "Jake Fenwick — Partnerships, RapidShip Carriers",
+        "out_of_scope_requests": [],
+        "evidence": {
+          "service:last_mile": "shipping",
+          "monthly_volume": "10,000 packages/month"
+        }
+      },
+      "classification": {
+        "is_rfp": false,
+        "document_type": "oferta_de_proveedor",
+        "decision_rule": "reglas_y_llm_coinciden",
+        "reason": "Es un proveedor ofreciendo sus servicios o tarifas a TrackFlow, no un cliente pidiendo una propuesta.",
+        "needs_sales_review": false,
+        "signals": {
+          "client_request": [],
+          "logistics_scope": [
+            "shipping"
+          ],
+          "vendor_pitch": [
+            "become one of trackflow's",
+            "exclusive shipping rates for trackflow",
+            "introductory rates",
+            "preferred carrier",
+            "set up a call to go over pricing",
+            "we're currently offering"
+          ]
+        },
+        "llm": {
+          "es_rfp": false,
+          "veredicto": "oferta_de_proveedor",
+          "tipo_documento": "oferta_de_proveedor",
+          "solicitante": "RapidShip Carriers",
+          "motivo": "Propuesta de servicios logísticos para TrackFlow",
+          "model": "qwen2.5:1.5b"
+        }
+      },
+      "markdown_chars": 404
+    },
+    "department_sections": []
+  }
+]

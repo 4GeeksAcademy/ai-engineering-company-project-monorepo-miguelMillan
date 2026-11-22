@@ -15,3 +15,6 @@ nightly-export.log
 .cache/
 # Checkpoints y traces locales del agente LangGraph
 .agent-runs/
+
+# Recepción de RFP: PDFs subidos (artefacto runtime, no se versionan)
+mock_data/raw/rfp/
