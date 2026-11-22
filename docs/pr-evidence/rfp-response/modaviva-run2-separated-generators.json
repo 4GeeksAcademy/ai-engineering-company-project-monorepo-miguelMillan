@@ -1,0 +1,404 @@
+{
+  "ticket_id": "fa2dc07a-0847-4c6e-9b18-27d7c64131b8",
+  "rfp_id": "MV-LOG-2026-03",
+  "status": "needs_human_review",
+  "response_stage": "handoff",
+  "run": 2,
+  "response_handoff": {
+    "contract": "rfp_response_handoff.v1",
+    "ticket_id": "fa2dc07a-0847-4c6e-9b18-27d7c64131b8",
+    "rfp_id": "MV-LOG-2026-03",
+    "run": 2,
+    "source_contract": "rfp_handoff.v1",
+    "next_status": "esperando_aprobación",
+    "needs_human_review": true,
+    "needs_human_review_sections": [
+      "reverse"
+    ],
+    "max_iterations": 3,
+    "avg_iterations_per_section": 2.0,
+    "client": {
+      "name": "ModaViva, S.L.",
+      "country": "ES",
+      "currency": "EUR",
+      "contact": "Elena Bosch — Directora de Operaciones, ModaViva"
+    },
+    "currency": "EUR",
+    "sections": [
+      {
+        "department_id": "reverse",
+        "department": "Reverse Logistics",
+        "approver": "Sofía Ramos",
+        "section_status": "needs_human_review",
+        "provisional": true,
+        "iterations": 3,
+        "currency": "EUR",
+        "language": "es",
+        "draft_content": "## Reverse Logistics — Propuesta económica\n\n**Cliente:** ModaViva, S.L. · **País:** España · **Moneda:** EUR · **Responsable TrackFlow:** Sofía Ramos\n\n### Alcance y enfoque\n\nTrackFlow asume el proceso completo de inspección, clasificación (incluyendo reventa, reacondicionamiento o descarte), y procesamiento de devoluciones para ModaViva, S.L., garantizando un tiempo mínimo de 48 horas desde la recepción del producto. Este departamento opera desde Zaragoza y se cotiza en EUR, cumpliendo con las expectativas del cliente para un servicio de alta calidad y eficiencia.\n\n### Conceptos económicos (EUR)\n\n| Concepto | Precio (EUR) | Base |\n|---|---|---|\n| Costo por devolución procesada | Pendiente de cotizar por Sofía Ramos | Inspección y clasificación: reventa, reacondicionamiento o descarte. |\n| Tiempo de procesamiento | Nunca inferior a 48 horas | Plazo exacto a confirmar por Sofía Ramos. |\n| Envío de vuelta | A cargo de la marca | Salvo error de TrackFlow (daño en tránsito o entrega equivocada). |\n| Ventana de devolución | 30 días desde la entrega | Salvo otra ventana en el contrato. |\n\n### Descuentos por volumen\n\n| Volumen mensual | Descuento sobre tarifa |\n|---|---|\n| Hasta 2.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| De 2.001 a 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| Más de 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n\n### Nivel de servicio\n\n- SLA de entrega a tiempo: **90 %** de entregas a tiempo al mes, medido por país.\n- Si un país baja del 90 % dos meses seguidos, compensamos un 5 % de la tarifa mensual de ese país.\n- En días de alta demanda los tiempos pueden crecer hasta un 40 % y el SLA no aplica.\n- Procesamiento de devoluciones: nunca en menos de 48 horas.\n\n### Supuestos y preguntas abiertas\n\n- ¿Qué volumen o tasa de devoluciones esperan al mes?\n- ¿Cuál es el costo estimado por unidad de producto para la gestión de devoluciones?\n",
+        "evaluation_result": {
+          "section_id": "fa2dc07a-0847-4c6e-9b18-27d7c64131b8:reverse",
+          "department_id": "reverse",
+          "iteration": 3,
+          "readability": {
+            "pass": false,
+            "score": 68.1,
+            "details": {
+              "language": "es",
+              "words": 140,
+              "sentences": 8,
+              "threshold": 55.0,
+              "metric": "fernandez_huerta",
+              "py_readability": {
+                "flesch": 28.2,
+                "flesch_kincaid_grade": 13.6,
+                "gunning_fog": 17.2
+              },
+              "avg_words_per_sentence": 17.5,
+              "long_sentences": [
+                {
+                  "words": 33,
+                  "sentence": "TrackFlow asume el proceso completo de inspección, clasificación (incluyendo reventa, reacondicionamiento o descarte), y procesamiento de devoluciones para Mod…"
+                }
+              ],
+              "max_sentence_words": 30
+            }
+          },
+          "relevance": {
+            "pass": true,
+            "missing_aspects": [],
+            "unsupported_figures": [],
+            "off_scope": []
+          },
+          "compliance": {
+            "pass": true,
+            "rule_ids": [],
+            "violations": [],
+            "rules_checked": [
+              "BRIEFING-5.1-currency",
+              "BRIEFING-5.2-on-time-sla",
+              "BRIEFING-5.3-returns-min-48h",
+              "BRIEFING-5.4-volume-discount-table",
+              "BRIEFING-5.5-no-carrier-rates"
+            ]
+          },
+          "overall_pass": false,
+          "feedback_for_generator": "- [legibilidad] fernandez_huerta = 68.1 (mínimo 55.0); media de 17.5 palabras por oración. Divide en oraciones de menos de 20 palabras: «TrackFlow asume el proceso completo de inspección, clasificación (incluyendo reventa, reacondicionamiento o descarte), y procesamiento de devoluciones para Mod…»"
+        },
+        "iteration_history": [
+          {
+            "iteration": 1,
+            "overall_pass": false,
+            "failed": [
+              "readability"
+            ]
+          },
+          {
+            "iteration": 2,
+            "overall_pass": false,
+            "failed": [
+              "readability"
+            ]
+          },
+          {
+            "iteration": 3,
+            "overall_pass": false,
+            "failed": [
+              "readability"
+            ]
+          }
+        ]
+      },
+      {
+        "department_id": "warehouse",
+        "department": "Warehouse Operations",
+        "approver": "Ana Whitfield",
+        "section_status": "evaluacion_superada",
+        "provisional": false,
+        "iterations": 1,
+        "currency": "EUR",
+        "language": "es",
+        "draft_content": "## Warehouse Operations — Propuesta económica\n\n**Cliente:** ModaViva, S.L. · **País:** España · **Moneda:** EUR · **Responsable TrackFlow:** Ana Whitfield\n\n### Alcance y enfoque\n\nAlmacenamiento: Capacidad para albergar aproximadamente 15.000 SKUs en un centro cercano a Zaragoza, con un costo por m³ ocupado del volumen total y no por unidad SKU o pallet. TrackFlow factura el almacenamiento por m³ ocupado al mes, sin facturar por pallet ni por SKU. Tiempo de onboarding: Se espera que la operación esté lista para operar en menos de 30 días desde la fecha de solicitud.\n\n### Conceptos económicos (EUR)\n\n| Concepto | Precio (EUR) | Base |\n|---|---|---|\n| Almacenamiento | 16 EUR por m³ al mes | Por volumen ocupado, no por unidad. Primeros 30 días sin cargo. |\n| Inventario de larga duración | 150 % de la tarifa estándar | Desde el día 181 sin movimiento. |\n| Costo por pallet / SKU | Sin tarifa por unidad: se factura por m³ | Catálogo de 15000 SKU: Ana Whitfield estima los m³ a partir del surtido. |\n| Capacidad y onboarding | Pendiente de confirmar por Ana Whitfield | Volumen mensual no indicado en la RFP. Fecha límite de la RFP: 2026-08-28. |\n\n### Descuentos por volumen\n\n| Volumen mensual | Descuento sobre tarifa |\n|---|---|\n| Hasta 2.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| De 2.001 a 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| Más de 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n\n### Nivel de servicio\n\n- SLA de entrega a tiempo: **90 %** de entregas a tiempo al mes, medido por país.\n- Si un país baja del 90 % dos meses seguidos, compensamos un 5 % de la tarifa mensual de ese país.\n- En días de alta demanda los tiempos pueden crecer hasta un 40 % y el SLA no aplica.\n\n### Supuestos y preguntas abiertas\n\n- ¿Cuál es el volumen mensual de pedidos (para dimensionar picking y onboarding)?\n- ¿Qué tipo de tecnología se utilizará para la integración con nuestro ERP vía API?\n",
+        "evaluation_result": {
+          "section_id": "fa2dc07a-0847-4c6e-9b18-27d7c64131b8:warehouse",
+          "department_id": "warehouse",
+          "iteration": 1,
+          "readability": {
+            "pass": true,
+            "score": 78.7,
+            "details": {
+              "language": "es",
+              "words": 145,
+              "sentences": 8,
+              "threshold": 55.0,
+              "metric": "fernandez_huerta",
+              "py_readability": {
+                "flesch": 40.0,
+                "flesch_kincaid_grade": 12.1,
+                "gunning_fog": 15.5
+              },
+              "avg_words_per_sentence": 18.1,
+              "long_sentences": [],
+              "max_sentence_words": 30
+            }
+          },
+          "relevance": {
+            "pass": true,
+            "missing_aspects": [],
+            "unsupported_figures": [],
+            "off_scope": []
+          },
+          "compliance": {
+            "pass": true,
+            "rule_ids": [],
+            "violations": [],
+            "rules_checked": [
+              "BRIEFING-5.1-currency",
+              "BRIEFING-5.2-on-time-sla",
+              "BRIEFING-5.3-returns-min-48h",
+              "BRIEFING-5.4-volume-discount-table",
+              "BRIEFING-5.5-no-carrier-rates"
+            ]
+          },
+          "overall_pass": true,
+          "feedback_for_generator": ""
+        },
+        "iteration_history": [
+          {
+            "iteration": 1,
+            "overall_pass": true,
+            "failed": []
+          }
+        ]
+      }
+    ],
+    "conflicts": [],
+    "out_of_scope_requests": [
+      "Integración tecnológica (ERP/API)"
+    ]
+  },
+  "rfp_section_evaluations": [
+    {
+      "department_id": "reverse",
+      "run": 2,
+      "iteration": 1,
+      "overall_pass": false,
+      "readability": {
+        "pass": false,
+        "score": 64.7,
+        "details": {
+          "language": "es",
+          "words": 159,
+          "sentences": 9,
+          "threshold": 55.0,
+          "metric": "fernandez_huerta",
+          "py_readability": {
+            "flesch": 23.9,
+            "flesch_kincaid_grade": 14.2,
+            "gunning_fog": 17.8
+          },
+          "avg_words_per_sentence": 17.7,
+          "long_sentences": [
+            {
+              "words": 31,
+              "sentence": "TrackFlow se compromete a gestionar eficientemente las devoluciones para ModaViva, S.L., garantizando un proceso de inspección y clasificación (reventa, reacon…"
+            }
+          ],
+          "max_sentence_words": 30
+        }
+      },
+      "relevance": {
+        "pass": true,
+        "missing_aspects": [],
+        "unsupported_figures": [],
+        "off_scope": []
+      },
+      "compliance": {
+        "pass": true,
+        "rule_ids": [],
+        "violations": [],
+        "rules_checked": [
+          "BRIEFING-5.1-currency",
+          "BRIEFING-5.2-on-time-sla",
+          "BRIEFING-5.3-returns-min-48h",
+          "BRIEFING-5.4-volume-discount-table",
+          "BRIEFING-5.5-no-carrier-rates"
+        ]
+      },
+      "feedback_for_generator": "- [legibilidad] fernandez_huerta = 64.7 (mínimo 55.0); media de 17.7 palabras por oración. Divide en oraciones de menos de 20 palabras: «TrackFlow se compromete a gestionar eficientemente las devoluciones para ModaViva, S.L., garantizando un proceso de inspección y clasificación (reventa, reacon…»",
+      "generator_meta": {
+        "agent": "reverse_generator",
+        "llm_used": true,
+        "feedback_applied": false,
+        "source": "rfp_handoff.v1",
+        "model": "qwen2.5:1.5b"
+      },
+      "draft_content": "## Reverse Logistics — Propuesta económica\n\n**Cliente:** ModaViva, S.L. · **País:** España · **Moneda:** EUR · **Responsable TrackFlow:** Sofía Ramos\n\n### Alcance y enfoque\n\nTrackFlow se compromete a gestionar eficientemente las devoluciones para ModaViva, S.L., garantizando un proceso de inspección y clasificación (reventa, reacondicionamiento o descarte) en 48 horas desde la recepción del producto. Este departamento asume el costo de procesamiento por cada devolución, incluyendo la inspección, reacondicionamiento, restock o descarte según sea necesario. La operación se realiza desde Zaragoza y se cotiza en EUR, cumpliendo con las expectativas del cliente para un servicio de alta calidad y eficiencia.\n\n### Conceptos económicos (EUR)\n\n| Concepto | Precio (EUR) | Base |\n|---|---|---|\n| Costo por devolución procesada | Pendiente de cotizar por Sofía Ramos | Inspección y clasificación: reventa, reacondicionamiento o descarte. |\n| Tiempo de procesamiento | Nunca inferior a 48 horas | Plazo exacto a confirmar por Sofía Ramos. |\n| Envío de vuelta | A cargo de la marca | Salvo error de TrackFlow (daño en tránsito o entrega equivocada). |\n| Ventana de devolución | 30 días desde la entrega | Salvo otra ventana en el contrato. |\n\n### Descuentos por volumen\n\n| Volumen mensual | Descuento sobre tarifa |\n|---|---|\n| Hasta 2.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| De 2.001 a 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| Más de 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n\n### Nivel de servicio\n\n- SLA de entrega a tiempo: **90 %** de entregas a tiempo al mes, medido por país.\n- Si un país baja del 90 % dos meses seguidos, compensamos un 5 % de la tarifa mensual de ese país.\n- En días de alta demanda los tiempos pueden crecer hasta un 40 % y el SLA no aplica.\n- Procesamiento de devoluciones: nunca en menos de 48 horas.\n\n### Supuestos y preguntas abiertas\n\n- ¿Qué volumen o tasa de devoluciones esperan al mes?\n- ¿Cuál es el costo estimado por unidad de producto para la gestión de devoluciones?\n"
+    },
+    {
+      "department_id": "reverse",
+      "run": 2,
+      "iteration": 2,
+      "overall_pass": false,
+      "readability": {
+        "pass": false,
+        "score": 68.1,
+        "details": {
+          "language": "es",
+          "words": 140,
+          "sentences": 8,
+          "threshold": 55.0,
+          "metric": "fernandez_huerta",
+          "py_readability": {
+            "flesch": 28.2,
+            "flesch_kincaid_grade": 13.6,
+            "gunning_fog": 17.2
+          },
+          "avg_words_per_sentence": 17.5,
+          "long_sentences": [
+            {
+              "words": 33,
+              "sentence": "TrackFlow asume el proceso completo de inspección, clasificación (incluyendo reventa, reacondicionamiento o descarte), y procesamiento de devoluciones para Mod…"
+            }
+          ],
+          "max_sentence_words": 30
+        }
+      },
+      "relevance": {
+        "pass": true,
+        "missing_aspects": [],
+        "unsupported_figures": [],
+        "off_scope": []
+      },
+      "compliance": {
+        "pass": true,
+        "rule_ids": [],
+        "violations": [],
+        "rules_checked": [
+          "BRIEFING-5.1-currency",
+          "BRIEFING-5.2-on-time-sla",
+          "BRIEFING-5.3-returns-min-48h",
+          "BRIEFING-5.4-volume-discount-table",
+          "BRIEFING-5.5-no-carrier-rates"
+        ]
+      },
+      "feedback_for_generator": "- [legibilidad] fernandez_huerta = 68.1 (mínimo 55.0); media de 17.5 palabras por oración. Divide en oraciones de menos de 20 palabras: «TrackFlow asume el proceso completo de inspección, clasificación (incluyendo reventa, reacondicionamiento o descarte), y procesamiento de devoluciones para Mod…»",
+      "generator_meta": {
+        "agent": "reverse_generator",
+        "llm_used": true,
+        "feedback_applied": true,
+        "source": "rfp_handoff.v1",
+        "model": "qwen2.5:1.5b"
+      },
+      "draft_content": "## Reverse Logistics — Propuesta económica\n\n**Cliente:** ModaViva, S.L. · **País:** España · **Moneda:** EUR · **Responsable TrackFlow:** Sofía Ramos\n\n### Alcance y enfoque\n\nTrackFlow asume el proceso completo de inspección, clasificación (incluyendo reventa, reacondicionamiento o descarte), y procesamiento de devoluciones para ModaViva, S.L., garantizando un tiempo mínimo de 48 horas desde la recepción del producto. Este departamento opera desde Zaragoza y se cotiza en EUR, cumpliendo con las expectativas del cliente para un servicio de alta calidad y eficiencia.\n\n### Conceptos económicos (EUR)\n\n| Concepto | Precio (EUR) | Base |\n|---|---|---|\n| Costo por devolución procesada | Pendiente de cotizar por Sofía Ramos | Inspección y clasificación: reventa, reacondicionamiento o descarte. |\n| Tiempo de procesamiento | Nunca inferior a 48 horas | Plazo exacto a confirmar por Sofía Ramos. |\n| Envío de vuelta | A cargo de la marca | Salvo error de TrackFlow (daño en tránsito o entrega equivocada). |\n| Ventana de devolución | 30 días desde la entrega | Salvo otra ventana en el contrato. |\n\n### Descuentos por volumen\n\n| Volumen mensual | Descuento sobre tarifa |\n|---|---|\n| Hasta 2.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| De 2.001 a 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| Más de 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n\n### Nivel de servicio\n\n- SLA de entrega a tiempo: **90 %** de entregas a tiempo al mes, medido por país.\n- Si un país baja del 90 % dos meses seguidos, compensamos un 5 % de la tarifa mensual de ese país.\n- En días de alta demanda los tiempos pueden crecer hasta un 40 % y el SLA no aplica.\n- Procesamiento de devoluciones: nunca en menos de 48 horas.\n\n### Supuestos y preguntas abiertas\n\n- ¿Qué volumen o tasa de devoluciones esperan al mes?\n- ¿Cuál es el costo estimado por unidad de producto para la gestión de devoluciones?\n"
+    },
+    {
+      "department_id": "reverse",
+      "run": 2,
+      "iteration": 3,
+      "overall_pass": false,
+      "readability": {
+        "pass": false,
+        "score": 68.1,
+        "details": {
+          "language": "es",
+          "words": 140,
+          "sentences": 8,
+          "threshold": 55.0,
+          "metric": "fernandez_huerta",
+          "py_readability": {
+            "flesch": 28.2,
+            "flesch_kincaid_grade": 13.6,
+            "gunning_fog": 17.2
+          },
+          "avg_words_per_sentence": 17.5,
+          "long_sentences": [
+            {
+              "words": 33,
+              "sentence": "TrackFlow asume el proceso completo de inspección, clasificación (incluyendo reventa, reacondicionamiento o descarte), y procesamiento de devoluciones para Mod…"
+            }
+          ],
+          "max_sentence_words": 30
+        }
+      },
+      "relevance": {
+        "pass": true,
+        "missing_aspects": [],
+        "unsupported_figures": [],
+        "off_scope": []
+      },
+      "compliance": {
+        "pass": true,
+        "rule_ids": [],
+        "violations": [],
+        "rules_checked": [
+          "BRIEFING-5.1-currency",
+          "BRIEFING-5.2-on-time-sla",
+          "BRIEFING-5.3-returns-min-48h",
+          "BRIEFING-5.4-volume-discount-table",
+          "BRIEFING-5.5-no-carrier-rates"
+        ]
+      },
+      "feedback_for_generator": "- [legibilidad] fernandez_huerta = 68.1 (mínimo 55.0); media de 17.5 palabras por oración. Divide en oraciones de menos de 20 palabras: «TrackFlow asume el proceso completo de inspección, clasificación (incluyendo reventa, reacondicionamiento o descarte), y procesamiento de devoluciones para Mod…»",
+      "generator_meta": {
+        "agent": "reverse_generator",
+        "llm_used": true,
+        "feedback_applied": true,
+        "source": "rfp_handoff.v1",
+        "model": "qwen2.5:1.5b"
+      },
+      "draft_content": "## Reverse Logistics — Propuesta económica\n\n**Cliente:** ModaViva, S.L. · **País:** España · **Moneda:** EUR · **Responsable TrackFlow:** Sofía Ramos\n\n### Alcance y enfoque\n\nTrackFlow asume el proceso completo de inspección, clasificación (incluyendo reventa, reacondicionamiento o descarte), y procesamiento de devoluciones para ModaViva, S.L., garantizando un tiempo mínimo de 48 horas desde la recepción del producto. Este departamento opera desde Zaragoza y se cotiza en EUR, cumpliendo con las expectativas del cliente para un servicio de alta calidad y eficiencia.\n\n### Conceptos económicos (EUR)\n\n| Concepto | Precio (EUR) | Base |\n|---|---|---|\n| Costo por devolución procesada | Pendiente de cotizar por Sofía Ramos | Inspección y clasificación: reventa, reacondicionamiento o descarte. |\n| Tiempo de procesamiento | Nunca inferior a 48 horas | Plazo exacto a confirmar por Sofía Ramos. |\n| Envío de vuelta | A cargo de la marca | Salvo error de TrackFlow (daño en tránsito o entrega equivocada). |\n| Ventana de devolución | 30 días desde la entrega | Salvo otra ventana en el contrato. |\n\n### Descuentos por volumen\n\n| Volumen mensual | Descuento sobre tarifa |\n|---|---|\n| Hasta 2.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| De 2.001 a 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| Más de 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n\n### Nivel de servicio\n\n- SLA de entrega a tiempo: **90 %** de entregas a tiempo al mes, medido por país.\n- Si un país baja del 90 % dos meses seguidos, compensamos un 5 % de la tarifa mensual de ese país.\n- En días de alta demanda los tiempos pueden crecer hasta un 40 % y el SLA no aplica.\n- Procesamiento de devoluciones: nunca en menos de 48 horas.\n\n### Supuestos y preguntas abiertas\n\n- ¿Qué volumen o tasa de devoluciones esperan al mes?\n- ¿Cuál es el costo estimado por unidad de producto para la gestión de devoluciones?\n"
+    },
+    {
+      "department_id": "warehouse",
+      "run": 2,
+      "iteration": 1,
+      "overall_pass": true,
+      "readability": {
+        "pass": true,
+        "score": 78.7,
+        "details": {
+          "language": "es",
+          "words": 145,
+          "sentences": 8,
+          "threshold": 55.0,
+          "metric": "fernandez_huerta",
+          "py_readability": {
+            "flesch": 40.0,
+            "flesch_kincaid_grade": 12.1,
+            "gunning_fog": 15.5
+          },
+          "avg_words_per_sentence": 18.1,
+          "long_sentences": [],
+          "max_sentence_words": 30
+        }
+      },
+      "relevance": {
+        "pass": true,
+        "missing_aspects": [],
+        "unsupported_figures": [],
+        "off_scope": []
+      },
+      "compliance": {
+        "pass": true,
+        "rule_ids": [],
+        "violations": [],
+        "rules_checked": [
+          "BRIEFING-5.1-currency",
+          "BRIEFING-5.2-on-time-sla",
+          "BRIEFING-5.3-returns-min-48h",
+          "BRIEFING-5.4-volume-discount-table",
+          "BRIEFING-5.5-no-carrier-rates"
+        ]
+      },
+      "feedback_for_generator": "",
+      "generator_meta": {
+        "agent": "warehouse_generator",
+        "llm_used": true,
+        "feedback_applied": false,
+        "source": "rfp_handoff.v1",
+        "model": "qwen2.5:1.5b"
+      },
+      "draft_content": "## Warehouse Operations — Propuesta económica\n\n**Cliente:** ModaViva, S.L. · **País:** España · **Moneda:** EUR · **Responsable TrackFlow:** Ana Whitfield\n\n### Alcance y enfoque\n\nAlmacenamiento: Capacidad para albergar aproximadamente 15.000 SKUs en un centro cercano a Zaragoza, con un costo por m³ ocupado del volumen total y no por unidad SKU o pallet. TrackFlow factura el almacenamiento por m³ ocupado al mes, sin facturar por pallet ni por SKU. Tiempo de onboarding: Se espera que la operación esté lista para operar en menos de 30 días desde la fecha de solicitud.\n\n### Conceptos económicos (EUR)\n\n| Concepto | Precio (EUR) | Base |\n|---|---|---|\n| Almacenamiento | 16 EUR por m³ al mes | Por volumen ocupado, no por unidad. Primeros 30 días sin cargo. |\n| Inventario de larga duración | 150 % de la tarifa estándar | Desde el día 181 sin movimiento. |\n| Costo por pallet / SKU | Sin tarifa por unidad: se factura por m³ | Catálogo de 15000 SKU: Ana Whitfield estima los m³ a partir del surtido. |\n| Capacidad y onboarding | Pendiente de confirmar por Ana Whitfield | Volumen mensual no indicado en la RFP. Fecha límite de la RFP: 2026-08-28. |\n\n### Descuentos por volumen\n\n| Volumen mensual | Descuento sobre tarifa |\n|---|---|\n| Hasta 2.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| De 2.001 a 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| Más de 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n\n### Nivel de servicio\n\n- SLA de entrega a tiempo: **90 %** de entregas a tiempo al mes, medido por país.\n- Si un país baja del 90 % dos meses seguidos, compensamos un 5 % de la tarifa mensual de ese país.\n- En días de alta demanda los tiempos pueden crecer hasta un 40 % y el SLA no aplica.\n\n### Supuestos y preguntas abiertas\n\n- ¿Cuál es el volumen mensual de pedidos (para dimensionar picking y onboarding)?\n- ¿Qué tipo de tecnología se utilizará para la integración con nuestro ERP vía API?\n"
+    }
+  ]
+}

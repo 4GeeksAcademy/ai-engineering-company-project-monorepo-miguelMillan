@@ -1,0 +1,914 @@
+[
+  {
+    "ticket": {
+      "ticket_id": "fa2dc07a-0847-4c6e-9b18-27d7c64131b8",
+      "rfp_id": "MV-LOG-2026-03",
+      "original_filename": "trackflow-request-1.pdf",
+      "status": "needs_human_review",
+      "response_stage": "handoff",
+      "response_handoff": {
+        "contract": "rfp_response_handoff.v1",
+        "ticket_id": "fa2dc07a-0847-4c6e-9b18-27d7c64131b8",
+        "rfp_id": "MV-LOG-2026-03",
+        "run": 1,
+        "source_contract": "rfp_handoff.v1",
+        "next_status": "esperando_aprobación",
+        "needs_human_review": true,
+        "needs_human_review_sections": [
+          "warehouse"
+        ],
+        "max_iterations": 3,
+        "avg_iterations_per_section": 2.0,
+        "client": {
+          "name": "ModaViva, S.L.",
+          "country": "ES",
+          "currency": "EUR",
+          "contact": "Elena Bosch — Directora de Operaciones, ModaViva"
+        },
+        "currency": "EUR",
+        "sections": [
+          {
+            "department_id": "reverse",
+            "department": "Reverse Logistics",
+            "approver": "Sofía Ramos",
+            "section_status": "evaluacion_superada",
+            "provisional": false,
+            "iterations": 1,
+            "currency": "EUR",
+            "language": "es",
+            "draft_content": "## Reverse Logistics — Propuesta económica\n\n**Cliente:** ModaViva, S.L. · **País:** España · **Moneda:** EUR · **Responsable TrackFlow:** Sofía Ramos\n\n### Alcance y enfoque\n\nTrackFlow se compromete a proporcionar un servicio de Reverse Logistics eficiente y confiable para ModaViva, S.L. desde Zaragoza. Este departamento asume la responsabilidad por el proceso de inspección, reacondicionamiento y restock de productos devueltos, asegurando que los servicios se realicen en un tiempo mínimo de 48 horas. La gestión de devoluciones incluye una ventana de 30 días para la inspección y clasificación, garantizando así el cumplimiento del plazo solicitado por Ventas. El costo de procesamiento por devolución será calculado y confirmado según los datos proporcionados en la RFP.\n\n### Conceptos económicos (EUR)\n\n| Concepto | Precio (EUR) | Base |\n|---|---|---|\n| Costo por devolución procesada | Pendiente de cotizar por Sofía Ramos | Inspección y clasificación: reventa, reacondicionamiento o descarte. |\n| Tiempo de procesamiento | Nunca inferior a 48 horas | Plazo exacto a confirmar por Sofía Ramos. |\n| Envío de vuelta | A cargo de la marca | Salvo error de TrackFlow (daño en tránsito o entrega equivocada). |\n| Ventana de devolución | 30 días desde la entrega | Salvo otra ventana en el contrato. |\n\n### Descuentos por volumen\n\n| Volumen mensual | Descuento sobre tarifa |\n|---|---|\n| Hasta 2.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| De 2.001 a 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| Más de 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n\n### Nivel de servicio\n\n- SLA de entrega a tiempo: **90 %** de entregas a tiempo al mes, medido por país.\n- Si un país baja del 90 % dos meses seguidos, compensamos un 5 % de la tarifa mensual de ese país.\n- En días de alta demanda los tiempos pueden crecer hasta un 40 % y el SLA no aplica.\n- Procesamiento de devoluciones: nunca en menos de 48 horas.\n\n### Supuestos y preguntas abiertas\n\n- ¿Qué volumen o tasa de devoluciones esperan al mes?\n- ¿Cuál es el costo estimado por unidad de producto para la gestión de devoluciones?\n",
+            "evaluation_result": {
+              "section_id": "fa2dc07a-0847-4c6e-9b18-27d7c64131b8:reverse",
+              "department_id": "reverse",
+              "iteration": 1,
+              "readability": {
+                "pass": true,
+                "score": 68.4,
+                "details": {
+                  "language": "es",
+                  "words": 172,
+                  "sentences": 11,
+                  "threshold": 55.0,
+                  "metric": "fernandez_huerta",
+                  "py_readability": {
+                    "flesch": 28.1,
+                    "flesch_kincaid_grade": 13.2,
+                    "gunning_fog": 16.4
+                  },
+                  "avg_words_per_sentence": 15.6,
+                  "long_sentences": [],
+                  "max_sentence_words": 30
+                }
+              },
+              "relevance": {
+                "pass": true,
+                "missing_aspects": [],
+                "unsupported_figures": [],
+                "off_scope": []
+              },
+              "compliance": {
+                "pass": true,
+                "rule_ids": [],
+                "violations": [],
+                "rules_checked": [
+                  "BRIEFING-5.1-currency",
+                  "BRIEFING-5.2-on-time-sla",
+                  "BRIEFING-5.3-returns-min-48h",
+                  "BRIEFING-5.4-volume-discount-table",
+                  "BRIEFING-5.5-no-carrier-rates"
+                ]
+              },
+              "overall_pass": true,
+              "feedback_for_generator": ""
+            },
+            "iteration_history": [
+              {
+                "iteration": 1,
+                "overall_pass": true,
+                "failed": []
+              }
+            ]
+          },
+          {
+            "department_id": "warehouse",
+            "department": "Warehouse Operations",
+            "approver": "Ana Whitfield",
+            "section_status": "needs_human_review",
+            "provisional": true,
+            "iterations": 3,
+            "currency": "EUR",
+            "language": "es",
+            "draft_content": "## Warehouse Operations — Propuesta económica\n\n**Cliente:** ModaViva, S.L. · **País:** España · **Moneda:** EUR · **Responsable TrackFlow:** Ana Whitfield\n\n### Alcance y enfoque\n\nWarehouse Operations se compromete a proporcionar una solución eficiente para el almacenamiento y gestión de devoluciones del cliente ModaViva, S.L. en España (Zaragoza). La capacidad de almacenamiento disponible será suficiente para manejar los 15000 SKUs solicitados, con un costo estimado por pallet o SKU de 16 EUR al mes. El tiempo de onboarding hasta la operación se espera que sea breve y eficaz. Además, el servicio incluirá una solución rápida para devoluciones, asegurando un retorno a los clientes en menos de 48 horas desde Zaragoza.\n\n### Conceptos económicos (EUR)\n\n| Concepto | Precio (EUR) | Base |\n|---|---|---|\n| Almacenamiento | 16 EUR por m³ al mes | Por volumen ocupado, no por unidad. Primeros 30 días sin cargo. |\n| Inventario de larga duración | 150 % de la tarifa estándar | Desde el día 181 sin movimiento. |\n| Costo por pallet / SKU | Sin tarifa por unidad: se factura por m³ | Catálogo de 15000 SKU: Ana Whitfield estima los m³ a partir del surtido. |\n| Capacidad y onboarding | Pendiente de confirmar por Ana Whitfield | Volumen mensual no indicado en la RFP. Fecha límite de la RFP: 2026-08-28. |\n\n### Descuentos por volumen\n\n| Volumen mensual | Descuento sobre tarifa |\n|---|---|\n| Hasta 2.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| De 2.001 a 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| Más de 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n\n### Nivel de servicio\n\n- SLA de entrega a tiempo: **90 %** de entregas a tiempo al mes, medido por país.\n- Si un país baja del 90 % dos meses seguidos, compensamos un 5 % de la tarifa mensual de ese país.\n- En días de alta demanda los tiempos pueden crecer hasta un 40 % y el SLA no aplica.\n\n### Supuestos y preguntas abiertas\n\n- ¿Cuál es el volumen mensual de pedidos (para dimensionar picking y onboarding)?\n- ¿Qué tipo de tecnología se utilizará para la integración con nuestro ERP vía API?\n",
+            "evaluation_result": {
+              "section_id": "fa2dc07a-0847-4c6e-9b18-27d7c64131b8:warehouse",
+              "department_id": "warehouse",
+              "iteration": 3,
+              "readability": {
+                "pass": true,
+                "score": 71.3,
+                "details": {
+                  "language": "es",
+                  "words": 163,
+                  "sentences": 10,
+                  "threshold": 55.0,
+                  "metric": "fernandez_huerta",
+                  "py_readability": {
+                    "flesch": 34.9,
+                    "flesch_kincaid_grade": 12.4,
+                    "gunning_fog": 15.5
+                  },
+                  "avg_words_per_sentence": 16.3,
+                  "long_sentences": [],
+                  "max_sentence_words": 30
+                }
+              },
+              "relevance": {
+                "pass": true,
+                "missing_aspects": [],
+                "unsupported_figures": [],
+                "off_scope": []
+              },
+              "compliance": {
+                "pass": false,
+                "rule_ids": [
+                  "BRIEFING-5.3-returns-min-48h"
+                ],
+                "violations": [
+                  {
+                    "rule_id": "BRIEFING-5.3-returns-min-48h",
+                    "evidence": "Además, el servicio incluirá una solución rápida para devoluciones, asegurando un retorno a los clientes en menos de 48 horas desde Zaragoza.",
+                    "message": "Promete procesar devoluciones en menos de 48 horas.",
+                    "fix": "Elimina ese plazo: el procesamiento de devoluciones nunca es inferior a 48 horas."
+                  }
+                ],
+                "rules_checked": [
+                  "BRIEFING-5.1-currency",
+                  "BRIEFING-5.2-on-time-sla",
+                  "BRIEFING-5.3-returns-min-48h",
+                  "BRIEFING-5.4-volume-discount-table",
+                  "BRIEFING-5.5-no-carrier-rates"
+                ]
+              },
+              "overall_pass": false,
+              "feedback_for_generator": "- [BRIEFING-5.3-returns-min-48h] Promete procesar devoluciones en menos de 48 horas. Texto: «Además, el servicio incluirá una solución rápida para devoluciones, asegurando un retorno a los clientes en menos de 48 horas desde Zaragoza.». Cómo corregirlo: Elimina ese plazo: el procesamiento de devoluciones nunca es inferior a 48 horas."
+            },
+            "iteration_history": [
+              {
+                "iteration": 1,
+                "overall_pass": false,
+                "failed": [
+                  "compliance"
+                ]
+              },
+              {
+                "iteration": 2,
+                "overall_pass": false,
+                "failed": [
+                  "compliance"
+                ]
+              },
+              {
+                "iteration": 3,
+                "overall_pass": false,
+                "failed": [
+                  "compliance"
+                ]
+              }
+            ]
+          }
+        ],
+        "conflicts": [],
+        "out_of_scope_requests": [
+          "Integración tecnológica (ERP/API)"
+        ]
+      },
+      "discard_reason": null
+    },
+    "sections": [
+      {
+        "department_id": "reverse",
+        "section_status": "evaluacion_superada",
+        "iterations": 1,
+        "needs_human_review": false,
+        "approver": "Sofía Ramos",
+        "approval_status": "pendiente",
+        "draft_content": "## Reverse Logistics — Propuesta económica\n\n**Cliente:** ModaViva, S.L. · **País:** España · **Moneda:** EUR · **Responsable TrackFlow:** Sofía Ramos\n\n### Alcance y enfoque\n\nTrackFlow se compromete a proporcionar un servicio de Reverse Logistics eficiente y confiable para ModaViva, S.L. desde Zaragoza. Este departamento asume la responsabilidad por el proceso de inspección, reacondicionamiento y restock de productos devueltos, asegurando que los servicios se realicen en un tiempo mínimo de 48 horas. La gestión de devoluciones incluye una ventana de 30 días para la inspección y clasificación, garantizando así el cumplimiento del plazo solicitado por Ventas. El costo de procesamiento por devolución será calculado y confirmado según los datos proporcionados en la RFP.\n\n### Conceptos económicos (EUR)\n\n| Concepto | Precio (EUR) | Base |\n|---|---|---|\n| Costo por devolución procesada | Pendiente de cotizar por Sofía Ramos | Inspección y clasificación: reventa, reacondicionamiento o descarte. |\n| Tiempo de procesamiento | Nunca inferior a 48 horas | Plazo exacto a confirmar por Sofía Ramos. |\n| Envío de vuelta | A cargo de la marca | Salvo error de TrackFlow (daño en tránsito o entrega equivocada). |\n| Ventana de devolución | 30 días desde la entrega | Salvo otra ventana en el contrato. |\n\n### Descuentos por volumen\n\n| Volumen mensual | Descuento sobre tarifa |\n|---|---|\n| Hasta 2.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| De 2.001 a 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| Más de 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n\n### Nivel de servicio\n\n- SLA de entrega a tiempo: **90 %** de entregas a tiempo al mes, medido por país.\n- Si un país baja del 90 % dos meses seguidos, compensamos un 5 % de la tarifa mensual de ese país.\n- En días de alta demanda los tiempos pueden crecer hasta un 40 % y el SLA no aplica.\n- Procesamiento de devoluciones: nunca en menos de 48 horas.\n\n### Supuestos y preguntas abiertas\n\n- ¿Qué volumen o tasa de devoluciones esperan al mes?\n- ¿Cuál es el costo estimado por unidad de producto para la gestión de devoluciones?\n",
+        "evaluation_results": {
+          "section_id": "fa2dc07a-0847-4c6e-9b18-27d7c64131b8:reverse",
+          "department_id": "reverse",
+          "iteration": 1,
+          "readability": {
+            "pass": true,
+            "score": 68.4,
+            "details": {
+              "language": "es",
+              "words": 172,
+              "sentences": 11,
+              "threshold": 55.0,
+              "metric": "fernandez_huerta",
+              "py_readability": {
+                "flesch": 28.1,
+                "flesch_kincaid_grade": 13.2,
+                "gunning_fog": 16.4
+              },
+              "avg_words_per_sentence": 15.6,
+              "long_sentences": [],
+              "max_sentence_words": 30
+            }
+          },
+          "relevance": {
+            "pass": true,
+            "missing_aspects": [],
+            "unsupported_figures": [],
+            "off_scope": []
+          },
+          "compliance": {
+            "pass": true,
+            "rule_ids": [],
+            "violations": [],
+            "rules_checked": [
+              "BRIEFING-5.1-currency",
+              "BRIEFING-5.2-on-time-sla",
+              "BRIEFING-5.3-returns-min-48h",
+              "BRIEFING-5.4-volume-discount-table",
+              "BRIEFING-5.5-no-carrier-rates"
+            ]
+          },
+          "overall_pass": true,
+          "feedback_for_generator": ""
+        }
+      },
+      {
+        "department_id": "warehouse",
+        "section_status": "needs_human_review",
+        "iterations": 3,
+        "needs_human_review": true,
+        "approver": "Ana Whitfield",
+        "approval_status": "pendiente",
+        "draft_content": "## Warehouse Operations — Propuesta económica\n\n**Cliente:** ModaViva, S.L. · **País:** España · **Moneda:** EUR · **Responsable TrackFlow:** Ana Whitfield\n\n### Alcance y enfoque\n\nWarehouse Operations se compromete a proporcionar una solución eficiente para el almacenamiento y gestión de devoluciones del cliente ModaViva, S.L. en España (Zaragoza). La capacidad de almacenamiento disponible será suficiente para manejar los 15000 SKUs solicitados, con un costo estimado por pallet o SKU de 16 EUR al mes. El tiempo de onboarding hasta la operación se espera que sea breve y eficaz. Además, el servicio incluirá una solución rápida para devoluciones, asegurando un retorno a los clientes en menos de 48 horas desde Zaragoza.\n\n### Conceptos económicos (EUR)\n\n| Concepto | Precio (EUR) | Base |\n|---|---|---|\n| Almacenamiento | 16 EUR por m³ al mes | Por volumen ocupado, no por unidad. Primeros 30 días sin cargo. |\n| Inventario de larga duración | 150 % de la tarifa estándar | Desde el día 181 sin movimiento. |\n| Costo por pallet / SKU | Sin tarifa por unidad: se factura por m³ | Catálogo de 15000 SKU: Ana Whitfield estima los m³ a partir del surtido. |\n| Capacidad y onboarding | Pendiente de confirmar por Ana Whitfield | Volumen mensual no indicado en la RFP. Fecha límite de la RFP: 2026-08-28. |\n\n### Descuentos por volumen\n\n| Volumen mensual | Descuento sobre tarifa |\n|---|---|\n| Hasta 2.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| De 2.001 a 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n| Más de 10.000 pedidos/mes | Pendiente de aprobación de Miguel Torres |\n\n### Nivel de servicio\n\n- SLA de entrega a tiempo: **90 %** de entregas a tiempo al mes, medido por país.\n- Si un país baja del 90 % dos meses seguidos, compensamos un 5 % de la tarifa mensual de ese país.\n- En días de alta demanda los tiempos pueden crecer hasta un 40 % y el SLA no aplica.\n\n### Supuestos y preguntas abiertas\n\n- ¿Cuál es el volumen mensual de pedidos (para dimensionar picking y onboarding)?\n- ¿Qué tipo de tecnología se utilizará para la integración con nuestro ERP vía API?\n",
+        "evaluation_results": {
+          "section_id": "fa2dc07a-0847-4c6e-9b18-27d7c64131b8:warehouse",
+          "department_id": "warehouse",
+          "iteration": 3,
+          "readability": {
+            "pass": true,
+            "score": 71.3,
+            "details": {
+              "language": "es",
+              "words": 163,
+              "sentences": 10,
+              "threshold": 55.0,
+              "metric": "fernandez_huerta",
+              "py_readability": {
+                "flesch": 34.9,
+                "flesch_kincaid_grade": 12.4,
+                "gunning_fog": 15.5
+              },
+              "avg_words_per_sentence": 16.3,
+              "long_sentences": [],
+              "max_sentence_words": 30
+            }
+          },
+          "relevance": {
+            "pass": true,
+            "missing_aspects": [],
+            "unsupported_figures": [],
+            "off_scope": []
+          },
+          "compliance": {
+            "pass": false,
+            "rule_ids": [
+              "BRIEFING-5.3-returns-min-48h"
+            ],
+            "violations": [
+              {
+                "rule_id": "BRIEFING-5.3-returns-min-48h",
+                "evidence": "Además, el servicio incluirá una solución rápida para devoluciones, asegurando un retorno a los clientes en menos de 48 horas desde Zaragoza.",
+                "message": "Promete procesar devoluciones en menos de 48 horas.",
+                "fix": "Elimina ese plazo: el procesamiento de devoluciones nunca es inferior a 48 horas."
+              }
+            ],
+            "rules_checked": [
+              "BRIEFING-5.1-currency",
+              "BRIEFING-5.2-on-time-sla",
+              "BRIEFING-5.3-returns-min-48h",
+              "BRIEFING-5.4-volume-discount-table",
+              "BRIEFING-5.5-no-carrier-rates"
+            ]
+          },
+          "overall_pass": false,
+          "feedback_for_generator": "- [BRIEFING-5.3-returns-min-48h] Promete procesar devoluciones en menos de 48 horas. Texto: «Además, el servicio incluirá una solución rápida para devoluciones, asegurando un retorno a los clientes en menos de 48 horas desde Zaragoza.». Cómo corregirlo: Elimina ese plazo: el procesamiento de devoluciones nunca es inferior a 48 horas."
+        }
+      }
+    ],
+    "rfp_section_evaluations": [
+      {
+        "department_id": "reverse",
+        "run": 1,
+        "iteration": 1,
+        "overall_pass": true,
+        "readability": {
+          "pass": true,
+          "score": 68.4,
+          "details": {
+            "language": "es",
+            "words": 172,
+            "sentences": 11,
+            "threshold": 55.0,
+            "metric": "fernandez_huerta",
+            "py_readability": {
+              "flesch": 28.1,
+              "flesch_kincaid_grade": 13.2,
+              "gunning_fog": 16.4
+            },
+            "avg_words_per_sentence": 15.6,
+            "long_sentences": [],
+            "max_sentence_words": 30
+          }
+        },
+        "relevance": {
+          "pass": true,
+          "missing_aspects": [],
+          "unsupported_figures": [],
+          "off_scope": []
+        },
+        "compliance": {
+          "pass": true,
+          "rule_ids": [],
+          "violations": [],
+          "rules_checked": [
+            "BRIEFING-5.1-currency",
+            "BRIEFING-5.2-on-time-sla",
+            "BRIEFING-5.3-returns-min-48h",
+            "BRIEFING-5.4-volume-discount-table",
+            "BRIEFING-5.5-no-carrier-rates"
+          ]
+        },
+        "feedback_for_generator": "",
+        "generator_meta": {
+          "llm_used": true,
+          "feedback_applied": false,
+          "source": "rfp_handoff.v1",
+          "model": "qwen2.5:1.5b"
+        }
+      },
+      {
+        "department_id": "warehouse",
+        "run": 1,
+        "iteration": 1,
+        "overall_pass": false,
+        "readability": {
+          "pass": true,
+          "score": 71.3,
+          "details": {
+            "language": "es",
+            "words": 163,
+            "sentences": 10,
+            "threshold": 55.0,
+            "metric": "fernandez_huerta",
+            "py_readability": {
+              "flesch": 34.9,
+              "flesch_kincaid_grade": 12.4,
+              "gunning_fog": 15.5
+            },
+            "avg_words_per_sentence": 16.3,
+            "long_sentences": [],
+            "max_sentence_words": 30
+          }
+        },
+        "relevance": {
+          "pass": true,
+          "missing_aspects": [],
+          "unsupported_figures": [],
+          "off_scope": []
+        },
+        "compliance": {
+          "pass": false,
+          "rule_ids": [
+            "BRIEFING-5.3-returns-min-48h"
+          ],
+          "violations": [
+            {
+              "rule_id": "BRIEFING-5.3-returns-min-48h",
+              "evidence": "Además, el servicio incluirá una solución rápida para devoluciones, asegurando un retorno a los clientes en menos de 48 horas desde Zaragoza.",
+              "message": "Promete procesar devoluciones en menos de 48 horas.",
+              "fix": "Elimina ese plazo: el procesamiento de devoluciones nunca es inferior a 48 horas."
+            }
+          ],
+          "rules_checked": [
+            "BRIEFING-5.1-currency",
+            "BRIEFING-5.2-on-time-sla",
+            "BRIEFING-5.3-returns-min-48h",
+            "BRIEFING-5.4-volume-discount-table",
+            "BRIEFING-5.5-no-carrier-rates"
+          ]
+        },
+        "feedback_for_generator": "- [BRIEFING-5.3-returns-min-48h] Promete procesar devoluciones en menos de 48 horas. Texto: «Además, el servicio incluirá una solución rápida para devoluciones, asegurando un retorno a los clientes en menos de 48 horas desde Zaragoza.». Cómo corregirlo: Elimina ese plazo: el procesamiento de devoluciones nunca es inferior a 48 horas.",
+        "generator_meta": {
+          "llm_used": true,
+          "feedback_applied": false,
+          "source": "rfp_handoff.v1",
+          "model": "qwen2.5:1.5b"
+        }
+      },
+      {
+        "department_id": "warehouse",
+        "run": 1,
+        "iteration": 2,
+        "overall_pass": false,
+        "readability": {
+          "pass": true,
+          "score": 71.3,
+          "details": {
+            "language": "es",
+            "words": 163,
+            "sentences": 10,
+            "threshold": 55.0,
+            "metric": "fernandez_huerta",
+            "py_readability": {
+              "flesch": 34.9,
+              "flesch_kincaid_grade": 12.4,
+              "gunning_fog": 15.5
+            },
+            "avg_words_per_sentence": 16.3,
+            "long_sentences": [],
+            "max_sentence_words": 30
+          }
+        },
+        "relevance": {
+          "pass": true,
+          "missing_aspects": [],
+          "unsupported_figures": [],
+          "off_scope": []
+        },
+        "compliance": {
+          "pass": false,
+          "rule_ids": [
+            "BRIEFING-5.3-returns-min-48h"
+          ],
+          "violations": [
+            {
+              "rule_id": "BRIEFING-5.3-returns-min-48h",
+              "evidence": "Además, el servicio incluirá una solución rápida para devoluciones, asegurando un retorno a los clientes en menos de 48 horas desde Zaragoza.",
+              "message": "Promete procesar devoluciones en menos de 48 horas.",
+              "fix": "Elimina ese plazo: el procesamiento de devoluciones nunca es inferior a 48 horas."
+            }
+          ],
+          "rules_checked": [
+            "BRIEFING-5.1-currency",
+            "BRIEFING-5.2-on-time-sla",
+            "BRIEFING-5.3-returns-min-48h",
+            "BRIEFING-5.4-volume-discount-table",
+            "BRIEFING-5.5-no-carrier-rates"
+          ]
+        },
+        "feedback_for_generator": "- [BRIEFING-5.3-returns-min-48h] Promete procesar devoluciones en menos de 48 horas. Texto: «Además, el servicio incluirá una solución rápida para devoluciones, asegurando un retorno a los clientes en menos de 48 horas desde Zaragoza.». Cómo corregirlo: Elimina ese plazo: el procesamiento de devoluciones nunca es inferior a 48 horas.",
+        "generator_meta": {
+          "llm_used": true,
+          "feedback_applied": true,
+          "source": "rfp_handoff.v1",
+          "model": "qwen2.5:1.5b"
+        }
+      },
+      {
+        "department_id": "warehouse",
+        "run": 1,
+        "iteration": 3,
+        "overall_pass": false,
+        "readability": {
+          "pass": true,
+          "score": 71.3,
+          "details": {
+            "language": "es",
+            "words": 163,
+            "sentences": 10,
+            "threshold": 55.0,
+            "metric": "fernandez_huerta",
+            "py_readability": {
+              "flesch": 34.9,
+              "flesch_kincaid_grade": 12.4,
+              "gunning_fog": 15.5
+            },
+            "avg_words_per_sentence": 16.3,
+            "long_sentences": [],
+            "max_sentence_words": 30
+          }
+        },
+        "relevance": {
+          "pass": true,
+          "missing_aspects": [],
+          "unsupported_figures": [],
+          "off_scope": []
+        },
+        "compliance": {
+          "pass": false,
+          "rule_ids": [
+            "BRIEFING-5.3-returns-min-48h"
+          ],
+          "violations": [
+            {
+              "rule_id": "BRIEFING-5.3-returns-min-48h",
+              "evidence": "Además, el servicio incluirá una solución rápida para devoluciones, asegurando un retorno a los clientes en menos de 48 horas desde Zaragoza.",
+              "message": "Promete procesar devoluciones en menos de 48 horas.",
+              "fix": "Elimina ese plazo: el procesamiento de devoluciones nunca es inferior a 48 horas."
+            }
+          ],
+          "rules_checked": [
+            "BRIEFING-5.1-currency",
+            "BRIEFING-5.2-on-time-sla",
+            "BRIEFING-5.3-returns-min-48h",
+            "BRIEFING-5.4-volume-discount-table",
+            "BRIEFING-5.5-no-carrier-rates"
+          ]
+        },
+        "feedback_for_generator": "- [BRIEFING-5.3-returns-min-48h] Promete procesar devoluciones en menos de 48 horas. Texto: «Además, el servicio incluirá una solución rápida para devoluciones, asegurando un retorno a los clientes en menos de 48 horas desde Zaragoza.». Cómo corregirlo: Elimina ese plazo: el procesamiento de devoluciones nunca es inferior a 48 horas.",
+        "generator_meta": {
+          "llm_used": true,
+          "feedback_applied": true,
+          "source": "rfp_handoff.v1",
+          "model": "qwen2.5:1.5b"
+        }
+      }
+    ]
+  },
+  {
+    "ticket": {
+      "ticket_id": "21dd64d6-7c73-4f6d-962f-4d82cc339e30",
+      "rfp_id": "RFP-20261122-21DD64",
+      "original_filename": "trackflow-request-2.pdf",
+      "status": "esperando_aprobación",
+      "response_stage": "handoff",
+      "response_handoff": {
+        "contract": "rfp_response_handoff.v1",
+        "ticket_id": "21dd64d6-7c73-4f6d-962f-4d82cc339e30",
+        "rfp_id": "RFP-20261122-21DD64",
+        "run": 1,
+        "source_contract": "rfp_handoff.v1",
+        "next_status": "esperando_aprobación",
+        "needs_human_review": false,
+        "needs_human_review_sections": [],
+        "max_iterations": 3,
+        "avg_iterations_per_section": 1.0,
+        "client": {
+          "name": "Luna Cosmetics",
+          "country": "US",
+          "currency": "USD",
+          "contact": "Maya Chen — Founder, Luna Cosmetics"
+        },
+        "currency": "USD",
+        "sections": [
+          {
+            "department_id": "lastmile",
+            "department": "Last Mile and Carrier Management",
+            "approver": "Carlos Vega",
+            "section_status": "evaluacion_superada",
+            "provisional": false,
+            "iterations": 1,
+            "currency": "USD",
+            "language": "en",
+            "draft_content": "## Last Mile and Carrier Management — Pricing proposal\n\n**Client:** Luna Cosmetics · **Country:** United States · **Currency:** USD · **TrackFlow owner:** Carlos Vega\n\n### Scope and approach\n\nLast Mile and Carrier Management is designed to meet the specific needs of Luna Cosmetics by providing warehousing and shipping services across the United States. With a monthly volume of 5,000 orders, we will ensure that all shipments are handled efficiently and on time. Our team specializes in selecting the most suitable transport options for each destination based on cost-effectiveness and reliability. We commit to delivering within the SLA of 90%, ensuring that Luna Cosmetics can focus on their core business without worrying about logistics. Additionally, we offer a transparent pricing structure with no hidden fees or negotiated rates from specific carriers, providing clear visibility into costs for our clients.\n\n### Pricing items (USD)\n\n| Item | Price (USD) | Basis |\n|---|---|---|\n| Cost per shipment | To be quoted by Carlos Vega (final cost to the client) | By destination, weight and urgency; volume of 5000 orders/month. |\n| Available carriers | UPS, FedEx y DHL (Los Ángeles) | The system picks the carrier by destination, weight and urgency. |\n| Delivery times | standard 3 to 5 business days within the same country; express 24 to 48 hours in metro areas (Los Angeles and Zaragoza-Madrid) | Same country. |\n\n### Volume discounts\n\n| Monthly volume | Discount on rate |\n|---|---|\n| Up to 2,000 orders/month | Pending approval by Miguel Torres |\n| 2,001 to 10,000 orders/month | Pending approval by Miguel Torres |\n| Over 10,000 orders/month | Pending approval by Miguel Torres |\n\n### Service level\n\n- On-time delivery SLA: **90 %** of deliveries on time per month, measured per country.\n- If a country falls below 90 % for two months in a row, we credit 5 % of that country's monthly fee.\n- On peak days, times can grow by up to 40 % and the SLA does not apply.\n\n### Assumptions and open questions\n\n- ¿Qué plazo de entrega esperan (estándar, express) y qué peso/tamaño medio tienen los paquetes?\n- ¿Cuál es el costo por envío para las diferentes regiones del US?\n",
+            "evaluation_result": {
+              "section_id": "21dd64d6-7c73-4f6d-962f-4d82cc339e30:lastmile",
+              "department_id": "lastmile",
+              "iteration": 1,
+              "readability": {
+                "pass": true,
+                "score": 46.4,
+                "details": {
+                  "language": "en",
+                  "words": 190,
+                  "sentences": 10,
+                  "threshold": 40.0,
+                  "metric": "flesch_reading_ease",
+                  "py_readability": {
+                    "flesch": 46.4,
+                    "flesch_kincaid_grade": 11.3,
+                    "gunning_fog": 13.1
+                  },
+                  "avg_words_per_sentence": 19.0,
+                  "long_sentences": [],
+                  "max_sentence_words": 30
+                }
+              },
+              "relevance": {
+                "pass": true,
+                "missing_aspects": [],
+                "unsupported_figures": [],
+                "off_scope": []
+              },
+              "compliance": {
+                "pass": true,
+                "rule_ids": [],
+                "violations": [],
+                "rules_checked": [
+                  "BRIEFING-5.1-currency",
+                  "BRIEFING-5.2-on-time-sla",
+                  "BRIEFING-5.3-returns-min-48h",
+                  "BRIEFING-5.4-volume-discount-table",
+                  "BRIEFING-5.5-no-carrier-rates"
+                ]
+              },
+              "overall_pass": true,
+              "feedback_for_generator": ""
+            },
+            "iteration_history": [
+              {
+                "iteration": 1,
+                "overall_pass": true,
+                "failed": []
+              }
+            ]
+          },
+          {
+            "department_id": "warehouse",
+            "department": "Warehouse Operations",
+            "approver": "Ana Whitfield",
+            "section_status": "evaluacion_superada",
+            "provisional": false,
+            "iterations": 1,
+            "currency": "USD",
+            "language": "en",
+            "draft_content": "## Warehouse Operations — Pricing proposal\n\n**Client:** Luna Cosmetics · **Country:** United States · **Currency:** USD · **TrackFlow owner:** Ana Whitfield\n\n### Scope and approach\n\nWarehouse Operations se compromete a proporcionar una solución de almacén flexible y eficiente para Luna Cosmetics, teniendo en cuenta su volumen mensual de 5000 pedidos. Se ofrecerá capacidad de almacenamiento disponible para los SKUs del cliente, junto con un costo por pallets y por SKU. El tiempo de onboarding será de 3 semanas hasta estar listas para operar, lo que incluye la fecha límite de agosto 24th. Además, se asegurará el servicio en USD, sin procesar devoluciones ni tarifas negociadas con transportistas específicos.\n\n### Pricing items (USD)\n\n| Item | Price (USD) | Basis |\n|---|---|---|\n| Storage | 18 USD per m³ per month | Billed by occupied volume, not per unit. First 30 days free of charge. |\n| Long-term inventory | 150 % of the standard rate | From day 181 without movement. |\n| Cost per pallet / SKU | No per-unit rate: billed per m³ | The client did not state the SKU count. |\n| Capacity and onboarding | To be confirmed by Ana Whitfield | RFP volume: 5000 orders/month. RFP deadline: August 24th. |\n\n### Volume discounts\n\n| Monthly volume | Discount on rate |\n|---|---|\n| Up to 2,000 orders/month | Pending approval by Miguel Torres |\n| 2,001 to 10,000 orders/month | Pending approval by Miguel Torres |\n| Over 10,000 orders/month | Pending approval by Miguel Torres |\n\n### Service level\n\n- On-time delivery SLA: **90 %** of deliveries on time per month, measured per country.\n- If a country falls below 90 % for two months in a row, we credit 5 % of that country's monthly fee.\n- On peak days, times can grow by up to 40 % and the SLA does not apply.\n\n### Assumptions and open questions\n\n- ¿Cuál es el costo por pallet/SKU?\n",
+            "evaluation_result": {
+              "section_id": "21dd64d6-7c73-4f6d-962f-4d82cc339e30:warehouse",
+              "department_id": "warehouse",
+              "iteration": 1,
+              "readability": {
+                "pass": true,
+                "score": 44.3,
+                "details": {
+                  "language": "en",
+                  "words": 141,
+                  "sentences": 8,
+                  "threshold": 40.0,
+                  "metric": "flesch_reading_ease",
+                  "py_readability": {
+                    "flesch": 44.3,
+                    "flesch_kincaid_grade": 11.3,
+                    "gunning_fog": 15.0
+                  },
+                  "avg_words_per_sentence": 17.6,
+                  "long_sentences": [],
+                  "max_sentence_words": 30
+                }
+              },
+              "relevance": {
+                "pass": true,
+                "missing_aspects": [],
+                "unsupported_figures": [],
+                "off_scope": []
+              },
+              "compliance": {
+                "pass": true,
+                "rule_ids": [],
+                "violations": [],
+                "rules_checked": [
+                  "BRIEFING-5.1-currency",
+                  "BRIEFING-5.2-on-time-sla",
+                  "BRIEFING-5.3-returns-min-48h",
+                  "BRIEFING-5.4-volume-discount-table",
+                  "BRIEFING-5.5-no-carrier-rates"
+                ]
+              },
+              "overall_pass": true,
+              "feedback_for_generator": ""
+            },
+            "iteration_history": [
+              {
+                "iteration": 1,
+                "overall_pass": true,
+                "failed": []
+              }
+            ]
+          }
+        ],
+        "conflicts": [],
+        "out_of_scope_requests": []
+      },
+      "discard_reason": null
+    },
+    "sections": [
+      {
+        "department_id": "lastmile",
+        "section_status": "evaluacion_superada",
+        "iterations": 1,
+        "needs_human_review": false,
+        "approver": "Carlos Vega",
+        "approval_status": "pendiente",
+        "draft_content": "## Last Mile and Carrier Management — Pricing proposal\n\n**Client:** Luna Cosmetics · **Country:** United States · **Currency:** USD · **TrackFlow owner:** Carlos Vega\n\n### Scope and approach\n\nLast Mile and Carrier Management is designed to meet the specific needs of Luna Cosmetics by providing warehousing and shipping services across the United States. With a monthly volume of 5,000 orders, we will ensure that all shipments are handled efficiently and on time. Our team specializes in selecting the most suitable transport options for each destination based on cost-effectiveness and reliability. We commit to delivering within the SLA of 90%, ensuring that Luna Cosmetics can focus on their core business without worrying about logistics. Additionally, we offer a transparent pricing structure with no hidden fees or negotiated rates from specific carriers, providing clear visibility into costs for our clients.\n\n### Pricing items (USD)\n\n| Item | Price (USD) | Basis |\n|---|---|---|\n| Cost per shipment | To be quoted by Carlos Vega (final cost to the client) | By destination, weight and urgency; volume of 5000 orders/month. |\n| Available carriers | UPS, FedEx y DHL (Los Ángeles) | The system picks the carrier by destination, weight and urgency. |\n| Delivery times | standard 3 to 5 business days within the same country; express 24 to 48 hours in metro areas (Los Angeles and Zaragoza-Madrid) | Same country. |\n\n### Volume discounts\n\n| Monthly volume | Discount on rate |\n|---|---|\n| Up to 2,000 orders/month | Pending approval by Miguel Torres |\n| 2,001 to 10,000 orders/month | Pending approval by Miguel Torres |\n| Over 10,000 orders/month | Pending approval by Miguel Torres |\n\n### Service level\n\n- On-time delivery SLA: **90 %** of deliveries on time per month, measured per country.\n- If a country falls below 90 % for two months in a row, we credit 5 % of that country's monthly fee.\n- On peak days, times can grow by up to 40 % and the SLA does not apply.\n\n### Assumptions and open questions\n\n- ¿Qué plazo de entrega esperan (estándar, express) y qué peso/tamaño medio tienen los paquetes?\n- ¿Cuál es el costo por envío para las diferentes regiones del US?\n",
+        "evaluation_results": {
+          "section_id": "21dd64d6-7c73-4f6d-962f-4d82cc339e30:lastmile",
+          "department_id": "lastmile",
+          "iteration": 1,
+          "readability": {
+            "pass": true,
+            "score": 46.4,
+            "details": {
+              "language": "en",
+              "words": 190,
+              "sentences": 10,
+              "threshold": 40.0,
+              "metric": "flesch_reading_ease",
+              "py_readability": {
+                "flesch": 46.4,
+                "flesch_kincaid_grade": 11.3,
+                "gunning_fog": 13.1
+              },
+              "avg_words_per_sentence": 19.0,
+              "long_sentences": [],
+              "max_sentence_words": 30
+            }
+          },
+          "relevance": {
+            "pass": true,
+            "missing_aspects": [],
+            "unsupported_figures": [],
+            "off_scope": []
+          },
+          "compliance": {
+            "pass": true,
+            "rule_ids": [],
+            "violations": [],
+            "rules_checked": [
+              "BRIEFING-5.1-currency",
+              "BRIEFING-5.2-on-time-sla",
+              "BRIEFING-5.3-returns-min-48h",
+              "BRIEFING-5.4-volume-discount-table",
+              "BRIEFING-5.5-no-carrier-rates"
+            ]
+          },
+          "overall_pass": true,
+          "feedback_for_generator": ""
+        }
+      },
+      {
+        "department_id": "warehouse",
+        "section_status": "evaluacion_superada",
+        "iterations": 1,
+        "needs_human_review": false,
+        "approver": "Ana Whitfield",
+        "approval_status": "pendiente",
+        "draft_content": "## Warehouse Operations — Pricing proposal\n\n**Client:** Luna Cosmetics · **Country:** United States · **Currency:** USD · **TrackFlow owner:** Ana Whitfield\n\n### Scope and approach\n\nWarehouse Operations se compromete a proporcionar una solución de almacén flexible y eficiente para Luna Cosmetics, teniendo en cuenta su volumen mensual de 5000 pedidos. Se ofrecerá capacidad de almacenamiento disponible para los SKUs del cliente, junto con un costo por pallets y por SKU. El tiempo de onboarding será de 3 semanas hasta estar listas para operar, lo que incluye la fecha límite de agosto 24th. Además, se asegurará el servicio en USD, sin procesar devoluciones ni tarifas negociadas con transportistas específicos.\n\n### Pricing items (USD)\n\n| Item | Price (USD) | Basis |\n|---|---|---|\n| Storage | 18 USD per m³ per month | Billed by occupied volume, not per unit. First 30 days free of charge. |\n| Long-term inventory | 150 % of the standard rate | From day 181 without movement. |\n| Cost per pallet / SKU | No per-unit rate: billed per m³ | The client did not state the SKU count. |\n| Capacity and onboarding | To be confirmed by Ana Whitfield | RFP volume: 5000 orders/month. RFP deadline: August 24th. |\n\n### Volume discounts\n\n| Monthly volume | Discount on rate |\n|---|---|\n| Up to 2,000 orders/month | Pending approval by Miguel Torres |\n| 2,001 to 10,000 orders/month | Pending approval by Miguel Torres |\n| Over 10,000 orders/month | Pending approval by Miguel Torres |\n\n### Service level\n\n- On-time delivery SLA: **90 %** of deliveries on time per month, measured per country.\n- If a country falls below 90 % for two months in a row, we credit 5 % of that country's monthly fee.\n- On peak days, times can grow by up to 40 % and the SLA does not apply.\n\n### Assumptions and open questions\n\n- ¿Cuál es el costo por pallet/SKU?\n",
+        "evaluation_results": {
+          "section_id": "21dd64d6-7c73-4f6d-962f-4d82cc339e30:warehouse",
+          "department_id": "warehouse",
+          "iteration": 1,
+          "readability": {
+            "pass": true,
+            "score": 44.3,
+            "details": {
+              "language": "en",
+              "words": 141,
+              "sentences": 8,
+              "threshold": 40.0,
+              "metric": "flesch_reading_ease",
+              "py_readability": {
+                "flesch": 44.3,
+                "flesch_kincaid_grade": 11.3,
+                "gunning_fog": 15.0
+              },
+              "avg_words_per_sentence": 17.6,
+              "long_sentences": [],
+              "max_sentence_words": 30
+            }
+          },
+          "relevance": {
+            "pass": true,
+            "missing_aspects": [],
+            "unsupported_figures": [],
+            "off_scope": []
+          },
+          "compliance": {
+            "pass": true,
+            "rule_ids": [],
+            "violations": [],
+            "rules_checked": [
+              "BRIEFING-5.1-currency",
+              "BRIEFING-5.2-on-time-sla",
+              "BRIEFING-5.3-returns-min-48h",
+              "BRIEFING-5.4-volume-discount-table",
+              "BRIEFING-5.5-no-carrier-rates"
+            ]
+          },
+          "overall_pass": true,
+          "feedback_for_generator": ""
+        }
+      }
+    ],
+    "rfp_section_evaluations": [
+      {
+        "department_id": "lastmile",
+        "run": 1,
+        "iteration": 1,
+        "overall_pass": true,
+        "readability": {
+          "pass": true,
+          "score": 46.4,
+          "details": {
+            "language": "en",
+            "words": 190,
+            "sentences": 10,
+            "threshold": 40.0,
+            "metric": "flesch_reading_ease",
+            "py_readability": {
+              "flesch": 46.4,
+              "flesch_kincaid_grade": 11.3,
+              "gunning_fog": 13.1
+            },
+            "avg_words_per_sentence": 19.0,
+            "long_sentences": [],
+            "max_sentence_words": 30
+          }
+        },
+        "relevance": {
+          "pass": true,
+          "missing_aspects": [],
+          "unsupported_figures": [],
+          "off_scope": []
+        },
+        "compliance": {
+          "pass": true,
+          "rule_ids": [],
+          "violations": [],
+          "rules_checked": [
+            "BRIEFING-5.1-currency",
+            "BRIEFING-5.2-on-time-sla",
+            "BRIEFING-5.3-returns-min-48h",
+            "BRIEFING-5.4-volume-discount-table",
+            "BRIEFING-5.5-no-carrier-rates"
+          ]
+        },
+        "feedback_for_generator": "",
+        "generator_meta": {
+          "llm_used": true,
+          "feedback_applied": false,
+          "source": "rfp_handoff.v1",
+          "model": "qwen2.5:1.5b"
+        }
+      },
+      {
+        "department_id": "warehouse",
+        "run": 1,
+        "iteration": 1,
+        "overall_pass": true,
+        "readability": {
+          "pass": true,
+          "score": 44.3,
+          "details": {
+            "language": "en",
+            "words": 141,
+            "sentences": 8,
+            "threshold": 40.0,
+            "metric": "flesch_reading_ease",
+            "py_readability": {
+              "flesch": 44.3,
+              "flesch_kincaid_grade": 11.3,
+              "gunning_fog": 15.0
+            },
+            "avg_words_per_sentence": 17.6,
+            "long_sentences": [],
+            "max_sentence_words": 30
+          }
+        },
+        "relevance": {
+          "pass": true,
+          "missing_aspects": [],
+          "unsupported_figures": [],
+          "off_scope": []
+        },
+        "compliance": {
+          "pass": true,
+          "rule_ids": [],
+          "violations": [],
+          "rules_checked": [
+            "BRIEFING-5.1-currency",
+            "BRIEFING-5.2-on-time-sla",
+            "BRIEFING-5.3-returns-min-48h",
+            "BRIEFING-5.4-volume-discount-table",
+            "BRIEFING-5.5-no-carrier-rates"
+          ]
+        },
+        "feedback_for_generator": "",
+        "generator_meta": {
+          "llm_used": true,
+          "feedback_applied": false,
+          "source": "rfp_handoff.v1",
+          "model": "qwen2.5:1.5b"
+        }
+      }
+    ]
+  },
+  {
+    "ticket": {
+      "ticket_id": "b609ed0e-5fe6-424d-9330-7b99a36118f7",
+      "rfp_id": "RFP-20261122-B609ED",
+      "original_filename": "trackflow-request-3.pdf",
+      "status": "descartado",
+      "response_stage": null,
+      "response_handoff": null,
+      "discard_reason": "Es un proveedor ofreciendo sus servicios o tarifas a TrackFlow, no un cliente pidiendo una propuesta."
+    },
+    "sections": [],
+    "rfp_section_evaluations": []
+  }
+]

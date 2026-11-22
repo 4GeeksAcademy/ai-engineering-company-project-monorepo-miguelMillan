@@ -1,6 +1,8 @@
-"""API de recepción de RFP: subida → ticket «analizando» + PDF en data/raw + encolado; consulta y reproceso."""
+"""API de recepción de RFP: subida → ticket «analizando» + PDF en data/raw + encolado; consulta y reproceso.
+Parte 2: (re)generación de la respuesta y detalle con borradores y EvaluationResult."""
 
 import uuid
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -19,6 +21,7 @@ def client(tmp_path, monkeypatch):
 
     enqueued = []
     monkeypatch.setattr(rfp_routes, "_enqueue", lambda ticket_id, force_accept=False: enqueued.append((ticket_id, force_accept)))
+    monkeypatch.setattr(rfp_routes, "_enqueue_generation", lambda ticket_id: enqueued.append((ticket_id, "generate")))
     with TestClient(create_app(tmp_path / "users.json")) as api:
         api.post("/users", json={"email": "ventas@example.com", "password": "correct-horse-battery"})
         token = api.post("/auth/login", json={"email": "ventas@example.com", "password": "correct-horse-battery"}).json()["access_token"]
@@ -70,3 +73,29 @@ def test_reprocess_and_not_found(client):
     assert client.post(f"/rfp-intake/tickets/{ticket_id}/reprocess", params={"force_accept": True}).status_code == 202
     assert client.enqueued[-1] == (ticket_id, True)
     assert client.get(f"/rfp-intake/tickets/{uuid.uuid4()}").status_code == 404
+
+
+FORMAL_FIXTURE = Path(__file__).resolve().parents[3] / "tests" / "pipelines" / "fixtures" / "rfp" / "formal-modaviva.md"
+
+
+def test_part2_generate_endpoint_and_detail_with_drafts_and_evaluations(client):
+    from mock_data.pipelines.rfp_intake.graph import run_ticket
+    from mock_data.pipelines.rfp_intake.repository import RfpRepository
+    from mock_data.pipelines.rfp_intake.response_graph import run_response
+
+    ticket_id = client.post("/rfp-intake/tickets", files={"file": ("trackflow-request-1.pdf", PDF)}).json()["ticket_id"]
+    assert client.post(f"/rfp-intake/tickets/{ticket_id}/generate").status_code == 409  # Parte 1 sin terminar
+    repo = RfpRepository(client.app.state.engine)
+    markdown = FORMAL_FIXTURE.read_text(encoding="utf-8")
+    run_ticket(ticket_id, repo, llm_fn=None, converter=lambda _p: markdown)  # lo que hace el worker
+
+    response = client.post(f"/rfp-intake/tickets/{ticket_id}/generate")
+    assert response.status_code == 202 and client.enqueued[-1] == (ticket_id, "generate")
+    run_response(ticket_id, repo, llm_fn=None)  # lo que hace el worker de la Parte 2
+
+    detail = client.get(f"/rfp-intake/tickets/{ticket_id}").json()
+    assert detail["status"] == "esperando_aprobación" and detail["response_stage"] == "handoff"
+    assert detail["response_handoff"]["contract"] == "rfp_response_handoff.v1"
+    for section in detail["sections"]:
+        assert section["section_status"] == "evaluacion_superada" and section["draft_content"].startswith("## ")
+        assert section["evaluation_result"]["overall_pass"] is True and section["evaluation_history"][0]["iteration"] == 1
