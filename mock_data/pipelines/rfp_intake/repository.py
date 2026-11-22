@@ -6,17 +6,22 @@ así que si el job muere a mitad el ticket dice exactamente hasta dónde llegó 
 
 from __future__ import annotations
 
+import threading
 import uuid
 from typing import Any
 
 from sqlmodel import Session, select
 
-from mock_data.pipelines.rfp_intake.models import DepartmentSection, RfpMetadataRecord, RfpTicket, _now
+from mock_data.pipelines.rfp_intake.models import (DepartmentSection, RfpMetadataRecord, RfpTicket, SectionEvaluation,
+                                                   _now)
 
 
 class RfpRepository:
     def __init__(self, engine):
         self.engine = engine
+        # Las ramas de departamento de la Parte 2 escriben en paralelo (hilos del grafo): cada escritura es su propia
+        # transacción y además se serializa en proceso (en SQLite de tests comparten una sola conexión).
+        self._write_lock = threading.RLock()
 
     # ---------------------------------------------------------------- tickets
     def create_ticket(self, *, rfp_id: str, raw_pdf_path: str, original_filename: str, uploaded_by: str | None,
@@ -34,7 +39,7 @@ class RfpRepository:
             return session.get(RfpTicket, uuid.UUID(str(ticket_id)))
 
     def update_ticket(self, ticket_id: uuid.UUID | str, **fields: Any) -> RfpTicket:
-        with Session(self.engine) as session:
+        with self._write_lock, Session(self.engine) as session:
             ticket = session.get(RfpTicket, uuid.UUID(str(ticket_id)))
             if ticket is None:
                 raise KeyError(ticket_id)
@@ -79,3 +84,35 @@ class RfpRepository:
         with Session(self.engine) as session:
             return list(session.exec(select(DepartmentSection).where(DepartmentSection.ticket_id == uuid.UUID(str(ticket_id)))
                                      .order_by(DepartmentSection.department_id)))
+
+    # ---------------------------------------------------------------- Parte 2: borradores y evaluaciones
+    def update_section(self, ticket_id: uuid.UUID | str, department_id: str, **fields: Any) -> DepartmentSection:
+        tid = uuid.UUID(str(ticket_id))
+        with self._write_lock, Session(self.engine) as session:
+            section = session.exec(select(DepartmentSection).where(DepartmentSection.ticket_id == tid,
+                                                                   DepartmentSection.department_id == department_id)).first()
+            if section is None:
+                raise KeyError(f"{ticket_id}:{department_id}")
+            for name, value in fields.items():
+                setattr(section, name, value)
+            session.add(section)
+            session.commit()
+            session.refresh(section)
+            return section
+
+    def add_evaluation(self, **fields: Any) -> SectionEvaluation:
+        fields["ticket_id"] = uuid.UUID(str(fields["ticket_id"]))
+        with self._write_lock, Session(self.engine) as session:
+            record = SectionEvaluation(**fields)
+            session.add(record)
+            session.commit()
+            session.refresh(record)
+            return record
+
+    def get_evaluations(self, ticket_id: uuid.UUID | str, run: int | None = None) -> list[SectionEvaluation]:
+        query = select(SectionEvaluation).where(SectionEvaluation.ticket_id == uuid.UUID(str(ticket_id)))
+        if run is not None:
+            query = query.where(SectionEvaluation.run == run)
+        with Session(self.engine) as session:
+            return list(session.exec(query.order_by(SectionEvaluation.department_id, SectionEvaluation.run,
+                                                    SectionEvaluation.iteration)))

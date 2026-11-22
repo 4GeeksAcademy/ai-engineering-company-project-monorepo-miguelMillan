@@ -1,8 +1,12 @@
-"""Recepción de RFP (Hito 9, Parte 1): subida de PDF, ticket y consulta de estado.
+"""Recepción de RFP (Hito 9, Parte 1) y generación/evaluación de la respuesta (Parte 2).
 
 Mismo backend, mismo proceso: este router solo valida, guarda el PDF bajo ``mock_data/raw/rfp/`` (el
 ``data/raw/`` del BRIEFING), crea el ticket en ``analizando`` y encola el pipeline en Celery. La lógica de
 agentes vive en ``mock_data/pipelines/rfp_intake/`` (el ``data/pipelines/`` del BRIEFING).
+
+Parte 2: cuando la Parte 1 deja el ticket en ``analisis_completo``, el worker encola sola la generación
+(``rfp_response.generate_ticket``). ``POST /tickets/{id}/generate`` la relanza (tras un fallo o una revisión humana)
+y el detalle del ticket expone borradores, ``EvaluationResult`` y el handoff a la Parte 3.
 """
 
 import logging
@@ -23,6 +27,7 @@ if str(REPOSITORY_ROOT) not in sys.path:
 
 from mock_data.pipelines.rfp_intake.models import RfpTicket  # noqa: E402,F401  (registra las tablas en SQLModel)
 from mock_data.pipelines.rfp_intake.repository import RfpRepository  # noqa: E402
+from mock_data.pipelines.rfp_intake.response_graph import GENERATION_ENTRY_STATUSES  # noqa: E402
 
 logger = logging.getLogger("trackflow.rfp_intake")
 router = APIRouter(prefix="/rfp-intake", tags=["rfp intake"])
@@ -95,6 +100,7 @@ def _summary(repo: RfpRepository, ticket) -> dict:
             "pipeline_stage": ticket.pipeline_stage, "original_filename": ticket.original_filename,
             "created_at": ticket.created_at.isoformat(), "updated_at": ticket.updated_at.isoformat(),
             "attempts": ticket.attempts, "last_error": ticket.last_error, "discard_reason": ticket.discard_reason,
+            "response_stage": ticket.response_stage, "response_attempts": ticket.response_attempts,
             "client_name": meta.client_name if meta else None, "client_country": meta.client_country if meta else None,
             "departments_needed": meta.departments_needed if meta else []}
 
@@ -113,8 +119,16 @@ def get_rfp_ticket(ticket_id: uuid.UUID, request: Request, _user=Depends(get_cur
         raise HTTPException(status_code=404, detail="Ticket RFP no encontrado.")
     meta = repo.get_metadata(ticket_id)
     sections = repo.get_sections(ticket_id)
+    history: dict[str, list] = {}
+    for evaluation in repo.get_evaluations(ticket_id, run=ticket.response_attempts or None):
+        history.setdefault(evaluation.department_id, []).append({
+            "iteration": evaluation.iteration, "overall_pass": evaluation.overall_pass,
+            "readability_pass": evaluation.readability.get("pass"), "relevance_pass": evaluation.relevance.get("pass"),
+            "compliance_pass": evaluation.compliance.get("pass"), "rule_ids": evaluation.compliance.get("rule_ids", []),
+            "feedback_for_generator": evaluation.feedback_for_generator, "created_at": evaluation.created_at.isoformat()})
     return {
         **_summary(repo, ticket), "raw_pdf_path": ticket.raw_pdf_path, "handoff": ticket.handoff,
+        "response_handoff": ticket.response_handoff,
         "metadata": None if meta is None else {
             "client_name": meta.client_name, "client_country": meta.client_country, "currency": meta.currency,
             "services_requested": meta.services_requested, "monthly_volume": meta.monthly_volume, "sku_count": meta.sku_count,
@@ -122,7 +136,10 @@ def get_rfp_ticket(ticket_id: uuid.UUID, request: Request, _user=Depends(get_cur
             "departments_needed": meta.departments_needed, "readability": meta.readability, "details": meta.details,
             "classification": meta.classification, "markdown_chars": len(meta.markdown or "")},
         "sections": [{"department_id": s.department_id, "key_aspects": s.key_aspects, "open_questions": s.open_questions,
-                      "approver": s.approver, "approval_status": s.approval_status, "worker_meta": s.worker_meta}
+                      "approver": s.approver, "approval_status": s.approval_status, "worker_meta": s.worker_meta,
+                      "section_status": s.section_status, "iterations": s.iterations,
+                      "needs_human_review": s.needs_human_review, "draft_content": s.draft_content,
+                      "evaluation_result": s.evaluation_results, "evaluation_history": history.get(s.department_id, [])}
                      for s in sections],
     }
 
@@ -141,3 +158,33 @@ async def reprocess_rfp_ticket(ticket_id: uuid.UUID, request: Request, force_acc
                                                        last_error=None))
     await run_in_threadpool(_enqueue, str(ticket_id), force_accept)
     return {"ticket_id": str(ticket_id), "status": "analizando"}
+
+
+def _enqueue_generation(ticket_id: str) -> None:
+    from tasks import enqueue_rfp_response
+
+    enqueue_rfp_response(ticket_id)
+
+
+@router.post("/tickets/{ticket_id}/generate", status_code=202)
+async def generate_rfp_response(ticket_id: uuid.UUID, request: Request, _user=Depends(get_current_user)):
+    """(Re)genera y evalúa las secciones (Parte 2) de un ticket que la Parte 1 dejó listo."""
+    repo = _repo(request)
+    ticket = repo.get_ticket(ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket RFP no encontrado.")
+    if ticket.status not in GENERATION_ENTRY_STATUSES or not ticket.handoff:
+        raise HTTPException(status_code=409, detail="La Parte 2 solo arranca desde tickets con análisis completo.")
+    if ticket.status in ("generando_borrador", "en_evaluación") and ticket.response_stage != "fallido":
+        raise HTTPException(status_code=409, detail="La generación de este ticket ya está en curso.")
+    if any(s.approval_status != "pendiente" for s in repo.get_sections(ticket_id)):
+        raise HTTPException(status_code=409, detail="Alguna sección ya tiene una decisión de aprobación.")
+    await run_in_threadpool(lambda: repo.update_ticket(ticket_id, response_stage="generando", last_error=None))
+    try:
+        await run_in_threadpool(_enqueue_generation, str(ticket_id))
+    except Exception as error:  # noqa: BLE001
+        logger.exception("No se pudo encolar la Parte 2; ticket=%s", ticket_id)
+        await run_in_threadpool(lambda: repo.update_ticket(ticket_id, response_stage="fallido",
+                                                           last_error=f"No se pudo encolar la generación: {type(error).__name__}"))
+        raise HTTPException(status_code=503, detail="La cola de generación no está disponible.") from error
+    return {"ticket_id": str(ticket_id), "status": ticket.status, "response_stage": "generando"}

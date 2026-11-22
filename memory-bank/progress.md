@@ -1,5 +1,42 @@
 # Progress Log — TrackFlow
 
+## Generación y evaluación de respuestas a RFP (Hito 9, Parte 2), 2026-11-22
+
+- **Contexto y rama:** contexto archivado en `memory-bank/history/RFP-GENERATION-CONTEXT-2026-11-22.md`. Rama `feature/rfp-response-generation`, creada desde `main` después de mergear los PR #44 y #45.
+- **Pipeline (extiende `mock_data/pipelines/rfp_intake/`):**
+  - `generation.py`: un generador por departamento. Su entrada es solo `rfp_handoff.v1`. Formato del BRIEFING §2.1/§5; cifras sacadas solo del handoff y de `rate_card.py` (base de conocimiento). Lo que no está publicado queda «pendiente de cotizar/aprobar».
+  - `evaluators.py`: legibilidad (py-readability-metrics + Fernández-Huerta), pertinencia (`ask`, cifras de la RFP, preguntas abiertas, cifras no respaldadas, servicios excluidos) y cumplimiento (5 reglas de §5 con `rule_id`).
+  - `response_graph.py`: subgrafo por sección con los tres evaluadores en paralelo → `judge` → ciclo con feedback (máximo 3 iteraciones; `RFP_MAX_ITERATIONS`) → `needs_human_review` → handoff `rfp_response_handoff.v1`.
+- **Persistencia:** migración `20261122150000_rfp_response_generation.sql`, **aplicada en Supabase**. Añade columnas `response_*` al ticket, `section_status` / `iterations` / `needs_human_review` a la sección y la tabla `rfp_section_evaluations`.
+- **Backend y UI:**
+  - tarea de Celery `rfp_response.generate_ticket`, encolada sola al terminar la Parte 1;
+  - `POST /rfp-intake/tickets/{id}/generate`, y el detalle del ticket con borradores y evaluaciones;
+  - CLI `generate`;
+  - en la UI `/rfps`, los estados nuevos, el borrador, las evaluaciones y el aviso de borrador provisional.
+- **Validación:**
+  - `tests/pipelines` → 353 passed (13 nuevos en `test_rfp_response.py`);
+  - `services/api` → 117 passed;
+  - `rfps.test.ts` → 4 passed;
+  - `npm run build` en verde.
+- **Prueba real por la UI (3 PDF):**
+  - ModaViva → `needs_human_review`: `warehouse` agotó 3 iteraciones por una promesa real de devoluciones en menos de 48 h hecha por el LLM; `reverse` pasó.
+  - Luna → `esperando_aprobación`.
+  - RapidShip → `descartado`.
+  - Evidencia en `docs/pr-evidence/rfp-response/`.
+- **Decisión:** si todas las secciones pasan, el ticket queda en `esperando_aprobación`, que es la entrada de la Parte 3.
+- **Limitación:** el LLM de 1,5 B ignora a veces el feedback, y una unidad equivocada («16 EUR por pallet») no se detecta porque la cifra existe en el tarifario.
+- **Revisión del checklist:**
+  - el generador se separó en tres agentes, uno por departamento (`generators/warehouse.py`, `lastmile.py`, `reverse.py`), con alcance propio en el prompt;
+  - 3 tests nuevos: separación, evaluadores en paralelo con barrera de hilos, y un departamento lento que no bloquea a otro;
+  - el CLI ahora usa el driver de Postgres que esté instalado.
+- **Ejecución real 2 (ModaViva):** `warehouse` pasa a la 1.ª iteración y `reverse` agota 3 iteraciones por legibilidad (una oración de 33 palabras) → `needs_human_review`.
+- **Validación final:**
+  - `tests/pipelines` → 356 passed;
+  - `services/api` → 117 passed;
+  - jest → 29 passed;
+  - build OK.
+- **PR:** abierto desde `feature/rfp-response-generation`.
+
 ## Fix de evidencia del PR #24 (almacenamiento de telemetría), 2026-11-22
 
 - **Observación de la revisión:** la evidencia solo mostraba eventos técnicos y un lote sin rechazos (`3/3/0`).

@@ -1,5 +1,7 @@
+import os
 import random
 import sys
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -155,9 +157,46 @@ def process_rfp_ticket(self, ticket_id: str, force_accept: bool = False) -> dict
     engine = create_sql_engine()
     try:
         result = run_ticket(ticket_id, RfpRepository(engine), force_accept=force_accept)
+        if result["status"] == "analisis_completo" and os.environ.get("RFP_AUTO_GENERATE", "1") != "0":
+            # Enrutamiento a la Parte 2: el ticket quedó listo (rfp_handoff.v1 con next_status=generando_borrador).
+            try:
+                RfpRepository(engine).update_ticket(ticket_id, response_stage="generando")  # la UI sigue refrescando
+                enqueue_rfp_response(ticket_id)
+            except Exception as error:  # noqa: BLE001 — la Parte 1 terminó bien; no se repite por un fallo de la cola
+                logger.exception("No se pudo encolar la Parte 2; ticket_id=%s", ticket_id)
+                RfpRepository(engine).update_ticket(ticket_id, response_stage="fallido",
+                                                    last_error=f"No se pudo encolar la generación: {type(error).__name__}")
         return {k: result[k] for k in ("ticket_id", "status", "pipeline_stage")}
     except KeyError:
         logger.error("Ticket RFP inexistente; ticket_id=%s", ticket_id)
+        raise
+    except Exception as error:
+        if self.request.retries >= self.max_retries:
+            raise
+        raise self.retry(exc=error, countdown=retry_countdown(self.request.retries))
+    finally:
+        engine.dispose()
+
+
+# ----------------------------------------------------------------------------
+# Respuesta a RFP (Hito 9, Parte 2): generación por departamento + evaluación en paralelo
+# ----------------------------------------------------------------------------
+def enqueue_rfp_response(ticket_id: str) -> None:
+    generate_rfp_response.apply_async(args=[ticket_id], task_id=f"rfp-gen-{ticket_id}-{uuid.uuid4().hex[:8]}")
+
+
+@app.task(bind=True, base=RfpIntakeTask, name="rfp_response.generate_ticket")
+def generate_rfp_response(self, ticket_id: str) -> dict:
+    from mock_data.pipelines.rfp_intake.generation import HandoffError
+    from mock_data.pipelines.rfp_intake.repository import RfpRepository
+    from mock_data.pipelines.rfp_intake.response_graph import run_response
+
+    engine = create_sql_engine()
+    try:
+        result = run_response(ticket_id, RfpRepository(engine))
+        return {k: result[k] for k in ("ticket_id", "status", "response_stage")}
+    except (KeyError, HandoffError):
+        logger.error("Ticket RFP no listo para la Parte 2; ticket_id=%s", ticket_id)
         raise
     except Exception as error:
         if self.request.retries >= self.max_retries:

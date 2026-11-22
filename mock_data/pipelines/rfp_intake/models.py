@@ -4,8 +4,10 @@ Tablas (migración ``supabase/migrations/20261122100000_create_rfp_intake.sql``)
 
 * ``rfp_tickets``: el ticket (fuente de verdad del estado) y el contrato de handoff a la Parte 2.
 * ``rfp_metadata``: metadatos de la RFP, el Markdown convertido, métricas de legibilidad y la clasificación.
-* ``rfp_department_sections``: una fila por departamento activo con ``key_aspects`` (Parte 1); las columnas
-  de borrador/evaluación/aprobación quedan listas para las Partes 2 y 3.
+* ``rfp_department_sections``: una fila por departamento activo con ``key_aspects`` (Parte 1), el último borrador
+  y su ``EvaluationResult`` (Parte 2) y la aprobación (Parte 3).
+* ``rfp_section_evaluations`` (Parte 2, migración ``20261122150000_rfp_response_generation.sql``): historial de cada
+  iteración del ciclo generador-evaluador: el borrador y su ``EvaluationResult`` estructurado.
 
 TinyDB y los archivos JSON no son fuente de verdad de estas entidades.
 """
@@ -25,6 +27,10 @@ TICKET_STATUSES = ("analizando", "descartado", "analisis_completo", "generando_b
 # Etapas internas del pipeline: el ticket sabe exactamente hasta dónde llegó si un job falla a mitad.
 PIPELINE_STAGES = ("recibido", "convertido", "metadatos", "clasificado", "orquestado", "workers", "sintetizado",
                    "handoff", "fallido")
+# Parte 2: etapa de la generación/evaluación (columna aparte: la etapa de la Parte 1 se conserva).
+RESPONSE_STAGES = ("generando", "evaluando", "handoff", "fallido")
+# Estado de cada sección en la Parte 2.
+SECTION_STATUSES = ("pendiente", "generando", "en_evaluacion", "evaluacion_superada", "needs_human_review")
 
 
 def _now() -> datetime:
@@ -50,6 +56,10 @@ class RfpTicket(SQLModel, table=True):
     discard_reason: Optional[str] = Field(default=None)
     # Contrato de handoff a la Parte 2 (rfp_handoff.v1): ticket_id + payload del synthesizer.
     handoff: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    # Parte 2: generación y evaluación. ``response_handoff`` es el contrato rfp_response_handoff.v1 a la Parte 3.
+    response_stage: Optional[str] = Field(default=None, max_length=16)
+    response_attempts: int = Field(default=0)
+    response_handoff: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = _ts()
     updated_at: datetime = _ts()
 
@@ -85,10 +95,35 @@ class DepartmentSection(SQLModel, table=True):
     key_aspects: list = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     open_questions: list = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     worker_meta: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
-    # Partes 2 y 3
+    # Parte 2: último borrador y su EvaluationResult (el historial completo está en rfp_section_evaluations).
     draft_content: Optional[str] = None
     evaluation_results: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    section_status: str = Field(default="pendiente", max_length=24)
+    iterations: int = Field(default=0)
+    needs_human_review: bool = Field(default=False)
+    # Parte 3
     approval_status: str = Field(default="pendiente", max_length=24)
     approver: Optional[str] = Field(default=None, max_length=120)  # responsable del BRIEFING §2.1
     approved_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+    created_at: datetime = _ts()
+
+
+class SectionEvaluation(SQLModel, table=True):
+    """Una iteración del ciclo generador-evaluador: el borrador evaluado y su EvaluationResult estructurado."""
+
+    __tablename__ = "rfp_section_evaluations"
+    __table_args__ = (UniqueConstraint("ticket_id", "department_id", "run", "iteration", name="uq_rfp_section_evaluation"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ticket_id: uuid.UUID = Field(foreign_key="rfp_tickets.ticket_id", index=True)
+    department_id: str = Field(max_length=16)
+    run: int = Field(default=1)                         # ejecución de la Parte 2 (response_attempts)
+    iteration: int
+    draft_content: str
+    readability: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    relevance: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    compliance: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    overall_pass: bool
+    feedback_for_generator: str = ""
+    generator_meta: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     created_at: datetime = _ts()

@@ -1,6 +1,7 @@
 // Smoke E2E de la recepción de RFP POR LA UI (uis/backoffice), con Chromium headless (Playwright).
 // Inicia sesión, abre /rfps, sube los PDF por el formulario y espera a que la UI muestre el estado final de cada
-// ticket (analizando → análisis completo | descartado). Guarda capturas de cada paso y del detalle de cada ticket.
+// ticket: Parte 1 (analizando → descartado) y Parte 2 (generando borrador → en evaluación → esperando aprobación |
+// revisión humana). Guarda capturas de cada paso y del detalle de cada ticket (borradores y evaluaciones).
 //
 //   UI_URL=http://127.0.0.1:5174 UI_EMAIL=… UI_PASSWORD=… OUT=docs/pr-evidence/rfp-intake \
 //   PLAYWRIGHT_MODULE=$PWD/uis/backoffice/node_modules/playwright CHROMIUM_PATH=… \
@@ -13,7 +14,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright')
   const files = process.argv.slice(2)
   const out = process.env.OUT || 'rfp-ui-evidence'
   const base = process.env.UI_URL || 'http://127.0.0.1:5174'
-  const timeoutMs = Number(process.env.WAIT_MS || 15 * 60 * 1000)
+  const timeoutMs = Number(process.env.WAIT_MS || 40 * 60 * 1000)
+  // Estados finales: los de la Parte 2 (o el descarte de la Parte 1) y cualquier fallo.
+  const FINAL = /^(Descartado|Esperando aprobación|Revisión humana|Análisis fallido|Generación fallida)/
   fs.mkdirSync(out, { recursive: true })
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined })
   const page = await browser.newPage({ viewport: { width: 1360, height: 1000 } })
@@ -41,7 +44,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright')
     const statuses = await page.$$eval('[data-testid=rfp-row] [data-testid=rfp-status]', (els) => els.map((e) => e.textContent))
     const mine = statuses.slice(0, Math.max(0, statuses.length - rowsBefore))
     log('estados de esta subida en la UI:', JSON.stringify(mine))
-    if (mine.length >= files.length && mine.every((s) => !s.startsWith('Analizando'))) break
+    if (mine.length >= files.length && mine.every((s) => FINAL.test(s))) break
+    if (mine.some((s) => s.startsWith('En evaluación')) && !fs.existsSync(path.join(out, '02b-en-evaluacion.png'))) {
+      await page.screenshot({ path: path.join(out, '02b-en-evaluacion.png'), fullPage: true })
+    }
     await page.waitForTimeout(10000)
   }
   await page.screenshot({ path: path.join(out, '03-estados-finales.png'), fullPage: true })
