@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, Request, status
@@ -52,19 +52,24 @@ def get_current_user(
         detail="Credenciales de autenticación no válidas.",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    identity = authenticate_token(request.app.state, oauth_token or (bearer.credentials if bearer is not None else None))
+    if identity is None:
+        raise unauthorized
+    return identity[0]
+
+
+def authenticate_token(state: Any, token: str | None) -> tuple[User, float] | None:
+    """Usuario activo y caducidad de un JWT de acceso, o ``None``. La misma regla para HTTP, SSE y WebSocket."""
     try:
-        token = oauth_token or (bearer.credentials if bearer is not None else None)
         if token is None:
-            raise unauthorized
+            return None
         secret_key, _ = auth_settings()
         payload = jwt.decode(token, secret_key, algorithms=[ALGORITHM], options={"require_sub": True, "require_exp": True})
         if payload.get("purpose", "access") != "access":
-            raise unauthorized
-        user_id = int(payload["sub"])
-        with request.app.state.lock:
-            user = get_user_by_id(request.app.state.db, user_id)
+            return None
+        with state.lock:
+            user = get_user_by_id(state.db, int(payload["sub"]))
+        expires_at = float(payload["exp"])
     except (JWTError, KeyError, TypeError, ValueError, RuntimeError):
-        raise unauthorized
-    if user is None or not user.is_active:
-        raise unauthorized
-    return user
+        return None
+    return (user, expires_at) if user is not None and user.is_active else None

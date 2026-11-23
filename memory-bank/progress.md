@@ -1,5 +1,21 @@
 # Progress Log — TrackFlow
 
+## Chat en tiempo real por WebSocket (Parte 2), 2026-11-23
+
+- **Contexto y rama:** contexto archivado en `memory-bank/history/REALTIME-WEBSOCKET-CONTEXT-2026-11-23.md`. Rama `feature/websocket-chat`, desde `main` con el #48 mergeado.
+- **Backend:** `WS /chat/ws` con `session_id` obligatorio y el JWT del API (`?token=` o primer frame). Núcleo en `services/agent/chat` (contrato, pub/sub por sesión, motor, persistencia). El agente gana `KnowledgeAgent.stream` sin cambiar su grafo.
+- **Seguridad:** guarda de salida incremental (el streaming no la salta), JWT fuera de los logs, cierre al caducar el token, y una respuesta interrumpida no deja pendiente su propuesta de memoria.
+- **Interrupción:** corta la petición al modelo; el parcial se conserva como `interrupted` y `new_input` es un turno nuevo.
+- **Frontend:** el chat existente (`/knowledge`, ahora «Asistente CX») pasa a WebSocket con respuesta en vivo, interrupción, backoff y rehidratación. Deja de usar `POST /knowledge/query`, que sigue en el API.
+- **Migración** `20261123170000_chat_sessions.sql`, **aplicada en Supabase**.
+- **Decisión:** el historial persistido restaura el hilo; el checkpoint del agente sigue siendo por respuesta (`run_id` = `message_id`) para no arrastrar resultados de tools entre turnos.
+- **Validación:** `tests` → 510 passed (74 nuevos); `services/api` → 154 passed (SQLite desechable); jest → 53 passed; build OK; 20 mutaciones, 19 detectadas a la primera y la restante ya cubierta. E2E con el modelo real en `docs/pr-evidence/chat-websocket/`.
+- **Corregido durante las pruebas:** cierre explícito del grafo al abortar, guardado periódico que podía deshacer una interrupción, respuestas en curso al apagar el API, y corte antes de consultar la base (de 207 a 86 ms).
+- **Revisión del checklist (7/7):** contrato contrastado por código con `CONTEXT.md`; interrupción medida en el modelo con `npm run dev` (4 de 4: petición cerrada, 0 tokens después). Corregido: StrictMode creaba dos sesiones y recargar podía perder el hilo.
+- **Límites:** un solo proceso; el agente sigue sin usar turnos anteriores. Las pruebas dejaron 2 conversaciones en Supabase.
+- **Preguntas de diseño** respondidas en `docs/agent/chat-websocket.md`; añadida la prueba de 12 suscriptores con una sola llamada al agente por turno.
+- **PR** abierto desde `feature/websocket-chat`.
+
 ## Notificaciones en tiempo real de tickets RFP (SSE, Parte 1), 2026-11-23
 
 - **Contexto y rama:** contexto archivado en `memory-bank/history/REALTIME-SSE-CONTEXT-2026-11-23.md`. Rama `feature/sse-notifications`, desde `main` con el #47 mergeado.

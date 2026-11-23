@@ -1,0 +1,58 @@
+[
+  {
+    "t": "+61.2s",
+    "step": "OK: la respuesta crece en pantalla mientras llega",
+    "token_chunk": 91,
+    "longitudes_vistas": 88,
+    "segundos": "14.7"
+  },
+  {
+    "t": "+105.0s",
+    "step": "interrumpida",
+    "ms": 86,
+    "parcial": "¡Hola! Gracias por tu pregunta. Aquí"
+  },
+  {
+    "t": "+132.6s",
+    "step": "OK: el parcial sigue visible y marcado; la respuesta nueva es otro mensaje",
+    "nueva": "Entendido. Para la política de devoluciones en Estados Unidos, el período estándar para devolver un producto es 30 días desde la entrega, salvo que haya sido co"
+  },
+  {
+    "t": "+132.6s",
+    "step": "OK: ningún token de la generación original después de generation_interrupted"
+  },
+  {
+    "t": "+187.8s",
+    "step": "OK: sin red la conversación sigue visible",
+    "intentos": 4
+  },
+  {
+    "t": "+202.3s",
+    "step": "OK: reconecta con el mismo session_id, rehidrata y la respuesta sigue donde iba",
+    "mensajes_en_el_snapshot": 8,
+    "antes": 19,
+    "al_final": 552
+  },
+  {
+    "t": "+202.3s",
+    "step": "OK: todas las conexiones usan el mismo session_id y el JWT no va en la URL",
+    "conexiones": 5
+  },
+  {
+    "t": "+202.3s",
+    "step": "OK: sin recargar la página"
+  },
+  {
+    "t": "+203.2s",
+    "step": "OK: recargar restaura el hilo completo, con la interrumpida marcada"
+  },
+  {
+    "t": "+269.1s",
+    "step": "OK: tras reiniciar el API, la respuesta a medias se conserva como interrumpida",
+    "texto": "¡Hola! Gracias por tu pregunta. En TrackFlow, tenemos una variedad de opciones para el transporte de paquetes dependiend"
+  },
+  {
+    "t": "+292.2s",
+    "step": "OK: y la conversación continúa en el mismo hilo"
+  }
+]
