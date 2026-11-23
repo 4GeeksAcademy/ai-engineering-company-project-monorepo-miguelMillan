@@ -293,8 +293,10 @@ export async function uploadRfp(file: File): Promise<{ ticket_id: string; rfp_id
   return payload
 }
 
-export function listRfpTickets(): Promise<{ tickets: RfpTicketSummary[] }> {
-  return apiRequest('/rfp-intake/tickets')
+/** Con `ticketIds` pide solo esos tickets (el refresco de los que están en curso). */
+export function listRfpTickets(ticketIds: string[] = []): Promise<{ tickets: RfpTicketSummary[] }> {
+  const query = new URLSearchParams(ticketIds.map((id) => ['ticket_id', id]))
+  return apiRequest(`/rfp-intake/tickets${ticketIds.length ? `?${query}` : ''}`)
 }
 
 export function getRfpTicket(ticketId: string): Promise<RfpTicketDetail> {

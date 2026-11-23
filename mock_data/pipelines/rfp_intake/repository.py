@@ -13,10 +13,10 @@ from typing import Any, Iterator
 
 from sqlmodel import Session, select
 
-from sqlalchemy import func
+from sqlalchemy import func, text
 
 from mock_data.pipelines.rfp_intake.models import (DepartmentSection, FinalDocument, RfpMetadataRecord, RfpTicket,
-                                                   SectionEvaluation, TraceEvent, _now)
+                                                   SectionEvaluation, TicketEvent, TraceEvent, _now)
 
 
 class RfpRepository:
@@ -65,6 +65,35 @@ class RfpRepository:
     def list_tickets(self, limit: int = 50) -> list[RfpTicket]:
         with self._session() as session:
             return list(session.exec(select(RfpTicket).order_by(RfpTicket.created_at.desc()).limit(limit)))
+
+    def get_tickets(self, ticket_ids: list[uuid.UUID]) -> list[RfpTicket]:
+        with self._session() as session:
+            return list(session.exec(select(RfpTicket).where(RfpTicket.ticket_id.in_(ticket_ids))
+                                     .order_by(RfpTicket.created_at.desc())))
+
+    # ---------------------------------------------------------------- eventos en tiempo real (outbox)
+    def register_event(self, ticket_id: uuid.UUID | str, event_type: str, payload: dict[str, Any]) -> bool:
+        """Registra el evento una sola vez por ticket. Devuelve ``False`` si ya estaba.
+
+        El lock serializa las inserciones hasta el commit, así los ``id`` se hacen visibles en orden: sin él, un lector
+        podría avanzar su cursor al id 6 antes de que el 5 se confirmara, y perder el 5 en silencio."""
+        tid = uuid.UUID(str(ticket_id))
+        with self._session(write=True) as session:
+            if self.engine.url.get_backend_name() == "postgresql":
+                session.execute(text("SELECT pg_advisory_xact_lock(hashtext('rfp_ticket_events'))"))
+            if session.exec(select(TicketEvent.id).where(TicketEvent.ticket_id == tid, TicketEvent.event_type == event_type)).first():
+                return False
+            session.add(TicketEvent(ticket_id=tid, event_type=event_type, payload=payload))
+            session.commit()
+            return True
+
+    def latest_event_id(self) -> int:
+        with self._session() as session:
+            return session.exec(select(func.max(TicketEvent.id))).one() or 0
+
+    def events_after(self, event_id: int, limit: int) -> list[TicketEvent]:
+        with self._session() as session:
+            return list(session.exec(select(TicketEvent).where(TicketEvent.id > event_id).order_by(TicketEvent.id).limit(limit)))
 
     # ---------------------------------------------------------------- metadatos y secciones
     def save_metadata(self, ticket_id: uuid.UUID | str, **fields: Any) -> None:

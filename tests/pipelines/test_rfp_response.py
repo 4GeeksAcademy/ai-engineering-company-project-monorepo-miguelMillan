@@ -38,8 +38,7 @@ GOOD_EN = ("Luna Cosmetics needs storage and delivery across the US. We store th
 @pytest.fixture
 def repo():
     engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
-    SQLModel.metadata.create_all(engine, tables=[models.RfpTicket.__table__, models.RfpMetadataRecord.__table__,
-                                                 models.DepartmentSection.__table__, models.SectionEvaluation.__table__])
+    SQLModel.metadata.create_all(engine)
     return RfpRepository(engine)
 
 

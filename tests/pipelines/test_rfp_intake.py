@@ -190,8 +190,7 @@ def test_handoff_contract_carries_everything_part_2_needs():
 @pytest.fixture
 def repo():
     engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
-    SQLModel.metadata.create_all(engine, tables=[models.RfpTicket.__table__, models.RfpMetadataRecord.__table__,
-                                                 models.DepartmentSection.__table__])
+    SQLModel.metadata.create_all(engine)
     return RfpRepository(engine)
 
 

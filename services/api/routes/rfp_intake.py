@@ -21,7 +21,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
@@ -117,9 +117,11 @@ def _summary(repo: RfpRepository, ticket) -> dict:
 
 
 @router.get("/tickets")
-def list_rfp_tickets(request: Request, _user=Depends(get_current_user)):
+def list_rfp_tickets(request: Request, ticket_id: list[uuid.UUID] | None = Query(default=None, max_length=50),
+                     _user=Depends(get_current_user)):
+    """Con ``ticket_id`` (repetible) devuelve solo esos: la UI refresca lo que está en curso sin pedir toda la lista."""
     repo = _repo(request)
-    return {"tickets": [_summary(repo, t) for t in repo.list_tickets()]}
+    return {"tickets": [_summary(repo, t) for t in (repo.get_tickets(ticket_id) if ticket_id else repo.list_tickets())]}
 
 
 @router.get("/tickets/{ticket_id}")

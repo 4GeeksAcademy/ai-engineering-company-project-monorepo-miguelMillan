@@ -22,6 +22,7 @@ from langgraph.types import Send
 
 from mock_data.pipelines.rfp_intake import agents
 from mock_data.pipelines.rfp_intake.departments import DEPARTMENTS
+from mock_data.pipelines.rfp_intake.events import RFP_TICKET_CREATED, ticket_created_payload
 from mock_data.pipelines.rfp_intake.ingest import RfpMetadata, convert_pdf, extract_metadata, readability_metrics
 from mock_data.pipelines.rfp_intake.llm import LlmFn, chat_json
 from mock_data.pipelines.rfp_intake.repository import RfpRepository
@@ -83,6 +84,9 @@ def build_graph(repo: RfpRepository, llm_fn: LlmFn | None = chat_json, converter
             result.reason = f"Aceptado manualmente tras descarte: {result.reason}"
         repo.save_metadata(state["ticket_id"], classification=result.to_dict())
         stage(state, "clasificado")
+        if result.is_rfp:  # notificación en tiempo real: RFP válida que empieza a procesarse (status analyzing)
+            repo.register_event(state["ticket_id"], RFP_TICKET_CREATED,
+                                ticket_created_payload(repo.get_ticket(state["ticket_id"]), state["metadata"]))
         return {"classification": result.to_dict()}
 
     def route_after_classify(state: IntakeState) -> str:

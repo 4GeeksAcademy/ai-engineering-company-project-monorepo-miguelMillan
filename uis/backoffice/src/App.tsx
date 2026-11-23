@@ -4,6 +4,7 @@ import { IncidentDirectory } from './app/incidents/IncidentDirectory'
 import { AccountProfile } from './app/account/AccountProfile'
 import { TelemetryDashboard } from './app/telemetry/TelemetryDashboard'
 import { ReportingPage } from './app/reporting/ReportingPages'
+import { RfpLiveNotifications } from './app/rfps/RfpLiveNotifications'
 import { AuthPage } from './components/AuthPage'
 import { authRequest, clearSession, getSessionToken } from './utils/auth'
 import { track } from './services/telemetry'
@@ -135,6 +136,7 @@ function App() {
           </nav>
         </div>
       </header>
+      <RfpLiveNotifications />
 
       <Suspense fallback={<main className="mx-auto w-full max-w-6xl px-6 py-8"><p role="status">Cargando vista...</p></main>}>
       {path.startsWith('/backoffice/inventory/') ? (
