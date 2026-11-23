@@ -40,10 +40,12 @@ from __future__ import annotations
 import inspect
 import logging
 import os
+import re
 import sqlite3
 import sys
 import time
 import uuid
+from contextlib import closing
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Literal, NotRequired, TypedDict, get_type_hints
@@ -94,6 +96,13 @@ from services.agent.guardrails import (  # noqa: E402
 )
 from services.agent.memory_llm import generate_with_memory, reflect_memory  # noqa: E402
 from services.agent.prompts import CX_SYSTEM_PROMPT, generate_cx_answer  # noqa: E402
+from services.agent.streaming import (  # noqa: E402
+    GenerationAborted,
+    GenerationControl,
+    StreamGuard,
+    abort_if_cancelled,
+    generation_control,
+)
 from services.agent.tracing import TraceStore, _now  # noqa: E402
 
 logger = logging.getLogger("trackflow.agent")
@@ -463,6 +472,7 @@ def make_propose_node(memory_store: Callable[[], MemoryStore | None], reflect_fn
         store = memory_store()
         if store is None:
             return update | {"memory_rejection": {"codes": ["MEMORIA_NO_DISPONIBLE"], "proposal": proposal.model_dump()}}
+        abort_if_cancelled()  # respuesta interrumpida: no se deja pendiente una propuesta que nadie va a ver
         try:
             pending = store.save_pending(proposal, state["question"], config["configurable"]["thread_id"],
                                          session_id=state.get("session_id"))
@@ -811,6 +821,26 @@ class AgentResult:
     memory_resolution: dict[str, Any] | None = None
     guard: dict[str, Any] | None = None
     output_check: dict[str, Any] | None = None
+    replaced: bool = False  # streaming: la respuesta final no continúa lo ya mostrado (la sustituyó output_guard)
+
+
+def streamed_prefix(state: AgentState) -> str:
+    """Lo que precede al texto del modelo en la respuesta final (mismo orden que compose/propose/output_guard)."""
+    parts = []
+    if notice := (state.get("guard") or {}).get("notice"):
+        parts.append(notice)
+    if resolution := state.get("memory_resolution"):
+        parts.append(resolution["ack"])
+    if state.get("incident_result") is not None:
+        parts.append(answers.render_incidents(state["incident_result"]))
+    if state.get("inventory_result") is not None:
+        parts.append(answers.render_inventory(state["inventory_result"]))
+    return "".join(f"{part}\n\n" for part in parts)
+
+
+def split_tokens(text: str) -> list[str]:
+    """Texto determinista (tools, guardas) en fragmentos de palabra, para el mismo canal de tokens."""
+    return re.findall(r"\S+\s*|\s+", text)
 
 
 class KnowledgeAgent:
@@ -841,20 +871,89 @@ class KnowledgeAgent:
         ``user`` queda en el registro de auditoría de memoria. ``session`` es el contexto autenticado (qué
         pedidos puede consultar); sin él, ningún pedido concreto está autorizado. Las tools usan la identidad
         OAuth del agente."""
+        run_id, initial, config = self._start(question, run_id, session_id, user, session)
+        try:
+            state = self.graph.invoke(initial, config, durability="sync")
+        except Exception as error:
+            raise AgentRunError(run_id, self._fail(run_id, error), error) from error
+        return self._result(run_id, state)
+
+    def stream(self, question: str, *, on_token: Callable[[str], None], control: GenerationControl,
+               run_id: str | None = None, session_id: str | None = None, user: str | None = None,
+               session: SessionContext | None = None) -> AgentResult:
+        """La misma corrida que ``run``, entregando la respuesta por fragmentos con ``on_token``.
+
+        ``stream_mode="custom"`` trae los tokens del modelo mientras el nodo ``generate`` sigue en marcha y ``"values"``
+        el estado tras cada nodo. Nada se entrega sin pasar por ``StreamGuard``, y la respuesta final es la de
+        ``output_guard``: si no continúa lo mostrado, ``replaced`` es ``True``. Con ``control.cancel()`` se detiene el
+        modelo, no se ejecutan más nodos y se lanza ``GenerationAborted``."""
+        run_id, initial, config = self._start(question, run_id, session_id, user, session)
+        guard = StreamGuard(session or SessionContext(user=user), CX_SYSTEM_PROMPT)
+        state: dict[str, Any] = initial
+        streaming = False
+
+        def deliver(text: str) -> None:
+            control.raise_if_cancelled()
+            if text:
+                on_token(text)
+
+        try:
+            # closing(): al abortar se sale de aquí con el nodo ya terminado y la conexión con el modelo cerrada.
+            with generation_control(control), closing(
+                    self.graph.stream(initial, config, stream_mode=["custom", "values"], durability="sync")) as events:
+                for mode, chunk in events:
+                    control.raise_if_cancelled()
+                    if mode == "values":
+                        state = chunk
+                    elif not streaming:
+                        if chunk["token"].strip():  # la respuesta final no empieza por espacios
+                            streaming = True
+                            deliver(guard.push(streamed_prefix(state) + chunk["token"].lstrip()))
+                    else:
+                        deliver(guard.push(chunk["token"]))
+            replaced = not state["answer"].startswith(guard.released)
+            if not replaced:
+                for token in split_tokens(state["answer"][len(guard.released):]):
+                    deliver(token)
+        except GenerationAborted as error:
+            self._fail(run_id, error)
+            self.discard_unseen_proposal(session_id, run_id)
+            raise
+        except Exception as error:
+            raise AgentRunError(run_id, self._fail(run_id, error), error) from error
+        result = self._result(run_id, state)
+        result.replaced = replaced
+        return result
+
+    def discard_unseen_proposal(self, session_id: str | None, run_id: str) -> None:
+        """Una respuesta interrumpida no puede dejar pendiente su propuesta de memoria: el usuario no llegó a verla y el
+        siguiente «sí» la aprobaría."""
+        if self.memory_store is None or not session_id:
+            return
+        try:
+            pending = self.memory_store.session_pending(session_id)
+            if pending is not None and pending.run_id == run_id:
+                self.memory_store.discard(pending.id, reason="respuesta interrumpida antes de mostrarse", reply="")
+        except Exception:  # noqa: BLE001 — sin memoria no hay propuesta que descartar
+            logger.warning("no se pudo descartar la propuesta de una respuesta interrumpida", exc_info=True)
+
+    def _start(self, question: str, run_id: str | None, session_id: str | None, user: str | None,
+               session: SessionContext | None) -> tuple[str, dict[str, Any], dict[str, Any]]:
         run_id = run_id or str(uuid.uuid4())
-        config = {"configurable": {"thread_id": run_id, "user": user}}
         self.traces.start_run(run_id, question)
         initial: dict[str, Any] = {"question": question, "session": (session or SessionContext(user=user)).to_state()}
         if session_id:
             initial["session_id"] = session_id
-        try:
-            state = self.graph.invoke(initial, config, durability="sync")
-        except Exception as error:
-            trace = self.traces.get_trace(run_id) or {"steps": []}
-            failed = next((s["name"] for s in reversed(trace["steps"]) if s["status"] == "error"), None)
-            self.traces.finish_run(run_id, status="failed", final_node=failed, error_type=type(error).__name__,
-                                   sources=sources_used(trace))
-            raise AgentRunError(run_id, failed, error) from error
+        return run_id, initial, {"configurable": {"thread_id": run_id, "user": user}}
+
+    def _fail(self, run_id: str, error: BaseException) -> str | None:
+        trace = self.traces.get_trace(run_id) or {"steps": []}
+        failed = next((s["name"] for s in reversed(trace["steps"]) if s["status"] == "error"), None)
+        self.traces.finish_run(run_id, status="failed", final_node=failed, error_type=type(error).__name__,
+                               sources=sources_used(trace))
+        return failed
+
+    def _result(self, run_id: str, state: dict[str, Any]) -> AgentResult:
         trace = self.traces.get_trace(run_id)
         final_node = answering_node(trace)
         sources = sources_used(trace)

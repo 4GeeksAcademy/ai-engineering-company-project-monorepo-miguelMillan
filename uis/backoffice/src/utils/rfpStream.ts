@@ -1,9 +1,8 @@
+import { abortableSleep, backoffDelay } from './backoff'
 import { createSseParser } from './sse'
 import { parseTicketCreated, type RfpTicketCreated } from './rfpEvents'
 
 export const RFP_EVENTS_PATH = '/rfp-intake/events'
-const BASE_DELAY_MS = 1_000
-const MAX_DELAY_MS = 30_000
 const STABLE_MS = 10_000
 const STALE_MS = 45_000 // tres keep-alive del servidor (15 s): sin bytes en ese tiempo, la conexión está muerta
 
@@ -27,22 +26,9 @@ export type RfpStreamOptions = {
   staleMs?: number
 }
 
-/** 1 s, 2 s, 4 s… hasta 30 s, con jitter entre la mitad y el total para que las pestañas no reconecten a la vez. */
-export function backoffDelay(attempt: number, random: () => number = Math.random): number {
-  const ceiling = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** (attempt - 1))
-  return Math.round(ceiling / 2 + random() * (ceiling / 2))
-}
-
-function defaultSleep(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms)
-    signal.addEventListener('abort', () => { clearTimeout(timer); resolve() }, { once: true })
-  })
-}
-
 /** Mantiene el stream abierto. Al reconectar envía `Last-Event-ID` para recibir lo perdido. Devuelve cómo pararlo. */
 export function startRfpStream(options: RfpStreamOptions): () => void {
-  const { fetchStream, onTicket, onReset, onStatus, onCursor, sleep = defaultSleep, random = Math.random, staleMs = STALE_MS } = options
+  const { fetchStream, onTicket, onReset, onStatus, onCursor, sleep = abortableSleep, random = Math.random, staleMs = STALE_MS } = options
   const stopping = new AbortController()
   let cursor = options.initialEventId ?? ''
   let attempt = 0

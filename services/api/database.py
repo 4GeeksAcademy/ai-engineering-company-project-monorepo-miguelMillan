@@ -66,6 +66,9 @@ def database_lifespan(path: Path | None = None):
             initialize_sql_database(engine)
             yield
         finally:
+            chat_engine = getattr(application.state, "chat_engine", None)
+            if chat_engine is not None:
+                chat_engine.shutdown()
             if engine is not None:
                 engine.dispose()
             application.state.db.close()

@@ -6939,6 +6939,7 @@ dependencies = [
     { name = "sqlmodel" },
     { name = "tinydb" },
     { name = "uvicorn" },
+    { name = "websockets" },
 ]
 
 [package.dev-dependencies]
@@ -6980,6 +6981,7 @@ requires-dist = [
     { name = "sqlmodel", specifier = ">=0.0.48" },
     { name = "tinydb", specifier = ">=4.8,<5" },
     { name = "uvicorn", specifier = ">=0.34,<1" },
+    { name = "websockets", specifier = ">=14" },
 ]
 
 [package.metadata.requires-dev]

@@ -1,0 +1,120 @@
+[
+ {
+  "dir": "out",
+  "event": "auth",
+  "data": {}
+ },
+ {
+  "dir": "in",
+  "event": "session_snapshot",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e",
+   "messages": "0 mensajes"
+  }
+ },
+ {
+  "dir": "out",
+  "event": "user_message",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e",
+   "text": "¿Cuál es la política de devoluciones estándar y cuál es la ventana?"
+  }
+ },
+ {
+  "dir": "in",
+  "event": "user_message",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e",
+   "text": "¿Cuál es la política de devoluciones estándar y cuál es la ventana?"
+  }
+ },
+ {
+  "dir": "out",
+  "event": "ping",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e"
+  }
+ },
+ {
+  "dir": "in",
+  "event": "pong",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e"
+  }
+ },
+ {
+  "dir": "in",
+  "event": "token_chunk",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e",
+   "token": " Aqu",
+   "sequence": 10
+  }
+ },
+ {
+  "dir": "in",
+  "event": "token_chunk",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e",
+   "token": "í",
+   "sequence": 11
+  }
+ },
+ {
+  "dir": "out",
+  "event": "interrupt_requested",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e",
+   "new_input": "espera, quiero hacer una devolución, no hablar de tarifas"
+  }
+ },
+ {
+  "dir": "in",
+  "event": "generation_interrupted",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e",
+   "message_id": "msg_156948d3d83b4337a5c7cefc83b34f08",
+   "status": "interrupted"
+  }
+ },
+ {
+  "dir": "in",
+  "event": "user_message",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e",
+   "text": "espera, quiero hacer una devolución, no hablar de tarifas"
+  }
+ },
+ {
+  "dir": "out",
+  "event": "ping",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e"
+  }
+ },
+ {
+  "dir": "in",
+  "event": "pong",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e"
+  }
+ },
+ {
+  "dir": "in",
+  "event": "token_chunk",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e",
+   "token": "En",
+   "sequence": 1
+  }
+ },
+ {
+  "dir": "in",
+  "event": "token_chunk",
+  "data": {
+   "session_id": "chat_f73bea7b566f4208ab4509a73259401e",
+   "token": "tend",
+   "sequence": 2
+  }
+ }
+]

@@ -6,7 +6,8 @@ jest.mock('../utils/auth', () => ({ apiFetch: jest.fn(), apiRequest: jest.fn() }
 import { apiFetch } from '../utils/auth'
 import { mergeTicketEvent, mergeTicketList, parseTicketCreated, patchTickets, type RfpTicketCreated } from '../utils/rfpEvents'
 import { dismissRfp, listenRfpLive, rfpLiveStore, startRfpLive } from '../utils/rfpLive'
-import { backoffDelay, startRfpStream, type RfpStreamOptions, type StreamStatus } from '../utils/rfpStream'
+import { backoffDelay } from '../utils/backoff'
+import { startRfpStream, type RfpStreamOptions, type StreamStatus } from '../utils/rfpStream'
 import type { RfpTicketSummary } from '../utils/rfps'
 import { createSseParser, type SseMessage } from '../utils/sse'
 
