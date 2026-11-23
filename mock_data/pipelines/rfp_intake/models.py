@@ -20,7 +20,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import JSON, Column, DateTime, UniqueConstraint
+from sqlalchemy import JSON, BigInteger, Column, DateTime, Integer, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 # Estados del ticket a lo largo del Hito 9 (BRIEFING §2.3). La Parte 1 usa los tres primeros.
@@ -178,3 +178,18 @@ class TraceEvent(SQLModel, table=True):
     output: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     started_at: datetime = _ts()
     finished_at: datetime = _ts()
+
+
+class TicketEvent(SQLModel, table=True):
+    """Outbox de eventos en tiempo real. ``id`` es el ``id:`` de SSE (y el ``Last-Event-ID`` de la reconexión).
+    Un evento de cada tipo por ticket: los reintentos y reprocesos no vuelven a notificar."""
+
+    __tablename__ = "rfp_ticket_events"
+    __table_args__ = (UniqueConstraint("ticket_id", "event_type", name="uq_rfp_ticket_event"),)
+
+    id: Optional[int] = Field(default=None, sa_column=Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True,
+                                                             autoincrement=True))
+    ticket_id: uuid.UUID = Field(foreign_key="rfp_tickets.ticket_id")
+    event_type: str = Field(max_length=40)
+    payload: dict = Field(sa_column=Column(JSON, nullable=False))
+    created_at: datetime = _ts()

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 const cwd = fileURLToPath(new URL('..', import.meta.url))
 const suppliersCommand = process.env.FASTAPI_RELOAD === '1' ? 'uvicorn' : 'uv'
 const suppliersArgs = process.env.FASTAPI_RELOAD === '1'
-  ? ['main:app', '--host', '0.0.0.0', '--port', process.env.SUPPLIERS_PORT ?? '8081', '--reload']
+  ? ['main:app', '--host', '0.0.0.0', '--port', process.env.SUPPLIERS_PORT ?? '8081', '--reload', '--timeout-graceful-shutdown', '5']
   : ['run', 'serve']
 const suppliers = spawn(suppliersCommand, suppliersArgs, { cwd, stdio: 'inherit', env: process.env })
 const api = spawn(process.execPath, ['src/server.js'], { cwd, stdio: 'inherit', env: process.env })

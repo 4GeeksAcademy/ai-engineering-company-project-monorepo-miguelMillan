@@ -1,9 +1,11 @@
 import { FileUp, RefreshCw } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { ApprovalPanel } from './ApprovalPanel'
 import { FinalDocumentPanel } from './FinalDocumentPanel'
 import { SectionDraft } from './SectionDraft'
 import { TracePanel } from './TracePanel'
+import { mergeTicketEvent, mergeTicketList, patchTickets } from '../../utils/rfpEvents'
+import { listenRfpLive, rfpLiveStore } from '../../utils/rfpLive'
 import {
   DEPARTMENT_LABELS,
   STATUS_LABELS,
@@ -44,7 +46,7 @@ function StatusBadge({ ticket }: { ticket: RfpTicketSummary }) {
   )
 }
 
-function TicketDetail({ ticketId, onReprocess, refreshKey }: { ticketId: string; onReprocess: () => void; refreshKey: number }) {
+function TicketDetail({ ticketId, onReprocess, refreshKey }: { ticketId: string; onReprocess: () => void; refreshKey?: string }) {
   const [detail, setDetail] = useState<RfpTicketDetail | null>(null)
   const [error, setError] = useState('')
 
@@ -173,19 +175,35 @@ function TicketDetail({ ticketId, onReprocess, refreshKey }: { ticketId: string;
 
 export function RfpIntake() {
   const [tickets, setTickets] = useState<RfpTicketSummary[]>([])
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(() => new URLSearchParams(window.location.search).get('ticket'))
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [refreshError, setRefreshError] = useState('') // se borra solo en cuanto un refresco vuelve a funcionar
   const [uploading, setUploading] = useState(false)
 
-  const refresh = useCallback(() => listRfpTickets().then((r) => setTickets(r.tickets)).catch((e: Error) => setError(e.message)), [])
+  const { notifications } = useSyncExternalStore(rfpLiveStore.subscribe, rfpLiveStore.getSnapshot)
+  const unread = new Set(notifications.map((n) => n.ticket_id))
+
+  const refresh = useCallback(() => listRfpTickets()
+    .then((r) => { setTickets((current) => mergeTicketList(current, r.tickets)); setRefreshError('') })
+    .catch((e: Error) => setRefreshError(e.message)), [])
 
   useEffect(() => { refresh() }, [refresh])
+  // Tickets nuevos en tiempo real: cada evento añade su fila con su propio payload, sin volver a pedir la lista.
+  useEffect(() => listenRfpLive({
+    onTicket: (ticket) => setTickets((current) => mergeTicketEvent(current, ticket)),
+    onResync: refresh,
+    onOpen: setSelected,
+  }), [refresh])
+  // Los tickets en curso se refrescan por su id, no con toda la lista.
   useEffect(() => {
-    if (!tickets.some(isPending)) return
-    const timer = window.setInterval(refresh, POLL_MS)
+    const pending = tickets.filter(isPending).slice(0, 50).map((t) => t.ticket_id)
+    if (pending.length === 0) return
+    const timer = window.setInterval(() => listRfpTickets(pending)
+      .then((r) => { setTickets((current) => patchTickets(current, r.tickets)); setRefreshError('') })
+      .catch((e: Error) => setRefreshError(e.message)), POLL_MS)
     return () => window.clearInterval(timer)
-  }, [tickets, refresh])
+  }, [tickets])
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -229,7 +247,7 @@ export function RfpIntake() {
           <RefreshCw size={16} aria-hidden="true" /> Actualizar
         </button>
         {message && <p role="status" className="w-full text-sm text-emerald-800">{message}</p>}
-        {error && <p role="alert" className="w-full text-sm text-rose-800">{error}</p>}
+        {(error || refreshError) && <p role="alert" data-testid="rfp-error" className="w-full text-sm text-rose-800">{error || refreshError}</p>}
       </form>
 
       <section aria-label="Tickets RFP" className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
@@ -240,9 +258,10 @@ export function RfpIntake() {
           <tbody>
             {tickets.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">Todavía no hay RFP.</td></tr>}
             {tickets.map((ticket) => (
-              <tr key={ticket.ticket_id} data-testid="rfp-row" onClick={() => setSelected(ticket.ticket_id)}
+              <tr key={ticket.ticket_id} data-testid="rfp-row" data-ticket={ticket.ticket_id} onClick={() => setSelected(ticket.ticket_id)}
                 className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${selected === ticket.ticket_id ? 'bg-emerald-50' : ''}`}>
-                <td className="px-4 py-2"><span className="font-medium">{ticket.original_filename}</span><br /><span className="text-xs text-slate-500">{ticket.rfp_id}</span></td>
+                <td className="px-4 py-2"><span className="font-medium">{ticket.original_filename || ticket.rfp_id}</span>
+                  {unread.has(ticket.ticket_id) && <span data-testid="rfp-row-new" className="ml-2 rounded bg-violet-700 px-1.5 py-0.5 text-xs font-semibold text-white">Nueva</span>}<br /><span className="text-xs text-slate-500">{ticket.rfp_id}</span></td>
                 <td className="px-4 py-2">{ticket.client_name ?? '—'} {ticket.client_country && <span className="text-slate-500">({ticket.client_country})</span>}</td>
                 <td className="px-4 py-2">{ticket.departments_needed.join(', ') || '—'}</td>
                 <td className="px-4 py-2"><StatusBadge ticket={ticket} /></td>
@@ -253,7 +272,7 @@ export function RfpIntake() {
         </table>
       </section>
 
-      {selected && <TicketDetail key={selected} ticketId={selected} onReprocess={refresh} refreshKey={tickets.length + tickets.filter(isPending).length} />}
+      {selected && <TicketDetail key={selected} ticketId={selected} onReprocess={refresh} refreshKey={tickets.find((t) => t.ticket_id === selected)?.updated_at} />}
     </main>
   )
 }

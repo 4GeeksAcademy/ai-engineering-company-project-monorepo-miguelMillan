@@ -1,0 +1,71 @@
+{
+  "steps": [
+    {
+      "t": "+14.8s",
+      "step": "subidas por otra persona",
+      "descartable": "6948ed21-b92f-487a-b21a-d4f6bb802340",
+      "rfp": "081a8ce1-b61d-4876-845a-52ec81f51a85"
+    },
+    {
+      "t": "+22.1s",
+      "step": "OK: la RFP nueva aparece en /rfps marcada «Nueva» y en el dashboard, en vivo"
+    },
+    {
+      "t": "+22.1s",
+      "step": "OK: el documento descartado no notifica"
+    },
+    {
+      "t": "+22.1s",
+      "step": "OK: ningún evento volvió a pedir la lista completa"
+    },
+    {
+      "t": "+22.4s",
+      "step": "API caído"
+    },
+    {
+      "t": "+79.4s",
+      "step": "ticket creado y clasificado con el API caído",
+      "ticket_id": "5a7fcd9b-2375-4124-b885-2e1aed2294f0"
+    },
+    {
+      "t": "+99.6s",
+      "step": "reintentos vistos en la UI",
+      "attempts": [
+        "Sin conexión en vivo · reintento 5 en 10 s",
+        "Sin conexión en vivo · reintento 6 en 19 s"
+      ]
+    },
+    {
+      "t": "+99.6s",
+      "step": "OK: reintenta con espera creciente mientras sigue caído"
+    },
+    {
+      "t": "+99.7s",
+      "step": "API levantado"
+    },
+    {
+      "t": "+113.8s",
+      "step": "OK: ticket 081a8ce1: una fila y un aviso por pestaña tras reconectar"
+    },
+    {
+      "t": "+113.8s",
+      "step": "OK: ticket 5a7fcd9b: una fila y un aviso por pestaña tras reconectar"
+    },
+    {
+      "t": "+113.8s",
+      "step": "OK: la recuperación usó Last-Event-ID, sin volver a pedir la lista"
+    },
+    {
+      "t": "+113.8s",
+      "step": "OK: ninguna página se recargó"
+    },
+    {
+      "t": "+113.8s",
+      "step": "OK: no queda en pantalla el error de la caída"
+    },
+    {
+      "t": "+122.4s",
+      "step": "OK: tras recargar, lo descartado no reaparece y lo no leído se conserva"
+    }
+  ]
+}

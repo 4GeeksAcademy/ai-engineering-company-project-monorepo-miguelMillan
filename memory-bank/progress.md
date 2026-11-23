@@ -1,5 +1,19 @@
 # Progress Log — TrackFlow
 
+## Notificaciones en tiempo real de tickets RFP (SSE, Parte 1), 2026-11-23
+
+- **Contexto y rama:** contexto archivado en `memory-bank/history/REALTIME-SSE-CONTEXT-2026-11-23.md`. Rama `feature/sse-notifications`, desde `main` con el #47 mergeado.
+- **Backend:** `GET /rfp-intake/events` (SSE, mismo JWT, keep-alive, cierre al caducar el token o desactivarse el usuario). Evento `rfp_ticket_created`, registrado en el nodo `classify` mediante el outbox `rfp_ticket_events`. Recuperación con `Last-Event-ID` y `rfp_stream_reset` si el hueco es irrecuperable.
+- **Frontend:** fetch + ReadableStream con backoff, aviso distinguible en todo el backoffice y filas en vivo en `/rfps`, deduplicadas por `ticket_id`. El refresco de tickets en curso pide solo esos.
+- **Migración** `20261123090000_rfp_ticket_events.sql`, **aplicada en Supabase**.
+- **Conflicto de nombres resuelto:** el BRIEFING usa `analyzing` y `warehouse`/`lastmile`/`reverse`; la base guarda `analizando` y `last_mile`… Se traduce solo en el evento, sin migrar datos.
+- **Validación:** `tests` → 436 passed; `services/api` → 130 passed (SQLite desechable); jest → 42 passed; build OK; 12 mutaciones detectadas de 12. E2E real con caída del API en `docs/pr-evidence/rfp-sse/`, con el LLM desactivado a propósito.
+- **Revisión del checklist (6/6):** prueba de red real con proxy TCP sobre el build (corte limpio y conexión muerta): recupera con `Last-Event-ID`, sin recargar ni duplicar (`scripts/rfp_live_network.cjs`). Nombres, tipos y estados contrastados por código con `CONTEXT.md`. Ninguna llamada a modelo en lo añadido. Sin cambios de producto.
+- **Corregido durante la prueba:** error de refresco que quedaba en pantalla tras recuperarse; stream que se cerraba un segundo antes que el token; apagado colgado con streams abiertos (ahora 5 s).
+- **Sin hacer:** caso opcional del BRIEFING §4; el CI no ejecuta `services/api/tests`. La prueba dejó 6 tickets de muestra en Supabase.
+- **Preguntas de diseño** respondidas en `docs/rfp/rfp-realtime.md`, con medición de 2, 50 y 150 streams. Al medir se corrigió que cada stream consultara la base tras su keep-alive (ahora 1 consulta/s constante en reposo, con prueba).
+- **PR** abierto desde `feature/sse-notifications`.
+
 ## Aprobación humana por departamento y cierre (Hito 9, Parte 3), 2026-11-22
 
 - **Contexto y rama:** contexto archivado en `memory-bank/history/RFP-APPROVAL-CONTEXT-2026-11-22.md`. Rama `feature/rfp-approval-completion`, desde `main` con el #46 mergeado.

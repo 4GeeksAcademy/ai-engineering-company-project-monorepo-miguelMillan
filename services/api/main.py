@@ -23,6 +23,7 @@ from routes.suppliers import router
 from routes.telemetry import router as telemetry_router
 from routes.tasks import router as tasks_router
 from routes.users import router as users_router
+from routes.rfp_events import router as rfp_events_router
 from routes.rfp_intake import router as rfp_intake_router
 
 logger = logging.getLogger("uvicorn.error.timing")
@@ -82,7 +83,7 @@ def create_app(path: Path | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=origins.split(","),
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-        allow_headers=["content-type", "authorization"],
+        allow_headers=["content-type", "authorization", "last-event-id"],
     )
     application.include_router(router)
     application.include_router(users_router)
@@ -95,6 +96,7 @@ def create_app(path: Path | None = None) -> FastAPI:
     application.include_router(knowledge_router)
     application.include_router(agent_router)
     application.include_router(rfp_intake_router)
+    application.include_router(rfp_events_router)
     application.include_router(reporting_router)
     return application
 
@@ -103,4 +105,5 @@ app = create_app()
 
 
 def main():
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("SUPPLIERS_PORT", "8081")))
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("SUPPLIERS_PORT", "8081")),
+                timeout_graceful_shutdown=5)  # un stream SSE abierto no debe bloquear el apagado
