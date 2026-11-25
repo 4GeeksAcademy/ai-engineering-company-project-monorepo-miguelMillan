@@ -54,6 +54,10 @@ def stack(tmp_path, monkeypatch):
         "sku_id": product["id"], "quantity": 9, "reference": "ALB-001", "warehouse": "LA"}).status_code == 201
 
     promote(app, SERVICE_EMAIL, "service")  # …y el servidor MCP trabaja con el mínimo privilegio
+    person = {"email": "cx@example.com", "password": "contraseña-de-una-persona"}
+    httpx.post(f"{api}/users", json=person)
+    promote(app, person["email"])
+    staff = {"Authorization": f"Bearer {httpx.post(f'{api}/auth/login', json=person).json()['access_token']}"}
     provider, idp = start_local_oidc()
     mcp_port = free_port()
     settings = Settings(port=mcp_port, resource_url=f"http://127.0.0.1:{mcp_port}/mcp", oidc_issuer=provider.issuer,
@@ -61,7 +65,7 @@ def stack(tmp_path, monkeypatch):
                         audit_log_path=str(tmp_path / "mcp-audit.log"))
     provider.resource = settings.resource_url
     mcp_server, mcp_thread = serve(build_app(settings, auth_server=fetch_server_config(provider.issuer, AuthServerType.OIDC)), mcp_port)
-    yield {"api": api, "headers": headers, "ticket": ticket, "product": product, "oidc": provider, "mcp_url": settings.resource_url}
+    yield {"api": api, "headers": headers, "staff": staff, "ticket": ticket, "product": product, "oidc": provider, "mcp_url": settings.resource_url}
     for server, thread in ((mcp_server, mcp_thread), (api_server, api_thread)):
         server.should_exit = True
         thread.join(5)
@@ -83,10 +87,18 @@ def test_ticket_lifecycle_through_mcp_changes_the_real_incidents_manager(stack):
         "title": "Palé dañado en recepción", "description": "Llegó con el film roto.", "category": "warehouse_incident",
         "origin": "internal", "branch": "zaragoza_warehouse"})
     assert error is None and created["status"] == "open"
-    for status in ("in_progress", "resolved"):
-        error, changed = call(stack, "trackflow-ops-console", "incidents_update_ticket_status",
-                              {"incident_id": created["id"], "status": status})
-        assert error is None and changed["status"] == status
+    def update(status):
+        return call(stack, "trackflow-ops-console", "incidents_update_ticket_status", {"incident_id": created["id"], "status": status})
+
+    error, changed = update("in_progress")
+    assert error is None and changed["status"] == "in_progress"
+    error, _ = update("resolved")                          # cerrar es definitivo: un agente lo pide, una persona lo confirma
+    assert error["code"] == "CONFIRMATION_REQUIRED" and error["details"]["current_status"] == "in_progress"
+    assert httpx.get(f"{stack['api']}/api/incidents/{created['id']}", headers=stack["headers"]).json()["status"] == "in_progress"
+    confirm = f"{stack['api']}/actions/{error['details']['action_id']}/confirm"
+    reason = {"reason": "Comprobado con el almacén"}
+    assert httpx.post(confirm, headers=stack["headers"], json=reason).status_code == 403          # la propia cuenta automática, no
+    assert httpx.post(confirm, headers=stack["staff"], json=reason).json()["status"] == "executed"
     error, _ = call(stack, "trackflow-ops-console", "incidents_update_ticket_status", {"incident_id": created["id"], "status": "open"})
     assert error["code"] == "INVALID_STATUS_TRANSITION" and error["details"]["allowed"] == []
 

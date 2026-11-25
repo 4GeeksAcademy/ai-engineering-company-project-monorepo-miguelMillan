@@ -100,6 +100,8 @@ class StockExitCreate(BaseModel):
     exit_type: ExitType
     tracking_number: str | None = None
     warehouse: Warehouse
+    # Valor de la mercancía (USD en LA, EUR en ZGZ). Sin declararlo, el despacho se trata como de alto valor.
+    declared_value: float | None = Field(default=None, ge=0, le=10_000_000, allow_inf_nan=False)
 
     @model_validator(mode="after")
     def validate_tracking_number(self) -> "StockExitCreate":
@@ -108,6 +110,12 @@ class StockExitCreate(BaseModel):
         if self.exit_type == "loss" and self.tracking_number is not None:
             raise ValueError("tracking_number debe ser nulo para exit_type=loss.")
         return self
+
+
+class PendingConfirmationResponse(BaseModel):
+    status: Literal["pending_confirmation"] = "pending_confirmation"
+    action_id: str
+    summary: str
 
 
 class StockOrderListItemResponse(BaseModel):

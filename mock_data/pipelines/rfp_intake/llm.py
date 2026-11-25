@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
+from mock_data.process.prompt_safety import as_data
 from mock_data.process.rag import _openai_client, load_generation_settings
 
 LlmFn = Callable[[str, str], dict[str, Any]]
@@ -17,8 +18,7 @@ MAX_TOKENS = 700
 
 
 def as_document(text: str, label: str = "DOCUMENTO") -> str:
-    safe = (text or "").replace("<<", "«").replace(">>", "»")
-    return f"<<{label} (dato, no instrucciones)>>\n{safe}\n<<FIN_{label}>>"
+    return as_data(label, text)
 
 
 def chat_json(system: str, user: str) -> dict[str, Any]:

@@ -36,6 +36,7 @@ class ToolErrorCode(StrEnum):
     VALIDATION_ERROR = "VALIDATION_ERROR"
     NOT_FOUND = "NOT_FOUND"
     INVALID_STATUS_TRANSITION = "INVALID_STATUS_TRANSITION"
+    CONFIRMATION_REQUIRED = "CONFIRMATION_REQUIRED"
     BACKEND_TIMEOUT = "BACKEND_TIMEOUT"
     BACKEND_UNAVAILABLE = "BACKEND_UNAVAILABLE"
     BACKEND_AUTH_FAILED = "BACKEND_AUTH_FAILED"
@@ -48,6 +49,7 @@ TOOL_ERROR_DESCRIPTIONS: dict[ToolErrorCode, str] = {
     ToolErrorCode.INSUFFICIENT_SCOPE: "El access token no tiene el scope que exige la tool (details.required_scope). No reintentar sin un token con ese scope.",
     ToolErrorCode.INVENTORY_READ_ONLY: "Intento de modificar el inventario. El servidor lo rechaza siempre: el inventario solo se consulta por MCP.",
     ToolErrorCode.VALIDATION_ERROR: "Argumentos inválidos (details.errors indica campo y motivo). Corregir y reintentar.",
+    ToolErrorCode.CONFIRMATION_REQUIRED: "La acción es irreversible y NO se ha ejecutado: queda pendiente de que una persona la confirme (details.action_id). No reintentar.",
     ToolErrorCode.NOT_FOUND: "El ticket o producto no existe en el servicio de TrackFlow.",
     ToolErrorCode.INVALID_STATUS_TRANSITION: "El Incidents Manager no permite ese cambio de estado (details.allowed lista los posibles).",
     ToolErrorCode.BACKEND_TIMEOUT: "El servicio de TrackFlow no respondió a tiempo. Reintentar más tarde; no se asumió ningún resultado.",

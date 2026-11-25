@@ -3,10 +3,12 @@ from time import monotonic
 from typing import get_args
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from tinydb import Query
 
-from models import Incident, IncidentBranch, IncidentCategory, IncidentCreate, IncidentCreatedResponse, IncidentDetailResponse, IncidentListItemResponse, IncidentOrigin, IncidentStatus, IncidentStatusResponse, IncidentStatusUpdate, IncidentSummaryResponse, User
+from models import Incident, IncidentBranch, IncidentCategory, IncidentCreate, IncidentCreatedResponse, IncidentDetailResponse, IncidentListItemResponse, IncidentOrigin, IncidentStatus, IncidentStatusResponse, IncidentStatusUpdate, IncidentSummaryResponse, User, UserRole
+from confirmations import request_action
+from schemas import PendingConfirmationResponse
 from security import get_current_user, require_staff_or_service
 
 
@@ -108,17 +110,35 @@ def get_incident(incident_id: UUID, request: Request):
     return IncidentDetailResponse.model_validate(incident)
 
 
-@router.patch("/{incident_id}/status", response_model=IncidentStatusResponse)
-def update_incident_status(incident_id: UUID, payload: IncidentStatusUpdate, request: Request):
+@router.patch("/{incident_id}/status", response_model=IncidentStatusResponse | PendingConfirmationResponse)
+def update_incident_status(incident_id: UUID, payload: IncidentStatusUpdate, request: Request, response: Response,
+                           current_user: User = Depends(get_current_user)):
+    # Cerrar es definitivo. Si lo pide una cuenta automática (un agente por MCP), lo confirma una persona.
+    if current_user.role == UserRole.service and not TRANSITIONS[payload.status]:
+        with request.app.state.lock:
+            incident = Incident.model_validate(find_incident(request, incident_id))
+        check_transition(incident, payload.status)
+        action = request_action(request, "incident_close", {"incident_id": str(incident_id), "status": payload.status.value},
+                                f"Pasar la incidencia {incident_id} a {payload.status.value}", current_user)
+        response.status_code = 202
+        return PendingConfirmationResponse(action_id=action["id"], summary=action["summary"])
+    return change_status(request, incident_id, payload.status)
+
+
+def check_transition(incident: Incident, new: IncidentStatus) -> None:
+    if new not in TRANSITIONS[incident.status]:
+        raise HTTPException(status_code=400, detail={
+            "field": "status",
+            "message": f"No se permite pasar de {incident.status.value} a {new.value}. Los estados resolved y discarded son finales.",
+        })
+
+
+def change_status(request: Request, incident_id: UUID | str, new: IncidentStatus | str) -> IncidentStatusResponse:
     with request.app.state.lock:
         document = find_incident(request, incident_id)
         incident = Incident.model_validate(document)
-        if payload.status not in TRANSITIONS[incident.status]:
-            raise HTTPException(status_code=400, detail={
-                "field": "status",
-                "message": f"No se permite pasar de {incident.status.value} a {payload.status.value}. Los estados resolved y discarded son finales.",
-            })
-        incident.status = payload.status
+        check_transition(incident, IncidentStatus(new))
+        incident.status = IncidentStatus(new)
         request.app.state.db.table("incidents").update(
             incident.model_dump(mode="json", include={"status", "updated_at"}), doc_ids=[document.doc_id],
         )

@@ -24,6 +24,9 @@ services/api/
 - `manager`, `admin`: personal de TrackFlow. `service`: cuenta del servidor MCP (incidencias y lectura de productos).
 - Se asignan en el servidor, nunca por el API propio: `uv run python accounts.py set-role <email> manager`; marcas B2B con `set-clients`.
 - `RFP_APPROVERS` (JSON `{"Ana Whitfield": "ana@…"}`): cuenta de cada responsable. Sin mapeo nadie decide una sección.
+- **Acciones irreversibles:** `GET /actions`, `POST /actions/{id}/confirm|reject` (otra persona, con motivo). Un despacho de alto valor (`HIGH_VALUE_DISPATCH_THRESHOLD`, 1000) o sin `declared_value` responde `202` y queda pendiente. Borrar responde `428`: se repite con `X-Confirmation`.
+- **Límites de IA:** `AI_REQUESTS_PER_MINUTE` (15), `AI_REQUESTS_PER_DAY` (300), `RFP_RUNS_PER_HOUR` (20), `LLM_MAX_CALLS_PER_HOUR` (600), `LLM_MAX_OUTPUT_TOKENS` (800). Parada de emergencia: `AI_KILL_SWITCH=1` o `AI_KILL_SWITCH_FILE`.
+- **Qué hizo el agente y por qué:** `GET /agent/runs/{run_id}/actions`. Informe: [docs/security/nist-report.md](../../docs/security/nist-report.md).
 - `APP_ENV=production` desactiva `/docs` y `/openapi.json`. Detalle: [docs/security/owasp-audit.md](../../docs/security/owasp-audit.md).
 
 ## Endpoints

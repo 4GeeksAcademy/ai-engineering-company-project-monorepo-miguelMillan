@@ -46,6 +46,7 @@ services:
     image: trackflow-backend:local
     environment:
       APP_ENV: ${APP_ENV:-production}   # production: sin /docs ni /openapi.json
+      AI_KILL_SWITCH_FILE: /var/lib/trackflow/AI_STOP   # trackflow-ctl ai-stop / ai-start
       HOME: /tmp
       DATABASE_URL: ${DATABASE_URL:?Configura DATABASE_URL en Codespaces}
       REDIS_URL: redis://redis:6379/0
@@ -173,6 +174,8 @@ services:
       HOME: /tmp
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: ${DATABASE_URL:?Configura DATABASE_URL en Codespaces}
+      AI_KILL_SWITCH_FILE: /var/lib/trackflow/AI_STOP
+      LLM_MAX_CALLS_PER_HOUR: ${LLM_MAX_CALLS_PER_HOUR:-600}
       RFP_MAX_ITERATIONS: ${RFP_MAX_ITERATIONS:-}
       RFP_AUTO_GENERATE: ${RFP_AUTO_GENERATE:-1}
       RFP_AUTO_APPROVAL: ${RFP_AUTO_APPROVAL:-1}

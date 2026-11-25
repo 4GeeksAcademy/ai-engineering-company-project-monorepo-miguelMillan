@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from models import Category, Country, RateUpdate, StatusUpdate, Supplier, SupplierCreate, SupplierResponse
+from confirmations import require_confirmation
 from security import require_staff
 
 
@@ -65,7 +66,10 @@ def update_status(supplier_id: int, payload: StatusUpdate, request: Request):
 
 
 @router.delete("/{supplier_id}", response_model=None, status_code=204)
-def delete_supplier(supplier_id: int, request: Request):
+def delete_supplier(supplier_id: int, request: Request, user=Depends(require_staff)):
+    with request.app.state.lock:
+        supplier = find_supplier(request, supplier_id)
+    require_confirmation(request, "supplier_delete", str(supplier_id), f"Borrar el proveedor «{supplier['name']}»", user)
     with request.app.state.lock:
         find_supplier(request, supplier_id)
         request.app.state.db.remove(doc_ids=[supplier_id])

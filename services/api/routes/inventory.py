@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
+from confirmations import high_value_threshold, request_action
 from database import get_db
 from models import InventoryAudit, SKU, StockEntry, StockExit, User, client_id_from_name
 from schemas import (
@@ -10,6 +11,7 @@ from schemas import (
     InventoryAuditCreate,
     InventoryAuditResponse,
     InventoryTelemetrySignal,
+    PendingConfirmationResponse,
     SKUCreate,
     SKUResponse,
     StockEntryCreate,
@@ -158,14 +160,28 @@ def register_inbound(
 
 @router.post(
     "/orders/outbound",
-    response_model=StockMovementCreatedResponse,
+    response_model=StockMovementCreatedResponse | PendingConfirmationResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def register_outbound(
     payload: StockExitCreate,
+    request: Request,
+    response: Response,
     session: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """Registra la salida. Un despacho de alto valor (o sin valor declarado) queda pendiente de otra persona: 202."""
+    if payload.exit_type == "dispatch" and (payload.declared_value is None or payload.declared_value >= high_value_threshold()):
+        validate_outbound(payload, session)  # los errores se dicen ahora, no cuando alguien lo confirme
+        value = "sin valor declarado" if payload.declared_value is None else f"{payload.declared_value:g} {'USD' if payload.warehouse == 'LA' else 'EUR'}"
+        action = request_action(request, "dispatch_high_value", payload.model_dump(mode="json"),
+                                f"Despacho de {payload.quantity} uds del SKU {payload.sku_id} desde {payload.warehouse} ({value})", current_user)
+        response.status_code = status.HTTP_202_ACCEPTED
+        return PendingConfirmationResponse(action_id=action["id"], summary=action["summary"])
+    return execute_outbound(payload, session, str(current_user.user_uuid))
+
+
+def validate_outbound(payload: StockExitCreate, session: Session) -> tuple[SKU, int]:
     product = session.exec(
         select(SKU).where(SKU.id == payload.sku_id).with_for_update()
     ).first()
@@ -182,8 +198,13 @@ def register_outbound(
                 f"Available: {available}, requested: {payload.quantity}."
             ),
         )
+    return product, available
+
+
+def execute_outbound(payload: StockExitCreate, session: Session, user_uuid: str) -> StockMovementCreatedResponse:
+    product, available = validate_outbound(payload, session)
     stock_before = available
-    stock_exit = StockExit(**payload.model_dump(), user_uuid=str(current_user.user_uuid))
+    stock_exit = StockExit(**payload.model_dump(exclude={"declared_value"}), user_uuid=user_uuid)
     session.add(stock_exit)
     session.flush()
     stock_after = current_stock(session, payload.sku_id, payload.warehouse)

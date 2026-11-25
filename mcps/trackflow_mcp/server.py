@@ -174,7 +174,8 @@ def create_mcp(backend: TrackflowBackend) -> FastMCP:
             "Cambia el estado de un ticket mediante el endpoint de ciclo de vida del Incidents Manager "
             "(PATCH /api/incidents/{id}/status). Transiciones válidas: open → in_progress | discarded; "
             "in_progress → resolved | discarded; resolved y discarded son finales. Una transición no permitida "
-            "devuelve INVALID_STATUS_TRANSITION con los estados posibles. "
+            "devuelve INVALID_STATUS_TRANSITION con los estados posibles. Cerrar un ticket (resolved, discarded) no se ejecuta: "
+            "devuelve CONFIRMATION_REQUIRED hasta que una persona lo confirme. "
             f"Requiere el scope {TOOL_SCOPES['incidents_update_ticket_status']}."
         ),
         annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
@@ -193,6 +194,10 @@ def create_mcp(backend: TrackflowBackend) -> FastMCP:
                 {"current_status": current["status"], "requested_status": status,
                  "allowed": STATUS_TRANSITIONS[current["status"]], "backend_detail": response.json().get("detail")},
             )
+        if response.status_code == 202:  # cerrar es definitivo: lo confirma una persona en el backoffice
+            raise TrackflowToolError(ToolErrorCode.CONFIRMATION_REQUIRED, "Pendiente de confirmación humana; el ticket no ha cambiado.",
+                                     {"action_id": response.json()["action_id"], "current_status": current["status"],
+                                      "requested_status": status})
         body = TrackflowBackend._json(response, not_found=f"No existe ningún ticket con id {incident_id}.")
         return IncidentStatusChanged(previous_status=current["status"], **body)
 

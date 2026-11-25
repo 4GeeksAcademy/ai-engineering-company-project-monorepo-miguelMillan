@@ -47,6 +47,8 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 
 ROOT = Path(__file__).resolve().parents[2]
+from mock_data.process.model_budget import BUDGET
+
 KNOWLEDGE_BASE_DIR = ROOT / "docs" / "company-knowledge-base"
 COLLECTION_NAME = "trackflow_knowledge"
 COMPANY = "trackflow"
@@ -299,8 +301,10 @@ def normalize_text(text: str) -> str:
 
 
 def _openai_client(api_url: str, api_key: str):
+    """Único punto donde se crea un cliente de modelo: cobra la llamada (presupuesto y parada de emergencia)."""
     from openai import OpenAI
 
+    BUDGET.charge()
     return OpenAI(base_url=api_url, api_key=api_key, timeout=30.0, max_retries=2)
 
 

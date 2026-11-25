@@ -280,7 +280,7 @@ def run_worker(subtask: Subtask, llm_fn: LlmFn | None) -> SectionResult:
         try:
             raw = llm_fn(WORKER_SYSTEM.format(name=dept.name, department_id=dept.department_id, owner=dept.owner,
                                               contributes=dept.contributes),
-                         "METADATOS COMPARTIDOS:\n" + "\n".join(f"- {k}: {v}" for k, v in subtask.shared_metadata.items() if v)
+                         as_document("\n".join(f"- {k}: {v}" for k, v in subtask.shared_metadata.items() if v), "METADATOS")  # salen del PDF
                          + "\n\n" + as_document("\n\n".join(subtask.excerpts), "EXTRACTOS"))
             meta.update({"llm_used": True, "model": raw.get("_model")})
             norm_source = normalize(source)

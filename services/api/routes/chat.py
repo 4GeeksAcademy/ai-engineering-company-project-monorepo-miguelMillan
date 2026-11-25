@@ -23,6 +23,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 
 import routes.agent as agent_routes
+from rate_limit import check_rate
+from security_log import security_event
 from security import authenticate_token, get_current_user, is_staff
 from services.agent.chat import events
 from services.agent.chat.engine import ChatEngine
@@ -191,6 +193,12 @@ async def _receive(websocket: WebSocket, engine: ChatEngine, session_id: str, us
             continue
         if event.event == "ping":
             await websocket.send_json(events.pong(session_id))
+            continue
+        retry_after = check_rate(websocket.app, user)
+        if retry_after:  # no corta la respuesta en curso ni llega al modelo
+            security_event("ai_rate_limited", websocket, email=str(user.email), kind="ai")
+            await websocket.send_json(events.error(session_id, "rate_limited", "Has enviado demasiados mensajes. Espera un momento.",
+                                                   retry_after=retry_after))
             continue
         engine.abort(session_id)  # lo primero, cortar: cualquier mensaje nuevo redirige la respuesta en curso
         chat = await asyncio.to_thread(engine.store.get_session, session_id, str(user.user_uuid))

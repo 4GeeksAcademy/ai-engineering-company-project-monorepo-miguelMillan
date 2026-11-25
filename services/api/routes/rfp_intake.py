@@ -27,6 +27,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
+from rate_limit import limited_staff_rfp
 from security import require_staff
 from security_log import security_event
 
@@ -88,7 +89,7 @@ def _user_label(user) -> str:
 
 
 @router.post("/tickets", status_code=202)
-async def upload_rfp(request: Request, file: UploadFile = File(...), user=Depends(require_staff)):
+async def upload_rfp(request: Request, file: UploadFile = File(...), user=Depends(limited_staff_rfp)):
     """Crea un ticket por PDF y responde enseguida; el análisis corre en el worker de Celery."""
     name = (file.filename or "").strip()
     content = await file.read(MAX_PDF_BYTES + 1)
@@ -177,7 +178,7 @@ def get_rfp_ticket(ticket_id: uuid.UUID, request: Request, _user=Depends(require
 
 @router.post("/tickets/{ticket_id}/reprocess", status_code=202)
 async def reprocess_rfp_ticket(ticket_id: uuid.UUID, request: Request, force_accept: bool = False,
-                               _user=Depends(require_staff)):
+                               _user=Depends(limited_staff_rfp)):
     """Re-ejecuta el pipeline (tras un fallo técnico, o forzando la aceptación de un descarte que Ventas revisó)."""
     repo = _repo(request)
     ticket = repo.get_ticket(ticket_id)
@@ -198,7 +199,7 @@ def _enqueue_generation(ticket_id: str) -> None:
 
 
 @router.post("/tickets/{ticket_id}/generate", status_code=202)
-async def generate_rfp_response(ticket_id: uuid.UUID, request: Request, _user=Depends(require_staff)):
+async def generate_rfp_response(ticket_id: uuid.UUID, request: Request, _user=Depends(limited_staff_rfp)):
     """(Re)genera y evalúa las secciones (Parte 2) de un ticket que la Parte 1 dejó listo."""
     repo = _repo(request)
     ticket = repo.get_ticket(ticket_id)
@@ -248,7 +249,7 @@ def _enqueue_approval_start(ticket_id: str) -> None:
 
 @router.post("/tickets/{ticket_id}/sections/{department_id}/decision", status_code=202)
 async def decide_section(ticket_id: uuid.UUID, department_id: str, body: DecisionIn, request: Request,
-                         user=Depends(require_staff)):
+                         user=Depends(limited_staff_rfp)):
     """El responsable del departamento aprueba, rechaza o pide cambios. Se valida AQUÍ (y otra vez en el grafo)
     antes de reanudar solo su rama."""
     repo = _repo(request)
@@ -284,7 +285,7 @@ async def decide_section(ticket_id: uuid.UUID, department_id: str, body: Decisio
 
 
 @router.post("/tickets/{ticket_id}/approval/start", status_code=202)
-async def start_ticket_approval(ticket_id: uuid.UUID, request: Request, _user=Depends(require_staff)):
+async def start_ticket_approval(ticket_id: uuid.UUID, request: Request, _user=Depends(limited_staff_rfp)):
     """Arranca (o vuelve a arrancar tras un fallo o un bloqueo) el flujo de aprobación en un hilo nuevo."""
     repo = _repo(request)
     ticket = repo.get_ticket(ticket_id)

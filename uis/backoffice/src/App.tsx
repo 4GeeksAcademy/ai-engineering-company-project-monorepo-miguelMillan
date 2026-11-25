@@ -1,4 +1,5 @@
 import { MetricCard } from './components/MetricCard'
+import { PendingActions } from './components/PendingActions'
 import { IncidentRegistration } from './app/incidents/IncidentRegistration'
 import { IncidentDirectory } from './app/incidents/IncidentDirectory'
 import { AccountProfile } from './app/account/AccountProfile'
@@ -181,6 +182,7 @@ function App() {
         </main>
       ) : (
         <main className="mx-auto w-full max-w-6xl space-y-8 px-6 py-8">
+        <PendingActions />
         <section aria-labelledby="kpis-title">
           <h2 id="kpis-title" className="font-display text-2xl font-bold text-slate-900">
             Vista de entrada operativa

@@ -14,7 +14,7 @@ from pydantic import ValidationError
 
 from models import RateUpdate, SupplierCreate
 
-from conftest import promote
+from conftest import confirmed_delete, promote
 
 
 def supplier_payload(**changes):
@@ -115,7 +115,7 @@ def test_directory_lifecycle(client):
         assert changed.status_code == 200
         assert changed.json()["status"] == status
         assert changed.json()["updated_at"] == updated["updated_at"]
-    assert client.delete(endpoint).status_code == 204
+    assert confirmed_delete(client, endpoint).status_code == 204
     assert client.get(endpoint).status_code == 404
     assert client.delete(endpoint).status_code == 404
     assert client.patch(f"{endpoint}/rate", json={"rate_per_shipment": 5}).status_code == 404

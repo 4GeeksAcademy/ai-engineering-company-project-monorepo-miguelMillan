@@ -1,5 +1,19 @@
 # Progress Log — TrackFlow
 
+## Prácticas seguras de IA e informe NIST, 2026-11-25
+
+- **Contexto y rama:** `CONTEXT.md` es idéntico (`cmp`) a `SECURITY-OWASP-CONTEXT-2026-11-24.md`; se reutiliza esa copia y no se crea otra. Rama `feature/nist-security-practices`, desde `main` con el #50.
+- **Documentos:** `docs/security/nist-report.md` (CSF 2.0), `ai-inventory.md` (responsables y terceros) e `incident-response.md` (72 h AEPD, California). 12 brechas con riesgo, mitigación, responsable y fecha.
+- **Entrada y prompts:** `mock_data/process/prompt_safety.py` (forma canónica, saneado externo, bloques de datos). Se usa en el agente, el RAG directo, la memoria y la RFP. `/knowledge/query` ya tiene guardas. Antes se esquivaban con letras invisibles, anchas o de otros alfabetos.
+- **Salidas:** cada llamada a tools se valida (`tool_policy.py`) y se descarta un ticket distinto del pedido.
+- **Coste:** límites por cuenta (HTTP y WebSocket), presupuesto por proceso, máximo de tokens y parada de emergencia.
+- **Acciones irreversibles (§5):** `confirmations.py`. Despacho de alto valor y cierre de tickets por agentes: segunda persona. Borrados: código de un solo uso. **Umbral provisional de 1000, por ratificar.** Panel en Operaciones del backoffice. No existen motor de carriers ni de devoluciones.
+- **Traza:** `action_log.py`, `GET /agent/runs/{id}/actions` y línea JSON sin datos personales. `purge.py` para retención.
+- **Revisión posterior:** la línea JSON del agente no salía con el logging de uvicorn (corregido en `json_logging.py` y probado con un servidor real); límite también al decidir y arrancar la aprobación de RFP; `purge` pide `--confirm`; inventario del §3 dentro del informe y prueba de que ningún archivo de IA queda sin inventariar; secretos buscados también fuera de Python.
+- **Secretos:** prueba en CI; retirados los literales de `local_oidc.py` y `benchmark_caching.py` (este, además, adaptado al rol de personal).
+- **Validación:** `tests` → 663 passed; `services/api` → 213 passed (SQLite desechable); jest → 53 passed; build OK. «Antes» sobre `483aa41`: 29 de 30 pruebas del API fallan. 71 mutaciones detectadas. Con `qwen2.5:1.5b` real, una orden escondida en un documento se obedecía (3 de 3) y ahora no. Evidencia en `docs/security/evidence/nist/`.
+- **Rutas protegidas:** no se tocó `infra/`, `.agents/` ni `.env*`.
+
 ## Endurecimiento del servidor y auditoría OWASP Top 10, 2026-11-24
 
 - **Contexto y rama:** contexto archivado en `memory-bank/history/SECURITY-OWASP-CONTEXT-2026-11-24.md`. Rama `feature/owasp-top10-audit`, desde `main` con el #49. Comparado con `cmp` al cerrar: solo difiere en una línea en blanco añadida después, sin contenido nuevo; no se crea otra copia.

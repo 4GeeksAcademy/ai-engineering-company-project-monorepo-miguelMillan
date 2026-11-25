@@ -3,6 +3,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 import jwt
+
+from conftest import confirmed_delete
 from passlib.hash import bcrypt
 from pydantic import ValidationError
 
@@ -178,5 +180,5 @@ def test_owner_admin_permissions_profile_update_and_cascade_delete(client):
     changed_role = client.put(f"/users/{other['id']}", json={"role": "manager"}, headers=admin_headers)
     assert changed_role.status_code == 200
     assert changed_role.json()["role"] == "manager"
-    assert client.delete(f"/users/{other['id']}", headers=admin_headers).status_code == 204
+    assert confirmed_delete(client, f"/users/{other['id']}", headers=admin_headers).status_code == 204
     assert client.app.state.db.table("profiles").get(lambda item: item["user_id"] == other["id"]) is None

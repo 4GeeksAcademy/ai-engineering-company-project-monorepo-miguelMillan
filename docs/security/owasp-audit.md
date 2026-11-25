@@ -1,6 +1,6 @@
 # Auditoría OWASP Top 10 (2021) de TrackFlow
 
-Fecha: 24/11/2026. Código auditado: `main` en `316530f`. Las referencias `archivo:línea` de los hallazgos corregidos apuntan al código **ya corregido** de esta rama. Para ver el «antes», ejecuta la prueba indicada sobre `316530f`.
+Fecha: 24/11/2026. Código auditado: `main` en `316530f`. Las referencias `archivo:línea` de los hallazgos corregidos apuntan al código **ya corregido** en `717c18f` (PR #50); las líneas pueden haberse movido después. Para ver el «antes», ejecuta la prueba indicada sobre `316530f`.
 
 ## 1. Alcance
 

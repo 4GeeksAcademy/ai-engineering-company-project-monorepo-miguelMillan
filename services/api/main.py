@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from database import database_lifespan
 from models import HealthResponse
+from routes.actions import router as actions_router
 from routes.auth import router as auth_router
 from routes.incidents import router as incidents_router
 from routes.knowledge import router as knowledge_router
@@ -93,7 +94,7 @@ def create_app(path: Path | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=origins.split(","),
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-        allow_headers=["content-type", "authorization", "last-event-id"],
+        allow_headers=["content-type", "authorization", "last-event-id", "x-confirmation"],
     )
     application.include_router(router)
     application.include_router(users_router)
@@ -109,6 +110,7 @@ def create_app(path: Path | None = None) -> FastAPI:
     application.include_router(rfp_intake_router)
     application.include_router(rfp_events_router)
     application.include_router(chat_router)
+    application.include_router(actions_router)
     application.include_router(reporting_router)
     return application
 

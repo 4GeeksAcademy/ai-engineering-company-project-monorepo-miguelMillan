@@ -15,12 +15,14 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from security import get_current_user, is_staff, require_staff
+from rate_limit import limited_user
+from security import is_staff, require_staff
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
+from services.agent.action_log import action_log  # noqa: E402
 from services.agent.guardrails import SessionContext  # noqa: E402
 from services.agent.graph import (  # noqa: E402
     AgentGraphStructureError,
@@ -83,7 +85,7 @@ class AgentAnswer(BaseModel):
 
 
 @router.post("/agent/query", response_model=AgentAnswer, response_model_exclude_none=True)
-def ask_agent(payload: AgentQuestion, request: Request, response: Response, user=Depends(get_current_user)) -> AgentAnswer:
+def ask_agent(payload: AgentQuestion, request: Request, response: Response, user=Depends(limited_user)) -> AgentAnswer:
     # Las tools del agente van por el servidor MCP de TrackFlow con la identidad OAuth del propio
     # agente (cliente trackflow-agent, scopes de solo lectura). El JWT de quien pregunta solo
     # autoriza esta petición: no se reenvía (su audiencia es el API, no el servidor MCP).
@@ -170,6 +172,17 @@ def guardrails_summary(conversation_id: str | None = None, since: str | None = N
     """Cuántas veces se activó cada guardrail (opcionalmente en una conversación del usuario o desde una fecha)."""
     session = f"{getattr(user, 'id', 'u')}:{conversation_id}" if conversation_id else None
     return get_agent().traces.guardrail_summary(session_id=session, since=since)
+
+
+@router.get("/agent/runs/{run_id}/actions")
+def agent_run_actions(run_id: str, _user=Depends(require_staff)):
+    """Qué hizo el agente en una corrida, en orden, y por qué."""
+    traces = get_agent().traces
+    trace = traces.get_trace(run_id)
+    if trace is None:
+        raise HTTPException(status_code=404, detail="No existe esa corrida.")
+    return {"run_id": run_id, "actor": trace.get("actor"), "status": trace["status"], "started_at": trace["started_at"],
+            "sources": trace["sources_used"], "actions": action_log(trace, traces.guardrail_events(run_id))}
 
 
 @router.get("/agent/memory")

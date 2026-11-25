@@ -1,3 +1,4 @@
+import secrets
 import logging
 import os
 import statistics
@@ -47,11 +48,13 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="trackflow-caching-") as temporary:
         directory = Path(temporary)
         os.environ["DATABASE_URL"] = f"sqlite:///{directory / 'inventory.sqlite'}"
-        os.environ["SECRET_KEY"] = "temporary-benchmark-secret-at-least-32-characters"
+        os.environ["SECRET_KEY"] = secrets.token_urlsafe(48)
         os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "30"
         with TestClient(create_app(directory / "incidents.json")) as client:
-            client.post("/users", json={"email": "benchmark@example.com", "password": "benchmark-password"}).raise_for_status()
-            login = client.post("/auth/login", json={"email": "benchmark@example.com", "password": "benchmark-password"})
+            account = {"email": "benchmark@example.com"} | {"password": secrets.token_urlsafe(16)}
+            client.post("/users", json=account).raise_for_status()
+            client.app.state.db.table("users").update({"role": "manager"})  # las rutas medidas son solo para personal
+            login = client.post("/auth/login", json=account)
             login.raise_for_status()
             client.headers["Authorization"] = f"Bearer {login.json()['access_token']}"
             paths = ["/api/incidents", "/api/incidents/summary"]

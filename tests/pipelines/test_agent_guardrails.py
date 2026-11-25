@@ -364,7 +364,7 @@ def test_every_activation_is_logged_with_its_failure_type_and_summarized(caplog)
     assert {(r["guard"], r["action"]) for r in summary["by_guard"]} == {
         ("instruction_change", "block"), ("personal_use", "block"), ("small_talk", "redirect"),
         ("order_authorization", "block"), ("input_structure", "block")}
-    logged = [json.loads(r.getMessage()) for r in caplog.records]
+    logged = [json.loads(r.getMessage()) for r in caplog.records if r.name == "trackflow.agent.guardrails"]
     assert all(e["event"] == "guardrail" and e["failure_type"] and e["code"] for e in logged) and len(logged) == 5
 
 
