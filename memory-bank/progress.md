@@ -10,6 +10,7 @@
 - **Infraestructura:** `scripts/hardening/` (usuario de operaciones, SSH, carpetas, nftables, Caddy) probado en contenedores; **no aplicado a ningún servidor real**. Compose: Redis, Qdrant, Flower y MCP solo en loopback; contenedores Python sin root.
 - **Validación:** `tests` → 543 passed; `services/api` → 180 passed (SQLite desechable); jest → 53 passed; build de las dos UI OK; pip-audit 0; npm audit 0 altas. «Antes» sobre `316530f`: 26, 19 y 3 pruebas fallan. 35 mutaciones, 35 detectadas. gitleaks: solo una clave de pruebas. Evidencia en `docs/security/evidence/`.
 - **Rutas protegidas:** no se tocó `infra/`, `.agents/` ni `.env*`.
+- **PR #50:** abierto. La primera CI falló por una condición de carrera previa en `test_rfp_response.py` (departamentos en paralelo); reproducida y corregida solo en el test.
 
 ## Chat en tiempo real por WebSocket (Parte 2), 2026-11-23
 

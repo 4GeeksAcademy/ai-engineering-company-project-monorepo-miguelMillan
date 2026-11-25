@@ -58,11 +58,13 @@ def inputs_for(repo, markdown: str) -> dict[str, SectionInput]:
 
 def llm_writes(*narratives: str):
     """Doble del LLM generador: devuelve cada narrativa en orden (la última se repite) y guarda los prompts."""
-    calls = []
+    calls, lock = [], threading.Lock()
 
     def fn(system, user):
-        calls.append({"system": system, "user": user})
-        return {"enfoque": narratives[min(len(calls), len(narratives)) - 1], "_model": "fake"}
+        with lock:  # los departamentos llaman en paralelo
+            calls.append({"system": system, "user": user})
+            turn = len(calls)
+        return {"enfoque": narratives[min(turn, len(narratives)) - 1], "_model": "fake"}
 
     fn.calls = calls
     return fn
@@ -207,7 +209,9 @@ def test_failing_section_goes_back_to_its_generator_with_concrete_feedback_and_t
     retry_prompts = [c["user"] for c in llm.calls if "NO pasó la evaluación" in c["user"]]
     assert retry_prompts and first_fail.feedback_for_generator in retry_prompts[0]
     assert all(s["section_status"] == "evaluacion_superada" for s in result["response_handoff"]["sections"])
-    assert {s["department_id"]: s["iterations"] for s in result["response_handoff"]["sections"]}["warehouse"] == 2
+    # Los departamentos se generan en paralelo: la narrativa mala le toca al primero que llama, no siempre al mismo.
+    iterations = {s["department_id"]: s["iterations"] for s in result["response_handoff"]["sections"]}
+    assert iterations.pop(first_fail.department_id) == 2 and set(iterations.values()) == {1}
 
 
 def test_iteration_limit_keeps_last_draft_marks_needs_human_review_and_still_hands_off(repo):
