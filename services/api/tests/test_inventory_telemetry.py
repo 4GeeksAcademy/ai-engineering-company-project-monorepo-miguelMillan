@@ -1,6 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import promote
+
 
 @pytest.fixture
 def inventory_client(tmp_path, monkeypatch):
@@ -20,6 +22,7 @@ def inventory_client(tmp_path, monkeypatch):
             json={"email": "inventory@example.com", "password": "correct-horse-battery"},
         )
         assert login.status_code == 200
+        promote(client.app, "inventory@example.com")
         client.headers.update({"Authorization": f"Bearer {login.json()['access_token']}"})
         yield client
 

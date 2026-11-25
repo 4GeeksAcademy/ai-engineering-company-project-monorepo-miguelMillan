@@ -8,7 +8,7 @@ ningún pedido autorizado y el agente rechaza por autorización cualquier consul
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Iterable
 
 from services.agent.guardrails import SessionContext
 
@@ -36,6 +36,9 @@ def load_authorized_orders(engine: Any, user_uuid: str | None, limit: int = 200)
                                 "product": r[3]} for r in rows}
 
 
-def session_for(engine: Any, user_uuid: str | None, user_label: str | None) -> SessionContext:
-    return SessionContext(user=user_label, customer_type="desconocido",
-                          authorized_orders=load_authorized_orders(engine, user_uuid))
+def session_for(engine: Any, user_uuid: str | None, user_label: str | None, *, staff: bool = False,
+                client_ids: Iterable[str] = ()) -> SessionContext:
+    """``staff`` y ``client_ids`` salen de la cuenta autenticada (rol y marcas), nunca del mensaje."""
+    clients = sorted(client_ids)
+    return SessionContext(user=user_label, customer_type="b2b" if clients else "desconocido",
+                          authorized_orders=load_authorized_orders(engine, user_uuid), staff=staff, client_ids=clients)

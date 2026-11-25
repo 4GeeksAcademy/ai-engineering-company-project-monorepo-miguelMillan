@@ -7,7 +7,7 @@ from sqlmodel import Session
 from database import get_db
 from mock_data.pipelines.queries import get_weekly_warehouse_client_performance
 from mock_data.pipelines.runs import get_latest_pipeline_run
-from security import get_current_user
+from security import require_staff
 
 from .schemas import (
     LatestPipelineRunResponse,
@@ -21,7 +21,7 @@ PIPELINE_NAME = "weekly_warehouse_client_performance"
 router = APIRouter(
     prefix="/reporting",
     tags=["reporting"],
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(require_staff)],
 )
 
 

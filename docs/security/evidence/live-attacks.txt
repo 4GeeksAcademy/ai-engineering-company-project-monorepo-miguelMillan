@@ -1,0 +1,22 @@
+--- ANTES (main 316530f)
+subida de CSV sin sesión por el gateway                       202
+informe de telemetría sin sesión                             200
+cuenta recién registrada: POST /suppliers                     201
+cuenta recién registrada: GET /suppliers                      200
+cuenta recién registrada: GET /api/incidents                  200
+cuenta recién registrada: GET /inventory/orders               200
+cuenta recién registrada: GET /rfp-intake/tickets             200
+20 contraseñas seguidas contra una cuenta                     20×401 
+CORS del gateway ante Origin: https://evil.example             access-control-allow-origin: *
+cabeceras de seguridad (de 3) / openapi.json público          0 / 200
+--- DESPUÉS
+subida de CSV sin sesión por el gateway                       401
+informe de telemetría sin sesión                             401
+cuenta recién registrada: POST /suppliers                     403
+cuenta recién registrada: GET /suppliers                      403
+cuenta recién registrada: GET /api/incidents                  403
+cuenta recién registrada: GET /inventory/orders               403
+cuenta recién registrada: GET /rfp-intake/tickets             403
+20 contraseñas seguidas contra una cuenta                     5×401 15×429 
+CORS del gateway ante Origin: https://evil.example             no concedido
+cabeceras de seguridad (de 3) / openapi.json público          3 / 404

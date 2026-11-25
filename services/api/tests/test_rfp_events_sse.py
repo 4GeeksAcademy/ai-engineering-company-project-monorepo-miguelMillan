@@ -15,7 +15,9 @@ from pathlib import Path
 import httpx
 import pytest
 import uvicorn
-from jose import jwt
+import jwt
+
+from conftest import promote
 
 TEST_SECRET = "test-secret-key-with-at-least-32-bytes"
 FIXTURES = Path(__file__).resolve().parents[3] / "tests" / "pipelines" / "fixtures" / "rfp"
@@ -96,6 +98,7 @@ def api(tmp_path, monkeypatch):
     account = {"email": "ventas@example.com", "password": "correct-horse-battery"}
     httpx.post(f"{base}/users", json=account)
     token = httpx.post(f"{base}/auth/login", json=account).json()["access_token"]
+    promote(app, account["email"])
     yield Api(base, app, token)
     server.should_exit = True
     thread.join(timeout=10)
@@ -141,8 +144,22 @@ def test_unauthenticated_clients_get_401_and_no_events(api, headers):
     assert httpx.get(f"{api.base}/rfp-intake/events", params={"access_token": api.token, "token": api.token}, timeout=5).status_code == 401
 
 
+def test_customers_cannot_open_the_operations_stream_and_losing_the_role_closes_it(api):
+    with api.stream() as response:                                         # personal
+        stream = blocks(response)
+        next(stream)
+        promote(api.app, "ventas@example.com", "user")
+        deadline = time.time() + 5
+        for block in stream:                                               # se agota: perdió el rol con el stream abierto
+            assert block.startswith(":") and time.time() < deadline
+    with api.stream(last_event_id="0") as response:
+        assert response.status_code == 403
+    with api.stream(token=api.token) as response:
+        assert response.status_code == 403
+
+
 def test_stream_closes_when_the_token_expires_or_the_user_is_deactivated(api):
-    claims = jwt.get_unverified_claims(api.token)
+    claims = jwt.decode(api.token, options={"verify_signature": False})
     short = jwt.encode({**claims, "exp": datetime.now(timezone.utc) + timedelta(seconds=2)}, TEST_SECRET, algorithm="HS256")
     with api.stream(token=short) as response:
         assert response.status_code == 200

@@ -10,9 +10,11 @@ from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 from fastapi import HTTPException
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 
 from security import ALGORITHM, auth_settings
+from security_log import security_event
 from user_service import get_user_by_email, get_user_by_id, update_user
 
 
@@ -72,11 +74,11 @@ def reset_password(application, token: str, new_password: str) -> None:
     invalid = HTTPException(status_code=400, detail="El enlace no es valido, ha caducado o ya se ha utilizado. Solicita otro enlace.")
     try:
         secret_key, _ = auth_settings()
-        payload = jwt.decode(token, secret_key, algorithms=[ALGORITHM], options={"require_exp": True, "require_sub": True})
+        payload = jwt.decode(token, secret_key, algorithms=[ALGORITHM], options={"require": ["exp", "sub"]})
         if payload.get("purpose") != "password_reset":
             raise invalid
         user_id = int(payload["sub"])
-    except (JWTError, KeyError, ValueError, TypeError):
+    except (PyJWTError, KeyError, ValueError, TypeError):
         raise invalid
     with application.state.lock:
         user = get_user_by_id(application.state.db, user_id)
@@ -85,3 +87,4 @@ def reset_password(application, token: str, new_password: str) -> None:
         if user is None or not user.is_active or not stored_hash or not hmac.compare_digest(stored_hash, hashlib.sha256(token.encode()).hexdigest()):
             raise invalid
         update_user(application.state.db, application.state.lock, user_id, {"password": new_password})
+    security_event("password_reset", email=str(user.email))

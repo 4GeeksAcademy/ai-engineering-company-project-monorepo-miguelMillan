@@ -6,9 +6,11 @@ from typing import Annotated, Any
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 
-from models import User
+from models import User, UserRole
+from security_log import security_event
 from user_service import get_user_by_id
 
 
@@ -35,7 +37,7 @@ def create_access_token(user: User) -> tuple[str, int]:
     secret_key, expires_minutes = auth_settings()
     now = datetime.now(timezone.utc)
     token = jwt.encode(
-        {"sub": str(user.id), "role": user.role.value, "purpose": "access", "iat": now, "exp": now + timedelta(minutes=expires_minutes)},
+        {"sub": str(user.id), "role": user.role.value, "purpose": "access", "ver": user.session_version, "iat": now, "exp": now + timedelta(minutes=expires_minutes)},
         secret_key,
         algorithm=ALGORITHM,
     )
@@ -64,12 +66,38 @@ def authenticate_token(state: Any, token: str | None) -> tuple[User, float] | No
         if token is None:
             return None
         secret_key, _ = auth_settings()
-        payload = jwt.decode(token, secret_key, algorithms=[ALGORITHM], options={"require_sub": True, "require_exp": True})
+        payload = jwt.decode(token, secret_key, algorithms=[ALGORITHM], options={"require": ["sub", "exp"]})
         if payload.get("purpose", "access") != "access":
             return None
         with state.lock:
             user = get_user_by_id(state.db, int(payload["sub"]))
         expires_at = float(payload["exp"])
-    except (JWTError, KeyError, TypeError, ValueError, RuntimeError):
+    except (PyJWTError, KeyError, TypeError, ValueError, RuntimeError):
         return None
-    return (user, expires_at) if user is not None and user.is_active else None
+    # ``ver``: cambiar o restablecer la contraseña invalida los tokens ya emitidos (A07).
+    if user is None or not user.is_active or payload.get("ver", 0) != user.session_version:
+        return None
+    return user, expires_at
+
+
+STAFF_ROLES = frozenset({UserRole.admin, UserRole.manager})
+
+
+def is_staff(user: Any) -> bool:
+    """Personal de TrackFlow. Una cuenta autorregistrada (rol ``user``) es un cliente, nunca personal."""
+    return getattr(user, "role", None) in STAFF_ROLES
+
+
+def require_roles(*roles: UserRole):
+    def check(request: Request, user: User = Depends(get_current_user)) -> User:
+        if user.role not in roles:
+            security_event("access_denied", request, email=str(user.email), role=user.role.value)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tu cuenta no tiene permiso para esta operación.")
+        return user
+
+    return check
+
+
+require_staff = require_roles(UserRole.admin, UserRole.manager)
+# La cuenta de servicio del servidor MCP: solo lo que sus tools necesitan (incidencias y lectura de productos).
+require_staff_or_service = require_roles(UserRole.admin, UserRole.manager, UserRole.service)

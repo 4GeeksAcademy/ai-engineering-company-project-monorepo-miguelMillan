@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from models import User, UserListItemResponse, UserRegister, UserRegistrationResponse, UserResponse, UserRole, UserUpdate
+from routes.auth import password_matches
 from security import get_current_user
+from security_log import security_event
 from user_service import create_user, delete_user, get_user_by_id, list_users, update_user
 
 
@@ -86,10 +88,16 @@ def put_user(
 ):
     require_owner_or_admin(user_id, current_user)
     changes = payload.model_dump(exclude_unset=True)
-    if not changes or any(value is None for value in changes.values()):
+    if not changes.keys() - {"current_password"} or any(value is None for value in changes.values()):
         raise HTTPException(status_code=422, detail="Indica al menos un campo válido para actualizar.")
     if "role" in changes and current_user.role != UserRole.admin:
         raise HTTPException(status_code=403, detail="Solo un administrador puede cambiar roles.")
+    proof = changes.pop("current_password", None)
+    if {"email", "password"} & changes.keys() and current_user.role != UserRole.admin:
+        # Con solo un token robado se podía cambiar el email o la contraseña y quedarse la cuenta (A07).
+        if proof is None or not password_matches(proof, current_user.hashed_password):
+            security_event("account_change_denied", request, email=str(current_user.email))
+            raise HTTPException(status_code=403, detail="Confirma tu contraseña actual para cambiar el email o la contraseña.")
     try:
         user = update_user(request.app.state.db, request.app.state.lock, user_id, changes)
     except ValueError as error:
@@ -98,6 +106,9 @@ def put_user(
         raise
     if user is None:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    if {"role", "password"} & changes.keys():
+        security_event("account_changed_by_admin", request, email=str(current_user.email), target=user_id,
+                       fields=sorted({"role", "password"} & changes.keys()))
     return public_user(user)
 
 

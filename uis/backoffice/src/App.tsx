@@ -6,7 +6,7 @@ import { TelemetryDashboard } from './app/telemetry/TelemetryDashboard'
 import { ReportingPage } from './app/reporting/ReportingPages'
 import { RfpLiveNotifications } from './app/rfps/RfpLiveNotifications'
 import { AuthPage } from './components/AuthPage'
-import { authRequest, clearSession, getSessionToken } from './utils/auth'
+import { authRequest, clearSession, getSessionToken, isStaffRole } from './utils/auth'
 import { track } from './services/telemetry'
 import { LogOut } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState } from 'react'
@@ -42,6 +42,8 @@ function App() {
   const [activeView, setActiveView] = useState<'overview' | 'incidents' | 'suppliers' | 'incident-registration' | 'incident-directory' | 'reporting'>('overview')
   const [sessionState, setSessionState] = useState<'checking' | 'ready' | 'error'>(isPublicPath ? 'ready' : 'checking')
   const [sessionError, setSessionError] = useState('')
+  // Solo decide qué se muestra; quien autoriza es el API (403).
+  const [staff, setStaff] = useState(false)
 
   useEffect(() => {
     const section = path === '/account/profile' ? 'account'
@@ -67,8 +69,12 @@ function App() {
       return
     }
     const controller = new AbortController()
-    authRequest('/me', { signal: controller.signal })
-      .then(() => { if (!controller.signal.aborted) setSessionState('ready') })
+    authRequest<{ role: string }>('/me', { signal: controller.signal })
+      .then(({ role }) => {
+        if (controller.signal.aborted) return
+        setStaff(isStaffRole(role))
+        setSessionState('ready')
+      })
       .catch((cause: unknown) => {
         if (controller.signal.aborted) return
         setSessionError(cause instanceof Error ? cause.message : 'No se pudo verificar la sesión.')
@@ -99,16 +105,19 @@ function App() {
             <p className="mt-1 text-sm font-medium text-slate-600">Dashboard de operaciones internas</p>
           </div>
           <nav aria-label="Navegación principal" className="flex flex-wrap gap-2">
+            {staff && <>
             <button type="button" aria-current={activeView === 'incident-directory' ? 'page' : undefined} onClick={() => setActiveView('incident-directory')} className={`rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${activeView === 'incident-directory' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>Incidencias</button>
             <button type="button" aria-current={activeView === 'incident-registration' ? 'page' : undefined} onClick={() => setActiveView('incident-registration')} className={`rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${activeView === 'incident-registration' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>Registrar incidencia</button>
             <a href="/backoffice/inventory/products" aria-current={path.startsWith('/backoffice/inventory/') ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Inventario</a>
             <a href="/reporting" aria-current={path === '/reporting' ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Desempeño</a>
             <a href="/rfps" aria-current={path === '/rfps' ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">RFP</a>
+            </>}
             <a href="/knowledge" aria-current={path === '/knowledge' ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Asistente CX</a>
             <a href="/account/profile" className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Mi perfil</a>
-            <a href="/telemetry" aria-current={path === '/telemetry' ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Telemetría</a>
+            {staff && <a href="/telemetry" aria-current={path === '/telemetry' ? 'page' : undefined} className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Telemetría</a>}
             <a href="/account/change-password" className="rounded-md px-3 py-2 text-sm font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Cambiar contraseña</a>
             {getSessionToken() && <button type="button" title="Cerrar sesión" aria-label="Cerrar sesión" onClick={() => { clearSession(); window.location.assign('/login') }} className="flex h-10 w-10 items-center justify-center rounded-md text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"><LogOut size={18} aria-hidden="true" /></button>}
+            {staff && <>
             <button
               type="button"
               aria-current={activeView === 'overview' ? 'page' : undefined}
@@ -133,13 +142,20 @@ function App() {
             >
               Proveedores
             </button>
+            </>}
           </nav>
         </div>
       </header>
-      <RfpLiveNotifications />
+      {staff && <RfpLiveNotifications />}
 
       <Suspense fallback={<main className="mx-auto w-full max-w-6xl px-6 py-8"><p role="status">Cargando vista...</p></main>}>
-      {path.startsWith('/backoffice/inventory/') ? (
+      {!staff && path !== '/knowledge' && path !== '/account/profile' ? (
+        <main className="mx-auto w-full max-w-4xl space-y-3 px-6 py-8">
+          <h2 className="font-display text-2xl font-bold text-slate-900">Sin acceso a operaciones</h2>
+          <p data-testid="staff-only">Esta sección es solo para el equipo de TrackFlow. Si trabajas en TrackFlow, pide a un administrador que asigne un rol a tu cuenta.</p>
+          <a href="/knowledge" className="font-semibold text-emerald-800 underline">Ir al asistente de atención al cliente</a>
+        </main>
+      ) : path.startsWith('/backoffice/inventory/') ? (
         <main className="mx-auto w-full max-w-6xl px-6 py-8"><InventoryPage path={path} /></main>
       ) : path === '/reporting' ? (
         <main className="mx-auto w-full max-w-6xl px-6 py-8"><ReportingPage /></main>

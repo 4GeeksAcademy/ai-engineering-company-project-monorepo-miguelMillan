@@ -58,6 +58,10 @@ bcrypt==5.0.0
     # via libpass
 beartype==0.23.1
     # via py-key-value-aio
+beautifulsoup4==4.15.0
+    # via
+    #   markdownify
+    #   markitdown
 billiard==4.3.2
     # via celery
 burner-redis==0.1.7
@@ -81,12 +85,16 @@ certifi==2026.10.23
     #   httpcore
     #   httpx
     #   langchain-core
+    #   markitdown
     #   prefect
     #   requests
 cffi==2.1.1 ; platform_python_implementation != 'PyPy'
     # via cryptography
 charset-normalizer==3.5.2
-    # via requests
+    # via
+    #   markitdown
+    #   pdfminer-six
+    #   requests
 click==8.5.0
     # via
     #   apprise
@@ -95,6 +103,8 @@ click==8.5.0
     #   click-plugins
     #   click-repl
     #   huggingface-hub
+    #   magika
+    #   nltk
     #   prefect
     #   uvicorn
 click-didyoumean==0.3.1
@@ -105,6 +115,7 @@ click-repl==0.4.1
     # via celery
 cloudpickle==3.1.2
     # via
+    #   joblib
     #   prefect
     #   pydocket
 colorama==0.4.6
@@ -125,9 +136,9 @@ cryptography==50.0.2
     # via
     #   authlib
     #   joserfc
+    #   pdfminer-six
     #   prefect
     #   pyjwt
-    #   python-jose
     #   secretstorage
 cyclopts==4.25.3 ; python_full_version < '3.11'
     # via
@@ -139,16 +150,20 @@ cyclopts==5.5.2 ; python_full_version >= '3.11'
     #   prefect
 dateparser==1.5.0
     # via prefect
+defusedxml==0.7.1
+    # via
+    #   markitdown
+    #   nltk
 distro==1.9.0
     # via langsmith
-dnspython==2.8.0
+dnspython==2.8.0 ; python_full_version < '3.11'
+    # via email-validator
+dnspython==2.9.2 ; python_full_version >= '3.11'
     # via email-validator
 docker==7.2.0
     # via prefect
 docstring-parser==0.18.0
     # via cyclopts
-ecdsa==0.19.2
-    # via python-jose
 email-validator==2.3.0
     # via pydantic
 exceptiongroup==1.3.1
@@ -294,6 +309,8 @@ jiter==0.18.0 ; python_full_version < '3.11'
     # via openai
 jiter==0.19.0 ; python_full_version >= '3.11'
     # via openai
+joblib==1.6.0
+    # via nltk
 joserfc==1.7.7 ; python_full_version < '3.11'
     # via
     #   authlib
@@ -352,8 +369,11 @@ langgraph==1.2.24
 langgraph-checkpoint==4.3.2
     # via
     #   langgraph
+    #   langgraph-checkpoint-postgres
     #   langgraph-checkpoint-sqlite
     #   langgraph-prebuilt
+langgraph-checkpoint-postgres==3.2.1
+    # via trackflow-suppliers
 langgraph-checkpoint-sqlite==3.1.3
     # via trackflow-suppliers
 langgraph-prebuilt==1.1.3
@@ -370,6 +390,8 @@ libpass==1.9.3
     # via trackflow-suppliers
 loguru==0.7.3
     # via fastembed
+magika==1.0.3
+    # via markitdown
 mako==1.4.3
     # via alembic
 markdown==3.10.3 ; python_full_version < '3.11'
@@ -378,6 +400,10 @@ markdown==3.11.3 ; python_full_version >= '3.11'
     # via apprise
 markdown-it-py==4.3.0
     # via rich
+markdownify==1.2.4
+    # via markitdown
+markitdown==0.1.9
+    # via trackflow-suppliers
 markupsafe==3.0.4
     # via
     #   jinja2
@@ -403,6 +429,8 @@ more-itertools==11.2.1 ; python_full_version >= '3.11'
     #   jaraco-functools
 mpmath==1.3.0 ; python_full_version < '3.11'
     # via sympy
+nltk==3.10.4
+    # via py-readability-metrics
 numpy==2.2.6 ; python_full_version < '3.11'
     # via
     #   fastembed
@@ -424,14 +452,18 @@ numpy==2.5.4 ; python_full_version >= '3.12'
 oauthlib==4.0.1
     # via requests-oauthlib
 onnxruntime==1.23.2 ; python_full_version < '3.11'
-    # via fastembed
+    # via
+    #   fastembed
+    #   magika
 onnxruntime==1.32.0 ; python_full_version >= '3.11'
-    # via fastembed
+    # via
+    #   fastembed
+    #   magika
 openai==3.55.1
     # via trackflow-suppliers
 openapi-pydantic==0.6.0
     # via fastmcp-slim
-opentelemetry-api==1.45.1
+opentelemetry-api==1.45.2
     # via
     #   fastapi
     #   fastmcp-slim
@@ -439,6 +471,7 @@ opentelemetry-api==1.45.1
     #   pydocket
 orjson==3.13.0
     # via
+    #   langgraph-checkpoint-postgres
     #   langgraph-sdk
     #   langsmith
     #   prefect
@@ -460,12 +493,24 @@ pathable==0.6.0
     # via jsonschema-path
 pathspec==1.1.1
     # via prefect
+pdfminer-six==20260107
+    # via
+    #   markitdown
+    #   pdfplumber
+pdfplumber==0.11.10 ; python_full_version < '3.11'
+    # via markitdown
+pdfplumber==0.11.11 ; python_full_version >= '3.11'
+    # via markitdown
 pendulum==3.3.0 ; python_full_version < '3.13'
     # via prefect
 pillow==12.3.0 ; python_full_version < '3.11'
-    # via fastembed
+    # via
+    #   fastembed
+    #   pdfplumber
 pillow==13.0.0 ; python_full_version >= '3.11'
-    # via fastembed
+    # via
+    #   fastembed
+    #   pdfplumber
 platformdirs==4.12.4 ; python_full_version < '3.11'
     # via fastmcp-slim
 platformdirs==4.14.8 ; python_full_version >= '3.11'
@@ -489,18 +534,24 @@ protobuf==7.36.2
     # via
     #   onnxruntime
     #   qdrant-client
+psycopg==3.3.9
+    # via
+    #   langgraph-checkpoint-postgres
+    #   trackflow-suppliers
+psycopg-binary==3.3.9 ; implementation_name != 'pypy'
+    # via psycopg
+psycopg-pool==3.3.3
+    # via langgraph-checkpoint-postgres
 psycopg2-binary==2.9.13
     # via trackflow-suppliers
 py-key-value-aio==0.4.6
     # via
     #   fastmcp-slim
     #   pydocket
+py-readability-metrics==1.4.5
+    # via trackflow-suppliers
 py-rust-stemmers==0.1.8
     # via fastembed
-pyasn1==0.6.4
-    # via
-    #   python-jose
-    #   rsa
 pycparser==3.11 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'
     # via cffi
 pydantic==2.14.0
@@ -549,6 +600,9 @@ pyjwt==2.15.1
     # via
     #   mcp
     #   mcpauth
+    #   trackflow-suppliers
+pypdfium2==5.15.2
+    # via pdfplumber
 pyperclip==1.11.0
     # via fastmcp-slim
 pyreadline3==3.5.6 ; python_full_version < '3.11' and sys_platform == 'win32'
@@ -565,8 +619,6 @@ python-dotenv==1.2.4
     #   fastmcp-slim
     #   pydantic-settings
     #   trackflow-suppliers
-python-jose==3.5.0
-    # via trackflow-suppliers
 python-json-logger==4.2.0
     # via pydocket
 python-multipart==0.0.32 ; python_full_version < '3.11'
@@ -618,15 +670,20 @@ referencing==0.37.0
     #   jsonschema-path
     #   jsonschema-specifications
 regex==2026.9.29 ; python_full_version < '3.11'
-    # via dateparser
+    # via
+    #   dateparser
+    #   nltk
 regex==2026.11.15 ; python_full_version >= '3.11'
-    # via dateparser
+    # via
+    #   dateparser
+    #   nltk
 requests==2.34.2
     # via
     #   apprise
     #   docker
     #   fastembed
     #   langsmith
+    #   markitdown
     #   mcpauth
     #   requests-oauthlib
     #   requests-toolbelt
@@ -654,8 +711,6 @@ rpds-py==2026.9.1 ; python_full_version >= '3.11'
     # via
     #   jsonschema
     #   referencing
-rsa==4.9.1
-    # via python-jose
 ruamel-yaml==0.19.1
     # via prefect
 ruamel-yaml-clib==0.2.15 ; python_full_version < '3.11' and platform_python_implementation == 'CPython'
@@ -668,7 +723,6 @@ shellingham==1.5.4
     # via typer
 six==1.17.0
     # via
-    #   ecdsa
     #   python-dateutil
     #   rfc3339-validator
 sniffio==1.3.1
@@ -677,6 +731,10 @@ sniffio==1.3.1
     #   langsmith
     #   openai
     #   prefect
+soupsieve==2.10 ; python_full_version < '3.11.5'
+    # via beautifulsoup4
+soupsieve==4.1.3 ; python_full_version >= '3.11.5'
+    # via beautifulsoup4
 sqlalchemy==2.0.57 ; python_full_version < '3.11'
     # via
     #   alembic
@@ -730,6 +788,7 @@ tqdm==4.70.1
     # via
     #   fastembed
     #   huggingface-hub
+    #   nltk
 truststore==0.10.5 ; sys_platform != 'emscripten'
     # via
     #   httpcore2
@@ -740,6 +799,7 @@ typing-extensions==4.16.0
     # via
     #   alembic
     #   anyio
+    #   beautifulsoup4
     #   click-repl
     #   cryptography
     #   cyclopts
@@ -757,6 +817,8 @@ typing-extensions==4.16.0
     #   openai
     #   opentelemetry-api
     #   prefect
+    #   psycopg
+    #   psycopg-pool
     #   py-key-value-aio
     #   pydantic
     #   pydantic-core
@@ -783,6 +845,7 @@ tzdata==2026.6
     #   kombu
     #   pandas
     #   pendulum
+    #   psycopg
     #   pydocket
     #   tzlocal
     #   whenever
@@ -830,6 +893,7 @@ websockets==16.1.1
     #   langgraph-sdk
     #   langsmith
     #   prefect
+    #   trackflow-suppliers
 whenever==0.11.0 ; python_full_version >= '3.11'
     # via prefect
 win32-setctime==1.2.1 ; sys_platform == 'win32'

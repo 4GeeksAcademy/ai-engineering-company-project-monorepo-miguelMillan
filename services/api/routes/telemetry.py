@@ -14,6 +14,7 @@ from sqlalchemy import insert
 from sqlmodel import Session
 
 from database import get_db
+from security import require_staff
 from models import TelemetryEventRecord
 
 try:
@@ -180,7 +181,7 @@ def _resolve_report_period(
     return resolved_start, resolved_end
 
 
-@router.get("/report")
+@router.get("/report", dependencies=[Depends(require_staff)])
 def telemetry_report(
     start_date: AwareDatetime | None = Query(default=None),
     end_date: AwareDatetime | None = Query(default=None),

@@ -1,11 +1,14 @@
 """API de recepción de RFP: subida → ticket «analizando» + PDF en data/raw + encolado; consulta y reproceso.
 Parte 2: (re)generación de la respuesta y detalle con borradores y EvaluationResult."""
 
+import json
 import uuid
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+
+from conftest import promote
 
 TEST_SECRET = "test-secret-key-with-at-least-32-bytes"
 PDF = b"%PDF-1.4\n% RFP de prueba\n"
@@ -27,6 +30,7 @@ def client(tmp_path, monkeypatch):
     with TestClient(create_app(tmp_path / "users.json")) as api:
         api.post("/users", json={"email": "ventas@example.com", "password": "correct-horse-battery"})
         token = api.post("/auth/login", json={"email": "ventas@example.com", "password": "correct-horse-battery"}).json()["access_token"]
+        promote(api.app, "ventas@example.com")
         api.headers.update({"Authorization": f"Bearer {token}"})
         api.enqueued = enqueued
         api.raw_dir = tmp_path / "raw" / "rfp"
@@ -103,7 +107,7 @@ def test_part2_generate_endpoint_and_detail_with_drafts_and_evaluations(client):
         assert section["evaluation_result"]["overall_pass"] is True and section["evaluation_history"][0]["iteration"] == 1
 
 
-def test_part3_decision_endpoint_validates_resumes_and_exposes_final_document_and_trace(client):
+def test_part3_decision_endpoint_validates_resumes_and_exposes_final_document_and_trace(client, monkeypatch):
     import sqlite3
 
     from langgraph.checkpoint.sqlite import SqliteSaver
@@ -124,6 +128,7 @@ def test_part3_decision_endpoint_validates_resumes_and_exposes_final_document_an
     assert detail["approval_thread_id"] == f"rfp-{ticket_id}:approval-1"
     sections = {s["department_id"]: s for s in detail["sections"]}
     assert sections["warehouse"]["approval_request"]["approver"] == "Ana Whitfield"
+    monkeypatch.setenv("RFP_APPROVERS", json.dumps({"Ana Whitfield": "ventas@example.com", "Sofía Ramos": "ventas@example.com"}))
 
     wrong = client.post(f"/rfp-intake/tickets/{ticket_id}/sections/warehouse/decision",
                         json={"decision": "approve", "approver": "Carlos Vega", "section_version": 1})

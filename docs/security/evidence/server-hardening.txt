@@ -1,0 +1,85 @@
+--- ANTES
+Puertos TCP abiertos desde otra máquina (los 65535, IPv4):
+  22/tcp
+  80/tcp
+  443/tcp
+  5555/tcp
+  6333/tcp
+  6379/tcp
+  8080/tcp
+  8081/tcp
+Puertos TCP abiertos por IPv6 (los 8 con servicio):
+  22/tcp
+  80/tcp
+  443/tcp
+  5555/tcp
+  6333/tcp
+  8080/tcp
+  8081/tcp
+SSH:
+  root con contraseña:            root
+  root con clave autorizada:      root
+  trackflow-ops con su clave:     denegado
+  trackflow-ops con otra clave:   denegado
+Lo que puede hacer el usuario de operaciones:
+  (no existe: todo se hace como root)
+16 comprobaciones fallan.
+
+--- Sin clave válida, el guion no toca nada:
+ERROR: indica OPS_SSH_KEY_FILE con la clave PÚBLICA de operaciones
+ERROR: eso es una clave privada; hace falta la pública (.pub)
+
+--- Se aplica (dos veces: idempotente)
+==> Usuarios: trackflow-ops (operaciones, entra por SSH) y trackflow (servicio, sin login)
+==> sudo mínimo: solo trackflow-ctl
+==> Carpetas: código, configuración sensible, logs y datos separados
+==> SSH: sin root y sin contraseñas
+==> Firewall: entrada denegada salvo SSH (22), 80 y 443 en eth0
+==> Comprobación
+Usuarios
+  OK    existe trackflow-ops, sin contraseña
+  OK    trackflow-ops no es root-equivalente (docker/sudo/adm)
+  OK    su único sudo es trackflow-ctl
+  OK    la aplicación corre con un usuario sin login
+SSH
+  OK    root no puede entrar
+  OK    sin contraseñas
+  OK    solo el grupo trackflow-ssh
+  OK    máximo 3 intentos por conexión
+Carpetas
+  OK    código: root lo escribe, la app solo lo lee
+  OK    secretos: solo root
+  OK    logs: la app escribe, operaciones lee
+  OK    datos: solo la app
+Firewall
+  OK    entrada denegada por defecto
+  OK    los puertos publicados por Docker también
+  OK    sin acceso a los metadatos de la nube
+  OK    se carga al arrancar
+
+Todo correcto.
+Abre AHORA otra sesión como trackflow-ops antes de cerrar esta.
+16 comprobaciones OK en la segunda pasada
+
+--- DESPUÉS
+Puertos TCP abiertos desde otra máquina (los 65535, IPv4):
+  22/tcp
+  80/tcp
+  443/tcp
+Puertos TCP abiertos por IPv6 (los 8 con servicio):
+  22/tcp
+  80/tcp
+  443/tcp
+SSH:
+  root con contraseña:            denegado
+  root con clave autorizada:      denegado
+  trackflow-ops con su clave:     trackflow-ops
+  trackflow-ops con otra clave:   denegado
+Lo que puede hacer el usuario de operaciones:
+  cat /etc/trackflow/trackflow.env                               denegado
+  sh -c 'echo x >> /opt/trackflow/app/main.py'                   denegado
+  ls /var/lib/trackflow                                          denegado
+  ls /var/log/trackflow                                          permitido
+  sudo -n cat /etc/shadow                                        denegado
+  sudo -n /usr/local/sbin/trackflow-ctl logs '../../etc'         denegado
+  la app modifica su propio código                              denegado

@@ -3,10 +3,10 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from models import Category, Country, RateUpdate, StatusUpdate, Supplier, SupplierCreate, SupplierResponse
-from security import get_current_user
+from security import require_staff
 
 
-router = APIRouter(prefix="/suppliers", tags=["suppliers"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/suppliers", tags=["suppliers"], dependencies=[Depends(require_staff)])
 
 
 def find_supplier(request: Request, supplier_id: int):

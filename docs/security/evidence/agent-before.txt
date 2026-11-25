@@ -1,0 +1,27 @@
+FAILED tests/security/test_agent_authorization.py::test_a01_a_customer_cannot_read_other_peoples_tickets_through_the_agent[session0-\xbfQu\xe9 tickets abiertos hay?]
+FAILED tests/security/test_agent_authorization.py::test_a01_a_customer_cannot_read_other_peoples_tickets_through_the_agent[session0-\xbfEn qu\xe9 estado est\xe1 el ticket 8a4f3f2e-6c1d-5b9a-9e2f-0123456789ab?]
+FAILED tests/security/test_agent_authorization.py::test_a01_a_customer_cannot_read_other_peoples_tickets_through_the_agent[session0-Lista las incidencias de paquetes perdidos de Zaragoza]
+FAILED tests/security/test_agent_authorization.py::test_a01_a_customer_cannot_read_other_peoples_tickets_through_the_agent[session1-\xbfQu\xe9 tickets abiertos hay?]
+FAILED tests/security/test_agent_authorization.py::test_a01_a_customer_cannot_read_other_peoples_tickets_through_the_agent[session1-\xbfEn qu\xe9 estado est\xe1 el ticket 8a4f3f2e-6c1d-5b9a-9e2f-0123456789ab?]
+FAILED tests/security/test_agent_authorization.py::test_a01_a_customer_cannot_read_other_peoples_tickets_through_the_agent[session1-Lista las incidencias de paquetes perdidos de Zaragoza]
+FAILED tests/security/test_agent_authorization.py::test_a01_a_brand_cannot_see_another_brands_stock[\xbfCu\xe1nto stock hay del CLT-SNK-W-42?]
+FAILED tests/security/test_agent_authorization.py::test_a01_an_unrelated_customer_cannot_query_inventory
+FAILED tests/security/test_agent_authorization.py::test_a01_not_found_and_forbidden_products_are_indistinguishable
+FAILED tests/security/test_agent_authorization.py::test_a01_the_question_cannot_widen_the_session
+FAILED tests/security/test_agent_authorization.py::test_a08_a_customer_cannot_poison_the_memory_everyone_reads
+FAILED tests/security/test_agent_authorization.py::test_a08_a_customer_cannot_approve_a_proposal_left_pending_in_the_session
+FAILED tests/security/test_agent_authorization.py::test_a01_internal_memory_about_a_brand_is_not_shown_to_customers
+FAILED tests/security/test_exposure.py::test_cr7_internal_services_are_never_published_beyond_loopback[flower]
+FAILED tests/security/test_exposure.py::test_cr7_internal_services_are_never_published_beyond_loopback[mcp]
+FAILED tests/security/test_exposure.py::test_cr7_internal_services_are_never_published_beyond_loopback[qdrant]
+FAILED tests/security/test_exposure.py::test_cr7_internal_services_are_never_published_beyond_loopback[redis]
+FAILED tests/security/test_exposure.py::test_cr7_containers_run_without_root_nor_capabilities[backend]
+FAILED tests/security/test_exposure.py::test_cr7_containers_run_without_root_nor_capabilities[mcp]
+FAILED tests/security/test_exposure.py::test_cr7_containers_run_without_root_nor_capabilities[celery-worker]
+FAILED tests/security/test_exposure.py::test_cr7_containers_run_without_root_nor_capabilities[flower]
+FAILED tests/security/test_exposure.py::test_cr7_only_the_backend_receives_every_secret[celery-worker]
+FAILED tests/security/test_exposure.py::test_cr7_only_the_backend_receives_every_secret[flower]
+FAILED tests/security/test_exposure.py::test_cr5_the_gateway_does_not_forward_uploads_without_a_session
+FAILED tests/security/test_exposure.py::test_cr5_the_gateway_only_grants_cors_to_the_trackflow_origins[https://evil.example-None]
+FAILED tests/security/test_exposure.py::test_cr5_the_gateway_only_grants_cors_to_the_trackflow_origins[https://app.trackflow.example-https://app.trackflow.example]
+26 failed, 6 passed, 1 deselected, 17 warnings in 2.05s

@@ -5,7 +5,7 @@ import unicodedata
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 from sqlalchemy import DateTime, Index, JSON, Uuid
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field as SQLField, SQLModel
@@ -266,14 +266,21 @@ class StatusUpdate(BaseModel):
 class UserRole(str, Enum):
     admin = "admin"
     manager = "manager"
-    user = "user"
+    service = "service"  # cuenta de servicio (servidor MCP): incidencias y lectura de productos
+    user = "user"        # cliente autorregistrado: chat, base de conocimiento y su propio perfil
+
+
+def _bcrypt_limit(value: str | None) -> str | None:
+    if value is not None and len(value.encode("utf-8")) > 72:  # bcrypt no admite más: antes acababa en un 500
+        raise ValueError("La contrasena no puede superar 72 bytes UTF-8.")
+    return value
 
 
 class UserRegister(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: Annotated[str, AfterValidator(_bcrypt_limit)] = Field(min_length=8)
     name: str | None = Field(default=None, min_length=1)
     phone: str | None = None
     address: str | None = None
@@ -317,8 +324,9 @@ class UserUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     email: EmailStr | None = None
-    password: str | None = Field(default=None, min_length=8)
+    password: Annotated[str | None, AfterValidator(_bcrypt_limit)] = Field(default=None, min_length=8)
     role: UserRole | None = None
+    current_password: str | None = None  # obligatoria para cambiar el propio email o contraseña
 
 
 class User(BaseModel):
@@ -328,6 +336,8 @@ class User(BaseModel):
     hashed_password: str
     is_active: bool = True
     role: UserRole = UserRole.user
+    session_version: int = 0                                # sube al cambiar la contraseña: revoca los JWT emitidos
+    client_ids: list[str] = Field(default_factory=list)     # marcas B2B de la cuenta; solo se asignan con accounts.py
     created_at: datetime
 
 

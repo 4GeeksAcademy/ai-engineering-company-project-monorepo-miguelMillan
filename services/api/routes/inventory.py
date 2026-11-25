@@ -18,10 +18,12 @@ from schemas import (
     StockOrderListItemResponse,
     StockThresholdUpdate,
 )
-from security import get_current_user
+from security import get_current_user, require_staff, require_staff_or_service
 
 
-router = APIRouter(prefix="/inventory", tags=["inventory"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/inventory", tags=["inventory"], dependencies=[Depends(require_staff)])
+# Lectura de productos: también la cuenta de servicio del servidor MCP (nada de escritura ni pedidos).
+catalog_router = APIRouter(prefix="/inventory", tags=["inventory"], dependencies=[Depends(require_staff_or_service)])
 
 
 def current_stock(session: Session, sku_id: int, warehouse: str) -> int:
@@ -54,7 +56,7 @@ def product_response(product: SKU, session: Session) -> SKUResponse:
     )
 
 
-@router.get("/products", response_model=list[SKUResponse])
+@catalog_router.get("/products", response_model=list[SKUResponse])
 def list_products(session: Session = Depends(get_db)):
     products = session.exec(select(SKU).order_by(SKU.id)).all()
     return [product_response(product, session) for product in products]
@@ -79,7 +81,7 @@ def create_product(payload: SKUCreate, session: Session = Depends(get_db)):
     return product_response(product, session)
 
 
-@router.get("/products/{product_id}", response_model=SKUResponse)
+@catalog_router.get("/products/{product_id}", response_model=SKUResponse)
 def get_product(product_id: int, session: Session = Depends(get_db)):
     product = session.get(SKU, product_id)
     if product is None:

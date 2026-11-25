@@ -7,10 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from tinydb import Query
 
 from models import Incident, IncidentBranch, IncidentCategory, IncidentCreate, IncidentCreatedResponse, IncidentDetailResponse, IncidentListItemResponse, IncidentOrigin, IncidentStatus, IncidentStatusResponse, IncidentStatusUpdate, IncidentSummaryResponse, User
-from security import get_current_user
+from security import get_current_user, require_staff_or_service
 
 
-router = APIRouter(prefix="/api/incidents", tags=["incidents"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/incidents", tags=["incidents"], dependencies=[Depends(require_staff_or_service)])
 INCIDENT_CACHE_TTL = 5
 INCIDENT_CACHE_LIMIT = 32
 TRANSITIONS = {

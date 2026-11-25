@@ -1,0 +1,4 @@
+FAILED tests/test_chat_ws.py::test_customers_cannot_use_internal_tools_over_the_websocket_and_the_role_is_read_every_turn
+FAILED tests/test_chat_ws.py::test_changing_the_password_closes_the_open_socket
+FAILED tests/test_rfp_events_sse.py::test_customers_cannot_open_the_operations_stream_and_losing_the_role_closes_it
+3 failed, 36 deselected, 17 warnings in 17.63s

@@ -82,7 +82,7 @@ the host. From the repository root, install/build and start with:
 docker compose up --build
 ```
 
-The backend image also runs the Node gateway and FastAPI. Celery uses a dedicated `celery-worker` service, Redis broker/backend, and Flower on port 5555 (HTTP Basic Auth required via `FLOWER_BASIC_AUTH`). Redis is exposed on 6379 for local development and persists its AOF data in `redis_data`. Set strong, unique `FLOWER_BASIC_AUTH` and `TASKS_INTERNAL_TOKEN` values in the ignored root `.env`.
+The backend image also runs the Node gateway and FastAPI. Celery uses a dedicated `celery-worker` service, Redis broker/backend, and Flower on port 5555 (HTTP Basic Auth required via `FLOWER_BASIC_AUTH`). Redis (6379), Qdrant, Flower and MCP are published on loopback only (`127.0.0.1`); Redis persists its AOF data in `redis_data`. Set strong, unique `FLOWER_BASIC_AUTH` and `TASKS_INTERNAL_TOKEN` values in the ignored root `.env`.
 
 Before using asynchronous CSV analysis, apply `supabase/migrations/20261118120000_create_task_dead_letters.sql` to the configured PostgreSQL database and provide `FLOWER_BASIC_AUTH` in the ignored root `.env`. For background mode and health checks:
 `docker compose up -d --wait`. Open `http://localhost:3000` (website),

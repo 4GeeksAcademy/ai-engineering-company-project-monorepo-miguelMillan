@@ -19,9 +19,16 @@ services/api/
 
 `src/server.js` conserva la API Node de incidencias y el proxy del directorio; `src/start.js` arranca ambos servicios. El directorio tambien funciona directamente como aplicacion FastAPI con `uv run uvicorn main:app --host 0.0.0.0 --port 8081`.
 
+## Roles y permisos
+- `user` (cuenta autorregistrada): cliente. Chat, base de conocimiento y su perfil. El resto del API responde `403`.
+- `manager`, `admin`: personal de TrackFlow. `service`: cuenta del servidor MCP (incidencias y lectura de productos).
+- Se asignan en el servidor, nunca por el API propio: `uv run python accounts.py set-role <email> manager`; marcas B2B con `set-clients`.
+- `RFP_APPROVERS` (JSON `{"Ana Whitfield": "ana@…"}`): cuenta de cada responsable. Sin mapeo nadie decide una sección.
+- `APP_ENV=production` desactiva `/docs` y `/openapi.json`. Detalle: [docs/security/owasp-audit.md](../../docs/security/owasp-audit.md).
+
 ## Endpoints
 - `POST /users` -> registra un usuario con rol `user` y crea su perfil TinyDB vinculado.
-- `GET /users`, `GET /users/{id}`, `PUT /users/{id}`, `DELETE /users/{id}` -> CRUD protegido; solo el dueño o un admin puede consultar, modificar o eliminar por ID. Solo un admin puede cambiar roles.
+- `GET /users`, `GET /users/{id}`, `PUT /users/{id}`, `DELETE /users/{id}` -> CRUD protegido; solo el dueño o un admin puede consultar, modificar o eliminar por ID. Solo un admin puede cambiar roles. Cambiar el propio email o contraseña exige `current_password`.
 - `POST /auth/login` -> acepta JSON con `email`/`password` y el formulario OAuth2 (`username`/`password`); devuelve un JWT Bearer.
 - `GET /auth/me` -> email, rol y perfil vinculado del usuario autenticado.
 - `GET /profiles/me`, `PUT /profiles/me` -> consulta y actualiza el perfil propio.

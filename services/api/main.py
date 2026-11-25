@@ -17,7 +17,7 @@ from routes.auth import router as auth_router
 from routes.incidents import router as incidents_router
 from routes.knowledge import router as knowledge_router
 from routes.agent import router as agent_router
-from routes.inventory import router as inventory_router
+from routes.inventory import catalog_router, router as inventory_router
 from routes.profiles import router as profiles_router
 from routes.suppliers import router
 from routes.telemetry import router as telemetry_router
@@ -28,6 +28,10 @@ from routes.rfp_events import router as rfp_events_router
 from routes.rfp_intake import router as rfp_intake_router
 
 logger = logging.getLogger("uvicorn.error.timing")
+# API JSON: nada se renderiza ni se enmarca. (HSTS lo pone el proxy que termina TLS.) Swagger, solo fuera de producción.
+SECURITY_HEADERS = {"X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer",
+                    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'"}
+DOCS_PATHS = {"/docs", "/redoc", "/docs/oauth2-redirect"}
 
 
 def create_app(path: Path | None = None) -> FastAPI:
@@ -36,12 +40,16 @@ def create_app(path: Path | None = None) -> FastAPI:
         sys.path.insert(0, repository_root)
     from services.reporting.routes import router as reporting_router
 
-    application = FastAPI(title="TrackFlow Supplier Directory", lifespan=database_lifespan(path))
+    production = os.environ.get("APP_ENV", "development") == "production"
+    docs = {"openapi_url": None, "docs_url": None, "redoc_url": None} if production else {}
+    application = FastAPI(title="TrackFlow Supplier Directory", lifespan=database_lifespan(path), **docs)
 
     @application.middleware("http")
     async def timing_middleware(request: Request, call_next):
         started = time.perf_counter()
         response = await call_next(request)
+        if request.url.path not in DOCS_PATHS:
+            response.headers.update(SECURITY_HEADERS)
         duration_ms = (time.perf_counter() - started) * 1000
         logger.info("%s %s -> %s | %.1fms", request.method, request.url.path, response.status_code, duration_ms)
         return response
@@ -77,7 +85,8 @@ def create_app(path: Path | None = None) -> FastAPI:
 
     @application.exception_handler(Exception)
     async def unexpected_error(request: Request, error: Exception):
-        return JSONResponse(status_code=500, content={"detail": "Error interno del servidor. Intentalo de nuevo mas tarde."})
+        return JSONResponse(status_code=500, content={"detail": "Error interno del servidor. Intentalo de nuevo mas tarde."},
+                            headers=SECURITY_HEADERS)
 
     origins = os.environ.get("CORS_ORIGINS", "http://localhost:5174,http://127.0.0.1:5174")
     application.add_middleware(
@@ -92,6 +101,7 @@ def create_app(path: Path | None = None) -> FastAPI:
     application.include_router(auth_router)
     application.include_router(incidents_router)
     application.include_router(inventory_router)
+    application.include_router(catalog_router)
     application.include_router(telemetry_router)
     application.include_router(tasks_router)
     application.include_router(knowledge_router)

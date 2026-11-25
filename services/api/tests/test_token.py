@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from jose import jwt
+import jwt
 
 from conftest import TEST_SECRET
 

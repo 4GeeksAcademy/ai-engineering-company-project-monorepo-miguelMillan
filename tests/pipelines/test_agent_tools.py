@@ -21,6 +21,7 @@ from uuid import uuid4
 import pytest
 
 import services.agent.mcp_client as mcp_client
+from services.agent.guardrails import SessionContext
 from services.agent.graph import KnowledgeAgent, sqlite_checkpointer, sources_used
 from services.agent.mcp_client import McpCallResult, TrackflowMcpTools
 from services.agent.routing import plan_sources
@@ -252,8 +253,16 @@ class Sources:
         return "La ventana de devolución estándar es de 30 días desde la entrega."
 
 
+class StaffAgent(KnowledgeAgent):
+    """Estas pruebas no miran la autorización (tests/security): sin sesión explícita, pregunta el personal."""
+
+    def _start(self, question, run_id, session_id, user, session):
+        return super()._start(question, run_id, session_id, user, session or SessionContext(user=user, staff=True))
+
+
+
 def agent_for(sources, tmp_path=None):
-    return KnowledgeAgent(retrieve_fn=sources.retrieve, generate_fn=sources.generate, incidents_fn=sources.incidents,
+    return StaffAgent(retrieve_fn=sources.retrieve, generate_fn=sources.generate, incidents_fn=sources.incidents,
                           inventory_fn=sources.inventory,
                           mcp=FakeMcp(), checkpointer=sqlite_checkpointer(tmp_path / "cp.sqlite" if tmp_path else ":memory:"),
                           traces=TraceStore(":memory:"))
@@ -305,7 +314,7 @@ def test_unexpected_tool_exception_does_not_break_the_run():
         raise ValueError("respuesta corrupta")
 
     src = Sources()
-    agent = KnowledgeAgent(retrieve_fn=src.retrieve, generate_fn=src.generate, incidents_fn=boom, inventory_fn=src.inventory,
+    agent = StaffAgent(retrieve_fn=src.retrieve, generate_fn=src.generate, incidents_fn=boom, inventory_fn=src.inventory,
                            mcp=FakeMcp(), checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"))
     result = agent.run(f"¿En qué estado está el ticket {TICKET_ID}?")
     assert "No pude confirmar" in result.answer
@@ -322,7 +331,7 @@ def test_inventory_question_answers_with_live_stock():
 def test_tool_nodes_call_the_real_lookup_through_the_injected_mcp_client(tmp_path):
     """Sin dobles de lookup: el nodo mcp_incidents usa lookup_incidents → cliente MCP inyectado."""
     mcp = FakeMcp(incidents_get_ticket=ok(INCIDENT))
-    agent = KnowledgeAgent(retrieve_fn=lambda *a, **k: [], generate_fn=lambda q, c: "", mcp=mcp,
+    agent = StaffAgent(retrieve_fn=lambda *a, **k: [], generate_fn=lambda q, c: "", mcp=mcp,
                            checkpointer=sqlite_checkpointer(tmp_path / "cp.sqlite"), traces=TraceStore(":memory:"))
     result = agent.run(f"¿En qué estado está el ticket {TICKET_ID}?")
 
@@ -343,7 +352,7 @@ def test_rag_and_generation_use_the_policy_subquestion_in_mixed_runs():
     seen = []
     src = Sources(chunks=[{"company": "trackflow", "source_document": "returns-policy", "section": "s", "language": "es",
                            "chunk_index": 1, "text": "Ventana: 30 días.", "score": 0.57}])
-    agent = KnowledgeAgent(retrieve_fn=lambda q, *, k, min_score: seen.append(("retrieve", q)) or src.chunks,
+    agent = StaffAgent(retrieve_fn=lambda q, *, k, min_score: seen.append(("retrieve", q)) or src.chunks,
                            generate_fn=lambda q, c: seen.append(("generate", q)) or "30 días.",
                            incidents_fn=src.incidents, inventory_fn=src.inventory,
                            mcp=FakeMcp(), checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"))

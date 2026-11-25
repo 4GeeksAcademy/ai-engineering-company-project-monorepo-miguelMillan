@@ -23,7 +23,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 
 import routes.agent as agent_routes
-from security import authenticate_token, get_current_user
+from security import authenticate_token, get_current_user, is_staff
 from services.agent.chat import events
 from services.agent.chat.engine import ChatEngine
 from services.agent.chat.store import ChatStore
@@ -129,7 +129,7 @@ async def chat_socket(websocket: WebSocket):
     try:
         await websocket.send_json(snapshot)  # primero se restaura el hilo; después llegan tokens
         tasks = [asyncio.create_task(step) for step in (
-            _send(websocket, subscription), _receive(websocket, engine, session_id, user), _watch(websocket, user.id, expires_at))]
+            _send(websocket, subscription), _receive(websocket, engine, session_id, user), _watch(websocket, user.id, user.session_version, expires_at))]
         done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         code = next((task.result() for task in done if not task.cancelled() and task.exception() is None), None)
         for task in done:
@@ -153,16 +153,16 @@ async def _send(websocket: WebSocket, subscription) -> int:
     return OVERLOADED
 
 
-async def _watch(websocket: WebSocket, user_id: int, expires_at: float) -> int:
-    """El token se validó al conectar; la conexión no puede sobrevivirle, ni al usuario desactivado."""
+async def _watch(websocket: WebSocket, user_id: int, session_version: int, expires_at: float) -> int:
+    """El token se validó al conectar; la conexión no puede sobrevivirle, ni al usuario desactivado, ni a un cambio de contraseña."""
     from user_service import get_user_by_id
 
     def active() -> bool:
         with websocket.app.state.lock:
             user = get_user_by_id(websocket.app.state.db, user_id)
-        return user is not None and user.is_active
+        return user is not None and user.is_active and user.session_version == session_version
 
-    while (left := expires_at + 1 - time.time()) > 0:
+    while (left := expires_at - time.time()) > 0:
         await asyncio.sleep(min(left, _seconds("CHAT_WATCH_SECONDS", 15)))
         if not await asyncio.to_thread(active):
             return UNAUTHORIZED
@@ -171,11 +171,14 @@ async def _watch(websocket: WebSocket, user_id: int, expires_at: float) -> int:
 
 async def _receive(websocket: WebSocket, engine: ChatEngine, session_id: str, user) -> int | None:
     from services.agent.session import session_for
+    from user_service import get_user_by_id
 
     label, database = agent_routes._user_label(user), getattr(websocket.app.state, "engine", None)
 
-    def context():  # en el hilo del agente: los pedidos autorizados se leen en cada turno
-        return session_for(database, str(user.user_uuid), label)
+    def context():  # en el hilo del agente: pedidos, rol y marcas se leen en cada turno, no los de cuando conectó
+        with websocket.app.state.lock:
+            current = get_user_by_id(websocket.app.state.db, user.id) or user
+        return session_for(database, str(user.user_uuid), label, staff=is_staff(current), client_ids=current.client_ids)
 
     while True:
         frame = await websocket.receive_text()

@@ -14,6 +14,7 @@ import json
 
 import pytest
 
+from services.agent.guardrails import SessionContext
 from services.agent.graph import KnowledgeAgent, sqlite_checkpointer
 from services.agent.mcp_client import OAuthClientCredentials, TrackflowMcpTools
 from services.agent.tracing import TraceStore, executed_nodes, node_output
@@ -23,12 +24,20 @@ CHUNK = {"company": "trackflow", "source_document": "returns-policy", "section":
          "chunk_index": 1, "text": "La ventana de devolución estándar es de 30 días.", "score": 0.57}
 
 
+class StaffAgent(KnowledgeAgent):
+    """Estas pruebas no miran la autorización (tests/security): sin sesión explícita, pregunta el personal."""
+
+    def _start(self, question, run_id, session_id, user, session):
+        return super()._start(question, run_id, session_id, user, session or SessionContext(user=user, staff=True))
+
+
+
 @pytest.fixture
 def agent_stack(mcp_server, oidc, tmp_path):
     auth = OAuthClientCredentials(oidc.issuer, "trackflow-agent", CLIENT_SECRET)
     mcp = TrackflowMcpTools(mcp_server.url, auth=auth, timeout=5)
     rag_calls = []
-    agent = KnowledgeAgent(
+    agent = StaffAgent(
         retrieve_fn=lambda q, *, k, min_score: rag_calls.append(q) or [CHUNK],
         generate_fn=lambda q, c: "La ventana de devolución estándar es de 30 días desde la entrega.",
         mcp=mcp, checkpointer=sqlite_checkpointer(tmp_path / "checkpoints.sqlite"), traces=TraceStore(tmp_path / "traces.sqlite"),
@@ -86,7 +95,7 @@ def test_agent_never_writes_tickets_even_if_it_tried(agent_stack, backend):
 def test_mcp_server_down_falls_back_honestly(oidc, tmp_path):
     mcp = TrackflowMcpTools(f"http://127.0.0.1:{free_port()}/mcp",
                             auth=OAuthClientCredentials(oidc.issuer, "trackflow-agent", CLIENT_SECRET), timeout=3)
-    agent = KnowledgeAgent(retrieve_fn=lambda *a, **k: [], generate_fn=lambda q, c: "", mcp=mcp,
+    agent = StaffAgent(retrieve_fn=lambda *a, **k: [], generate_fn=lambda q, c: "", mcp=mcp,
                            checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"))
     result = agent.run(f"¿En qué estado está el ticket {TICKET_ID}?")
     assert "No pude confirmar el estado de ese ticket ahora mismo" in result.answer

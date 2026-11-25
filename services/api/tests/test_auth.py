@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
-from jose import jwt
+import jwt
 from passlib.hash import bcrypt
 from pydantic import ValidationError
 
@@ -153,9 +153,11 @@ def test_owner_admin_permissions_profile_update_and_cascade_delete(client):
     assert changed_profile.json()["name"] == "Updated Name"
     assert changed_profile.json()["address"] == "Zaragoza"
 
+    stolen_token_only = client.put(f"/users/{owner['id']}", json={"email": "renamed@example.com"}, headers=owner_headers)
+    assert stolen_token_only.status_code == 403   # sin la contraseña actual, un token robado no se queda la cuenta
     changed_credentials = client.put(
         f"/users/{owner['id']}",
-        json={"email": "renamed@example.com", "password": "new-correct-password"},
+        json={"email": "renamed@example.com", "password": "new-correct-password", "current_password": "correct-horse-battery"},
         headers=owner_headers,
     )
     assert changed_credentials.status_code == 200

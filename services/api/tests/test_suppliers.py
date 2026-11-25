@@ -14,6 +14,8 @@ from pydantic import ValidationError
 
 from models import RateUpdate, SupplierCreate
 
+from conftest import promote
+
 
 def supplier_payload(**changes):
     return {
@@ -68,6 +70,7 @@ def client(tmp_path, monkeypatch):
 
     with TestClient(create_app(tmp_path / "suppliers.json")) as connection:
         connection.post("/users", json={"email": "supplier-test@example.com", "password": "secure-password"})
+        promote(connection.app, "supplier-test@example.com")
         token = connection.post(
             "/auth/login",
             json={"email": "supplier-test@example.com", "password": "secure-password"},
@@ -133,6 +136,7 @@ def test_seed_idempotence_and_persistence(tmp_path, monkeypatch):
             "/auth/login", json={"email": "seed-test@example.com", "password": "secure-password"}
         ).json()["access_token"]
         connection.headers.update({"Authorization": f"Bearer {token}"})
+        promote(connection.app, "seed-test@example.com")
         records = connection.get("/suppliers").json()
         assert len(records) == 15
         for record, expected in zip(records, SUPPLIERS_SEED):
@@ -217,6 +221,9 @@ def test_persistence_after_real_server_restart(tmp_path):
             f"{url}/users", json={"email": "restart-test@example.com", "password": "secure-password"}, timeout=10
         )
         assert registration.status_code == 201
+        subprocess.run([sys.executable, "accounts.py", "set-role", "restart-test@example.com", "manager"], check=True,
+                       cwd=Path(__file__).resolve().parents[1],
+                       env={**os.environ, "SUPPLIERS_DB_PATH": str(path), "SECRET_KEY": "test-secret-key-with-at-least-32-bytes"})
         login = httpx.post(
             f"{url}/auth/login", json={"email": "restart-test@example.com", "password": "secure-password"}, timeout=10
         )
