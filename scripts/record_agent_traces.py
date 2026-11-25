@@ -31,6 +31,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from mock_data.process.rag import load_embedding_settings, load_generation_settings  # noqa: E402
+from services.agent.guardrails import SessionContext  # noqa: E402
 from services.agent.graph import AgentRunError, KnowledgeAgent  # noqa: E402
 from services.agent.mcp_client import TrackflowMcpTools  # noqa: E402
 
@@ -60,7 +61,7 @@ def main() -> int:
             case_agent = KnowledgeAgent(data_dir=Path(data_dir), mcp=mcp, traces=agent.traces,
                                         checkpointer=agent.checkpointer) if overrides else agent
             try:
-                result = case_agent.run(case["question"], run_id=run_id)
+                result = case_agent.run(case["question"], run_id=run_id, session=SessionContext(staff=True))
                 summary = f"{result.final_node:16} {result.answer[:90]!r}"
             except AgentRunError as error:
                 failures += 1

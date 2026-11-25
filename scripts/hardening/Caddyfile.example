@@ -1,0 +1,50 @@
+# Único servicio público junto a SSH: termina TLS y reparte. Sustituye los dominios. Validar: caddy validate --config Caddyfile
+{
+	servers {
+		timeouts {
+			read_header 10s
+		}
+	}
+}
+
+(seguridad) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+		-Server
+	}
+}
+
+# UI del backoffice: build estático (`npm run build`), no el servidor de desarrollo de Vite.
+app.trackflow.example {
+	import seguridad
+	header Content-Security-Policy "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+	# Nada interno sale por aquí: el adaptador de tareas solo lo usa el gateway, dentro de la red de Docker.
+	@interno path /internal/* /docs /redoc /openapi.json /agent/guardrails/*
+	respond @interno 404
+
+	@gateway path /suppliers* /api/incidents* /tasks/*
+	handle @gateway {
+		request_body {
+			max_size 11MB
+		}
+		reverse_proxy 127.0.0.1:8080
+	}
+	@api path /auth/* /users* /profiles/* /telemetry/* /knowledge/query /agent/* /chat/* /rfp-intake/* /inventory/* /reporting/*
+	handle @api {
+		request_body {
+			max_size 11MB
+		}
+		# SSE y WebSocket: sin buffer. El JWT nunca va en la URL salvo el alta del WebSocket: no se registra la query.
+		reverse_proxy 127.0.0.1:8081 {
+			flush_interval -1
+		}
+	}
+	handle {
+		root * /opt/trackflow/app/uis/backoffice/dist
+		try_files {path} /index.html
+		file_server
+	}
+}

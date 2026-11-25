@@ -1,0 +1,7 @@
+# 2026-11-24 — main 316530f, antes de las correcciones (resumen de la salida)
+npm audit uis/backoffice: 2 altas (vite 8.2.0–8.2.2, source-map-js), 18 moderadas (cadena de jest)
+npm audit uis/website: 2 altas (vite, source-map-js)
+npm audit .: 0
+pip-audit raíz: sin vulnerabilidades conocidas
+pip-audit services/api: 12 avisos en 6 paquetes: dnspython 2.8.0, ecdsa (sin parche), opentelemetry-api, pyasn1 0.6.4, pytest 8.4.2, python-jose 3.5.0 (PYSEC-2026-4298)
+bandit (media o alta): B608×2 tracing.py, B104 main.py, B310 password_recovery.py

@@ -19,11 +19,9 @@ from typing import AsyncIterator, Callable
 from fastapi import APIRouter, Depends, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
-from jose import jwt
 
 from routes.rfp_intake import _repo
-from security import get_current_user
-from user_service import get_user_by_id
+from security import authenticate_token, is_staff, require_staff
 
 logger = logging.getLogger("trackflow.rfp_events")
 router = APIRouter(prefix="/rfp-intake", tags=["rfp intake"])
@@ -115,20 +113,18 @@ def resolve_cursor(repo, last_event_id: str | None, replay_limit: int) -> tuple[
 
 @router.get("/events", response_class=StreamingResponse,
             responses={200: {"content": {"text/event-stream": {}}}, 401: {"description": "JWT ausente o no válido"}})
-async def stream_rfp_events(request: Request, user=Depends(get_current_user)):
+async def stream_rfp_events(request: Request, _user=Depends(require_staff)):
     repo, hub, state = _repo(request), _hub(request), request.app.state
-    # get_current_user ya verificó firma y caducidad; aquí solo se lee cuándo caduca para cerrar el stream a tiempo.
     token = request.headers["authorization"].split(" ", 1)[1].strip()
-    # (+1: python-jose acepta el token hasta que termina el segundo de ``exp``; el stream dura lo mismo.)
-    expires_at = float(jwt.get_unverified_claims(token)["exp"]) + 1
+    identity = await run_in_threadpool(authenticate_token, state, token)
+    expires_at = identity[1] if identity else 0.0  # el stream no dura más que el token
     keepalive = _setting("RFP_SSE_KEEPALIVE_SECONDS", 15)
     cursor, reset = await run_in_threadpool(resolve_cursor, repo, request.headers.get("last-event-id"),
                                             int(_setting("RFP_SSE_REPLAY_LIMIT", 200)))
 
-    def user_is_active() -> bool:
-        with state.lock:
-            current = get_user_by_id(state.db, user.id)
-        return current is not None and current.is_active
+    def still_allowed() -> bool:  # desactivada, sin rol de personal o con la contraseña cambiada: se corta el stream
+        current = authenticate_token(state, token)
+        return current is not None and is_staff(current[0])
 
     async def stream(cursor: int) -> AsyncIterator[str]:
         async with hub.subscribe():
@@ -149,7 +145,7 @@ async def stream_rfp_events(request: Request, user=Depends(get_current_user)):
                     cursor = max(cursor, seen)  # ids ya vistos por el sondeo y borrados después: no hay nada que esperar
                 pending = await hub.wait_beyond(cursor, min(keepalive, max(0.05, expires_at - time.time())))
                 if not pending:
-                    if not await run_in_threadpool(user_is_active):
+                    if not await run_in_threadpool(still_allowed):
                         return
                     yield ": keep-alive\n\n"
 

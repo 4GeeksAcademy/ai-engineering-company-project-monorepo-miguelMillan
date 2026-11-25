@@ -13,5 +13,10 @@ COPY --from=telemetry_schema event-schemas.json /app/docs/telemetry/event-schema
 COPY --from=scripts incidents_analysis.py /app/scripts/incidents_analysis.py
 COPY --from=shared incident_validation.py /app/packages/shared/incident_validation.py
 
+# Usuario sin privilegios. El volumen nuevo hereda este dueño; uno ya creado por root: chown una vez (docs/security).
+RUN groupadd --gid 1000 trackflow && useradd --uid 1000 --gid 1000 --no-create-home --shell /usr/sbin/nologin trackflow \
+    && install -d -o trackflow -g trackflow -m 0700 /var/lib/trackflow
+USER trackflow
+
 EXPOSE 8080 8081
 CMD ["node", "src/start.js"]

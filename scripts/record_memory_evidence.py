@@ -29,6 +29,7 @@ if str(ROOT) not in sys.path:
 import redis  # noqa: E402
 
 from mock_data.process.rag import load_generation_settings  # noqa: E402
+from services.agent.guardrails import SessionContext  # noqa: E402
 from services.agent.graph import AgentRunError, KnowledgeAgent  # noqa: E402
 from services.agent.memory import RedisMemoryStore  # noqa: E402
 
@@ -59,7 +60,8 @@ def run_turn(agent: KnowledgeAgent, store: RedisMemoryStore, session: str, messa
     before = snapshot(store)
     started = time.perf_counter()
     try:
-        result = agent.run(message, run_id=run_id, session_id=session, user="valentina.cruz@trackflow.example")
+        result = agent.run(message, run_id=run_id, session_id=session, user="valentina.cruz@trackflow.example",
+                           session=SessionContext(user="valentina.cruz@trackflow.example", staff=True))
         outcome = {"answer": result.answer, "final_node": result.final_node, "sources": result.sources,
                    "memory_proposal": result.memory_proposal, "memory_resolution": result.memory_resolution}
     except AgentRunError as error:

@@ -46,6 +46,9 @@ def render_incidents(result: dict[str, Any]) -> str:
         if error == "invalid_query":
             return (f"No pude buscar el ticket «{query['raw_ticket_reference']}»: en TrackFlow los tickets se identifican "
                     "con un UUID (por ejemplo 3f2b9c1e-1a2b-4c3d-8e9f-0123456789ab). Compártelo completo y lo consulto.")
+        if error == "forbidden":
+            return ("No puedo consultar tickets desde tu cuenta: el gestor de incidencias es una herramienta interna del equipo "
+                    "de TrackFlow. Si se trata de un envío tuyo, dime su número de seguimiento.")
         if error == "unauthorized":
             return "No pude consultar el gestor de incidencias porque la consulta no tiene credenciales válidas."
         subject = "el estado de ese ticket" if result["mode"] == "detail" else "los tickets"
@@ -82,6 +85,8 @@ def render_inventory(result: dict[str, Any]) -> str:
             return f"No encontré el producto «{target}» en el gestor de inventario."
         if error == "invalid_query":
             return "Indica el SKU o el nombre del producto para consultar su stock."
+        if error == "forbidden":
+            return "No puedo consultar el inventario desde tu cuenta: solo lo ven el equipo de TrackFlow y la marca propietaria."
         if error == "unauthorized":
             return "No pude consultar el gestor de inventario porque la consulta no tiene credenciales válidas."
         cause = "no respondió a tiempo" if error == "timeout" else "no está disponible"

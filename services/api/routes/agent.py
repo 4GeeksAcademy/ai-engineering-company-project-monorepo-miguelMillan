@@ -15,7 +15,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from security import get_current_user
+from security import get_current_user, is_staff, require_staff
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 if str(REPOSITORY_ROOT) not in sys.path:
@@ -127,7 +127,7 @@ def _user_label(user) -> str:
 
 
 @router.post("/agent/memory/proposals/{proposal_id}/confirm")
-def confirm_memory_proposal(proposal_id: str, user=Depends(get_current_user)):
+def confirm_memory_proposal(proposal_id: str, user=Depends(require_staff)):
     from services.agent.memory import MemoryWriteRejected
 
     store = _memory_store()
@@ -145,7 +145,7 @@ def confirm_memory_proposal(proposal_id: str, user=Depends(get_current_user)):
 
 
 @router.post("/agent/memory/proposals/{proposal_id}/reject")
-def reject_memory_proposal(proposal_id: str, user=Depends(get_current_user)):
+def reject_memory_proposal(proposal_id: str, user=Depends(require_staff)):
     store = _memory_store()
     try:
         store.reject(proposal_id, rejected_by=_user_label(user))
@@ -158,25 +158,26 @@ def reject_memory_proposal(proposal_id: str, user=Depends(get_current_user)):
 # Sesión autenticada para los guardrails: qué pedidos puede consultar quien pregunta
 # ----------------------------------------------------------------------------
 def build_session_context(request: Request, user) -> SessionContext:
-    """Pedidos autorizados = despachos con tracking de la cuenta autenticada (deny by default)."""
+    """Qué puede hacer el agente en nombre de ESTA cuenta: pedidos, marcas y tools internas (deny by default)."""
     from services.agent.session import session_for
 
-    return session_for(getattr(request.app.state, "engine", None), getattr(user, "user_uuid", None), _user_label(user))
+    return session_for(getattr(request.app.state, "engine", None), getattr(user, "user_uuid", None), _user_label(user),
+                       staff=is_staff(user), client_ids=getattr(user, "client_ids", ()))
 
 
 @router.get("/agent/guardrails/summary")
-def guardrails_summary(conversation_id: str | None = None, since: str | None = None, user=Depends(get_current_user)):
+def guardrails_summary(conversation_id: str | None = None, since: str | None = None, user=Depends(require_staff)):
     """Cuántas veces se activó cada guardrail (opcionalmente en una conversación del usuario o desde una fecha)."""
     session = f"{getattr(user, 'id', 'u')}:{conversation_id}" if conversation_id else None
     return get_agent().traces.guardrail_summary(session_id=session, since=since)
 
 
 @router.get("/agent/memory")
-def list_agent_memory(_user=Depends(get_current_user)):
+def list_agent_memory(_user=Depends(require_staff)):
     return {"entries": [entry.model_dump() for entry in _memory_store().entries()]}
 
 
 @router.get("/agent/memory/audit")
-def agent_memory_audit(_user=Depends(get_current_user)):
+def agent_memory_audit(_user=Depends(require_staff)):
     """Registro auditable de cada decisión: propuesta, resultado, mensajes, usuario y marca de tiempo."""
     return {"decisions": _memory_store().audit_log()}

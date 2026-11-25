@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, Header, HTTPException, Request, Up
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 
-from security import get_current_user
+from security import require_staff
 from task_storage import delete_task_input, store_task_input
 from tasks import analyze_incident_csv
 
@@ -50,7 +50,7 @@ async def _enqueue_uploaded_file(request: Request, file: UploadFile):
 
 
 @router.post("/api/incidents/analyze", status_code=202)
-async def submit_incident_analysis(request: Request, file: UploadFile = File(...), _user=Depends(get_current_user)):
+async def submit_incident_analysis(request: Request, file: UploadFile = File(...), _user=Depends(require_staff)):
     return await _enqueue_uploaded_file(request, file)
 
 
@@ -59,16 +59,17 @@ async def submit_incident_analysis_from_gateway(
     request: Request,
     file: UploadFile = File(...),
     internal_token: str = Header(default="", alias="x-internal-task-token"),
+    _user=Depends(require_staff),
 ):
-    """Gateway adapter preserving the legacy unauthenticated upload contract."""
+    """Entrada desde el gateway: token interno Y personal autenticado (el gateway reenvía ``Authorization``)."""
     configured_token = os.environ.get("TASKS_INTERNAL_TOKEN")
-    if not configured_token or not hmac.compare_digest(configured_token, internal_token):
+    if not configured_token or not hmac.compare_digest(configured_token.encode(), internal_token.encode()):
         raise HTTPException(status_code=401, detail="No autorizado.")
     return await _enqueue_uploaded_file(request, file)
 
 
 @router.get("/tasks/{task_id}")
-def get_task_status(task_id: UUID, _user=Depends(get_current_user)):
+def get_task_status(task_id: UUID, _user=Depends(require_staff)):
     task = AsyncResult(str(task_id), app=analyze_incident_csv.app)
     state = task.state.lower()
     if state == "revoked":
@@ -82,7 +83,7 @@ def get_task_status(task_id: UUID, _user=Depends(get_current_user)):
 
 
 @router.get("/api/incidents/results/export")
-def export_incident_results(task_id: UUID, _user=Depends(get_current_user)):
+def export_incident_results(task_id: UUID, _user=Depends(require_staff)):
     task = AsyncResult(str(task_id), app=analyze_incident_csv.app)
     if not task.successful():
         raise HTTPException(status_code=409, detail="Los resultados de esta tarea todavía no están disponibles.")

@@ -1,5 +1,17 @@
 # Progress Log — TrackFlow
 
+## Endurecimiento del servidor y auditoría OWASP Top 10, 2026-11-24
+
+- **Contexto y rama:** contexto archivado en `memory-bank/history/SECURITY-OWASP-CONTEXT-2026-11-24.md`. Rama `feature/owasp-top10-audit`, desde `main` con el #49. Comparado con `cmp` al cerrar: solo difiere en una línea en blanco añadida después, sin contenido nuevo; no se crea otra copia.
+- **Auditoría:** `docs/security/owasp-audit.md`, con carriles de backend, frontend y agente. 7 críticas y 8 altas corregidas; 14 medias o bajas pendientes (P-1 a P-14). No existen en el fork: motor de carriers, motor de devoluciones, portal B2B.
+- **Control de acceso:** roles `admin`/`manager` (personal), `service` (MCP) y `user` (cliente). Todo lo que no sea de cliente exige personal. **Las cuentas existentes con rol `user` pierden el backoffice:** hay que promocionarlas con `services/api/accounts.py`, y poner `service` a la cuenta de MCP. `RFP_APPROVERS` es obligatorio para decidir secciones de RFP.
+- **Agente:** la sesión lleva rol y marcas de la cuenta. Incidencias solo personal, inventario solo personal o marca dueña, memoria compartida solo personal.
+- **Autenticación:** límite de login y reinicios, JWT revocados al cambiar la contraseña, contraseña actual para cambiar credenciales, PyJWT en lugar de python-jose, registro `trackflow.security`.
+- **Infraestructura:** `scripts/hardening/` (usuario de operaciones, SSH, carpetas, nftables, Caddy) probado en contenedores; **no aplicado a ningún servidor real**. Compose: Redis, Qdrant, Flower y MCP solo en loopback; contenedores Python sin root.
+- **Validación:** `tests` → 543 passed; `services/api` → 180 passed (SQLite desechable); jest → 53 passed; build de las dos UI OK; pip-audit 0; npm audit 0 altas. «Antes» sobre `316530f`: 26, 19 y 3 pruebas fallan. 35 mutaciones, 35 detectadas. gitleaks: solo una clave de pruebas. Evidencia en `docs/security/evidence/`.
+- **Rutas protegidas:** no se tocó `infra/`, `.agents/` ni `.env*`.
+- **PR #50:** abierto. La primera CI falló por una condición de carrera previa en `test_rfp_response.py` (departamentos en paralelo); reproducida y corregida solo en el test.
+
 ## Chat en tiempo real por WebSocket (Parte 2), 2026-11-23
 
 - **Contexto y rama:** contexto archivado en `memory-bank/history/REALTIME-WEBSOCKET-CONTEXT-2026-11-23.md`. Rama `feature/websocket-chat`, desde `main` con el #48 mergeado.

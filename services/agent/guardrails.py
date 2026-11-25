@@ -64,15 +64,20 @@ class SessionContext:
     customer_type: Literal["b2b", "b2c", "desconocido"] = "desconocido"
     # Pedidos/trackings de ESTA sesión → datos del envío (almacén, país, fecha, producto).
     authorized_orders: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # Las tools van con la identidad OAuth del AGENTE: lo que puede pedir cada persona se decide aquí (deny by default).
+    staff: bool = False                                   # personal de TrackFlow: incidencias, inventario y memoria
+    client_ids: list[str] = field(default_factory=list)   # marcas B2B de la cuenta: solo SU inventario
 
     @classmethod
     def from_state(cls, data: dict[str, Any] | None) -> "SessionContext":
         data = data or {}
         return cls(user=data.get("user"), customer_type=data.get("customer_type", "desconocido"),
-                   authorized_orders={k.upper(): v for k, v in (data.get("authorized_orders") or {}).items()})
+                   authorized_orders={k.upper(): v for k, v in (data.get("authorized_orders") or {}).items()},
+                   staff=data.get("staff") is True, client_ids=list(data.get("client_ids") or []))
 
     def to_state(self) -> dict[str, Any]:
-        return {"user": self.user, "customer_type": self.customer_type, "authorized_orders": self.authorized_orders}
+        return {"user": self.user, "customer_type": self.customer_type, "authorized_orders": self.authorized_orders,
+                "staff": self.staff, "client_ids": self.client_ids}
 
 
 @dataclass

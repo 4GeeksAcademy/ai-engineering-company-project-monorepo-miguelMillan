@@ -1,0 +1,36 @@
+detectada  CR-1 suppliers.py sin rol | test_a01_every_route_is_denied_by_default_to_anonymous_and_self_registered_accounts
+detectada  CR-1 tasks.py sin rol | test_a01_every_route_is_denied_by_default_to_anonymous_and_self_registered_accounts
+detectada  CR-1 rfp_intake.py sin rol | test_a01_every_route_is_denied_by_default_to_anonymous_and_self_registered_accounts
+detectada  CR-1 SSE sin rol | test_customers_cannot_open_the_operations_stream_and_losing_the_role_closes_it
+detectada  CR-1 SSE no revisa rol | test_customers_cannot_open_the_operations_stream_and_losing_the_role_closes_it
+detectada  CR-1 incidencias sin rol | test_a01_every_route_is_denied_by_default_to_anonymous_and_self_registered_accounts
+detectada  CR-6 inventario sin rol | test_a01_every_route_is_denied_by_default_to_anonymous_and_self_registered_accounts
+detectada  CR-1 catálogo abierto | test_a01_every_route_is_denied_by_default_to_anonymous_and_self_registered_accounts
+detectada  CR-1 reporting sin rol | test_a01_every_route_is_denied_by_default_to_anonymous_and_self_registered_accounts
+detectada  CR-1 memoria sin rol | test_a01_every_route_is_denied_by_default_to_anonymous_and_self_registered_accounts
+detectada  CR-1 confirmar memoria sin rol | test_a01_every_route_is_denied_by_default_to_anonymous_and_self_registered_accounts
+detectada  CR-1 user cuenta como personal | test_a01_the_agent_session_comes_from_the_account
+detectada  CR-1 service llega a todo | test_a05_the_mcp_service_account_only_reaches_what_its_tools_need
+detectada  CR-2 incidencias para todos | test_a01_a_customer_cannot_read_other_peoples_tickets_through_the_agent
+detectada  CR-2 inventario sin denegar | test_a01_an_unrelated_customer_cannot_query_inventory
+detectada  CR-2 marca sin filtro | test_a01_a_brand_cannot_see_another_brands_stock[\xbfCu\xe1nto stock hay del CLT-SNK-W-42?
+detectada  CR-2 filtro no pasado | test_a01_a_brand_cannot_see_another_brands_stock[\xbfCu\xe1nto stock hay del CLT-SNK-W-42?
+detectada  CR-2 ws sin rol por turno | test_customers_cannot_use_internal_tools_over_the_websocket_and_the_role_is_read_every_tur
+detectada  CR-2 ws todos personal | test_customers_cannot_use_internal_tools_over_the_websocket_and_the_role_is_read_every_tur
+detectada  CR-2 http todos personal | test_a01_the_agent_session_comes_from_the_account
+detectada  CR-3 cliente propone | test_a08_a_customer_cannot_poison_the_memory_everyone_reads
+detectada  CR-3 cliente aprueba | test_a08_a_customer_cannot_approve_a_proposal_left_pending_in_the_session
+detectada  CR-3 memoria interna visible | test_a01_internal_memory_about_a_brand_is_not_shown_to_customers
+detectada  CR-4 sin comprobar cuenta | test_a01_an_rfp_section_is_only_decided_by_the_account_of_its_approver[sin mapeo-403]
+detectada  CR-5 interno sin sesión | test_a01_every_route_is_denied_by_default_to_anonymous_and_self_registered_accounts
+detectada  CR-5 informe público | test_a01_every_route_is_denied_by_default_to_anonymous_and_self_registered_accounts
+detectada  CR-5 gateway sin sesión | test_cr5_the_gateway_does_not_forward_uploads_without_a_session
+detectada  CR-5 CORS abierto | test_cr5_the_gateway_only_grants_cors_to_the_trackflow_origins[https://evil.example-None]
+detectada  CR-7 Redis publicado | test_cr7_internal_services_are_never_published_beyond_loopback[redis]
+detectada  CR-7 Qdrant publicado | test_cr7_internal_services_are_never_published_beyond_loopback[qdrant]
+detectada  CR-7 worker con .env | test_cr7_only_the_backend_receives_every_secret[celery-worker]
+detectada  CR-7 contenedor root | test_cr7_containers_run_without_root_nor_capabilities[flower]
+detectada  A07 sin revocar | test_a07_changing_the_password_revokes_the_tokens_already_issued
+detectada  A07 ws sin revocar | test_changing_the_password_closes_the_open_socket
+detectada  A07 sin límite | test_a07_password_guessing_is_throttled_even_from_many_addresses
+35/35

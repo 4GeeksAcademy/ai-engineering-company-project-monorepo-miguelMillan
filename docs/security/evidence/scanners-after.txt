@@ -1,0 +1,14 @@
+# 2026-11-24 — después de las correcciones
+npm audit uis/backoffice: {'info': 0, 'low': 0, 'moderate': 18, 'high': 0, 'critical': 0, 'total': 18}
+npm audit uis/website: {'info': 0, 'low': 0, 'moderate': 0, 'high': 0, 'critical': 0, 'total': 0}
+npm audit .: {'info': 0, 'low': 0, 'moderate': 0, 'high': 0, 'critical': 0, 'total': 0}
+npm audit uis/backoffice --omit=dev: {'info': 0, 'low': 0, 'moderate': 0, 'high': 0, 'critical': 0, 'total': 0}
+pip-audit raíz:
+No known vulnerabilities found
+pip-audit services/api:
+No known vulnerabilities found
+bandit (severidad media o alta):
+services/agent/tracing.py:106 B608 MEDIUM Possible SQL injection vector through string-based query construction.
+services/agent/tracing.py:109 B608 MEDIUM Possible SQL injection vector through string-based query construction.
+services/api/main.py:120 B104 MEDIUM Possible binding to all interfaces.
+services/api/password_recovery.py:45 B310 MEDIUM Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often une

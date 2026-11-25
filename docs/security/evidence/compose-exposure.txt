@@ -1,0 +1,16 @@
+== before
+backend        user=root       cap_drop=-    puertos=['0.0.0.0:8080', '0.0.0.0:8081'] SECRET_KEY=True
+celery-worker  user=root       cap_drop=-    puertos=[] SECRET_KEY=True
+flower         user=root       cap_drop=-    puertos=['0.0.0.0:5555'] SECRET_KEY=True
+interfaces     user=root       cap_drop=-    puertos=['0.0.0.0:3000', '0.0.0.0:3001'] SECRET_KEY=False
+mcp            user=root       cap_drop=-    puertos=['0.0.0.0:8090'] SECRET_KEY=False
+qdrant         user=root       cap_drop=-    puertos=['0.0.0.0:6333'] SECRET_KEY=False
+redis          user=root       cap_drop=-    puertos=['0.0.0.0:6379'] SECRET_KEY=False
+== after
+backend        user=1000:1000  cap_drop=ALL  puertos=['0.0.0.0:8080', '0.0.0.0:8081'] SECRET_KEY=True
+celery-worker  user=1000:1000  cap_drop=ALL  puertos=[] SECRET_KEY=False
+flower         user=1000:1000  cap_drop=ALL  puertos=['127.0.0.1:5555'] SECRET_KEY=False
+interfaces     user=root       cap_drop=-    puertos=['0.0.0.0:3000', '0.0.0.0:3001'] SECRET_KEY=False
+mcp            user=1000:1000  cap_drop=ALL  puertos=['127.0.0.1:8090'] SECRET_KEY=False
+qdrant         user=root       cap_drop=-    puertos=['127.0.0.1:6333'] SECRET_KEY=False
+redis          user=root       cap_drop=ALL  puertos=['127.0.0.1:6379'] SECRET_KEY=False

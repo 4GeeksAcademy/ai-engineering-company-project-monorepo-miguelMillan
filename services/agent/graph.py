@@ -245,11 +245,22 @@ def plan_sources(state: AgentState) -> dict[str, Any]:
     return {"plan": plan_question_sources(state["question"])}
 
 
+def _deny_tool(state: AgentState, config, guard_log: GuardLog | None, tool: str) -> None:
+    if guard_log:
+        guard_log(state, config, guard="tool_authorization", action="block", failure_type="seguridad",
+                  code="TOOL_NO_AUTORIZADA", detail=f"{tool}: la sesión no tiene acceso")
+
+
 def make_incidents_node(lookup_fn: Callable[..., IncidentToolResult], mcp: Callable[[], McpCaller],
                         guard_log: GuardLog | None = None):
     def mcp_incidents_node(state: AgentState, config) -> dict[str, Any]:
         """Cliente MCP: consulta el Incidents Manager con las tools del servidor MCP. Nunca rompe la corrida."""
         query = IncidentQuery.model_validate(state["plan"].get("incident_query", {}))
+        if not SessionContext.from_state(state.get("session")).staff:
+            # El agente tiene permiso sobre todos los tickets; quien pregunta, no («confused deputy», OWASP A01).
+            _deny_tool(state, config, guard_log, "incidents")
+            return {"incident_result": IncidentToolResult(ok=False, mode="detail" if query.ticket_id else "list", query=query,
+                                                          error_type="forbidden").model_dump(mode="json")}
         try:
             result = lookup_fn(query, mcp=mcp())
         except ReadOnlyViolation:
@@ -274,8 +285,13 @@ def make_inventory_node(lookup_fn: Callable[..., InventoryToolResult], mcp: Call
     def mcp_inventory_node(state: AgentState, config) -> dict[str, Any]:
         """Cliente MCP: consulta el stock con la tool de inventario (solo lectura) del servidor MCP."""
         query = InventoryQuery.model_validate(state["plan"].get("inventory_query", {}))
+        session = SessionContext.from_state(state.get("session"))
+        if not session.staff and not session.client_ids:
+            _deny_tool(state, config, guard_log, "inventory")
+            return {"inventory_result": InventoryToolResult(ok=False, query=query, error_type="forbidden").model_dump(mode="json")}
+        scope = {} if session.staff else {"client_ids": session.client_ids}
         try:
-            result = lookup_fn(query, mcp=mcp())
+            result = lookup_fn(query, mcp=mcp(), **scope)
         except ReadOnlyViolation:
             raise
         except Exception:
@@ -325,8 +341,8 @@ def make_resolve_node(memory_store: Callable[[], MemoryStore | None]):
         del mensaje continúa por el grafo con normalidad.
         """
         store, session = memory_store(), state.get("session_id")
-        if store is None or not session:
-            return {}
+        if store is None or not session or not SessionContext.from_state(state.get("session")).staff:
+            return {}  # la memoria la leen todas las conversaciones: solo el personal puede aprobarla (OWASP A08)
         try:
             pending = store.session_pending(session)
         except Exception:  # noqa: BLE001
@@ -368,10 +384,13 @@ def make_recall_node(memory_store: Callable[[], MemoryStore | None]):
     def recall_memory(state: AgentState) -> dict[str, Any]:
         """Lectura explícita de memoria (solo lo relevante) + criterio de auto-evaluación para esta interacción."""
         gate = evaluate_memory_gate(state["question"])
+        staff = SessionContext.from_state(state.get("session")).staff
+        if not staff:  # un cliente no propone memoria: su mensaje se responde como cualquier otro
+            gate = gate.model_copy(update={"open": False})
         store, memories = memory_store(), []
         if store is not None:
             try:
-                memories = [m.model_dump() for m in store.recall(state["question"])]
+                memories = [m.model_dump() for m in store.recall(state["question"]) if staff or m.tipo in PUBLIC_MEMORY_TYPES]
             except Exception:  # noqa: BLE001 — sin memoria se responde igual que antes
                 logger.exception("recall de memoria no disponible")
         return {"memory_gate": gate.model_dump(), "memories": memories}
@@ -422,6 +441,8 @@ def compose_answer(state: AgentState) -> dict[str, Any]:
     return {"answer": answer}
 
 
+# Incidentes y preferencias de otras marcas son internos; las reglas de carrier (cobertura) sí valen para cualquier cliente.
+PUBLIC_MEMORY_TYPES = frozenset({"regla_carrier"})
 MEMORY_TYPE_LABELS = {
     "regla_carrier": "regla de carrier",
     "contexto_incidente_recurrente": "contexto de incidente recurrente",

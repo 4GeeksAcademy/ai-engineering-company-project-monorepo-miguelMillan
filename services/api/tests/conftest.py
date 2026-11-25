@@ -5,6 +5,12 @@ from fastapi.testclient import TestClient
 TEST_SECRET = "test-secret-key-with-at-least-32-bytes"
 
 
+def promote(app, email, role="manager"):
+    """Lo que hace accounts.py en el servidor: una cuenta autorregistrada no es personal (OWASP A01)."""
+    with app.state.lock:
+        assert app.state.db.table("users").update({"role": role}, lambda d: d["email"] == email)
+
+
 @pytest.fixture(autouse=True)
 def _agent_memory_disabled_by_default(monkeypatch):
     # Ningún test usa el Redis de desarrollo para la memoria del agente.
@@ -53,3 +59,9 @@ def access_token(api_client, registered_account):
 def authenticated_client(api_client, access_token):
     api_client.headers.update({"Authorization": f"Bearer {access_token}"})
     return api_client
+
+
+@pytest.fixture
+def staff_client(authenticated_client, registered_account):
+    promote(authenticated_client.app, registered_account["email"])
+    return authenticated_client

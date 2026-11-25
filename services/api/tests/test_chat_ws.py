@@ -10,14 +10,17 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import pytest
 import uvicorn
-from jose import jwt
+import jwt
 from websockets.exceptions import ConnectionClosed, InvalidStatus
 from websockets.sync.client import connect as ws_connect
 
 import routes.agent  # noqa: F401  (raíz del repo en sys.path, como en producción)
 from services.agent.graph import KnowledgeAgent, sqlite_checkpointer
 from services.agent.streaming import abort_if_cancelled, emit_token
+from services.agent.mcp_client import McpCallResult
 from services.agent.tracing import TraceStore, executed_nodes
+
+from conftest import promote
 
 SECRET = "test-secret-key-with-at-least-32-bytes"
 CHUNK = {"company": "trackflow", "source_document": "returns-policy", "section": "Ventana", "language": "es", "chunk_index": 1,
@@ -144,7 +147,7 @@ def test_without_a_valid_first_auth_frame_there_are_no_chat_events(api, first_fr
 
 
 def test_reset_tokens_and_expired_tokens_do_not_open_a_chat(api):
-    claims, sid = jwt.get_unverified_claims(api.token), api.session()["session_id"]
+    claims, sid = jwt.decode(api.token, options={"verify_signature": False}), api.session()["session_id"]
     for bad in ({**claims, "purpose": "reset"}, {**claims, "exp": datetime.now(timezone.utc) - timedelta(seconds=5)}):
         with api.ws(sid, token=jwt.encode(bad, SECRET, algorithm="HS256")) as chat:
             assert chat.close_code() == 4401
@@ -170,7 +173,7 @@ def test_the_chat_session_exposes_the_briefing_entity(api):
 
 
 def test_the_connection_does_not_outlive_the_token_nor_the_account(api):
-    claims, sid = jwt.get_unverified_claims(api.token), api.session()["session_id"]
+    claims, sid = jwt.decode(api.token, options={"verify_signature": False}), api.session()["session_id"]
     short = jwt.encode({**claims, "exp": datetime.now(timezone.utc) + timedelta(seconds=2)}, SECRET, algorithm="HS256")
     with api.ws(sid, token=short) as chat:
         assert chat.next()["event"] == "session_snapshot"
@@ -309,3 +312,44 @@ def test_closing_the_session_stops_the_answer_and_the_socket(api):
         chat.until("generation_interrupted")
         chat.send("user_message", text="¿hola?")
         assert chat.close_code() == 4410
+
+
+# ---------------------------------------------------------------- autorización de tools por el canal WebSocket (OWASP A01)
+class TicketsMcp:
+    def __init__(self):
+        self.calls = []
+
+    def call(self, name, arguments):
+        self.calls.append(name)
+        return McpCallResult(ok=True, data={"total": 1, "returned": 1, "filters": {}, "incidents": [{
+            "id": "8a4f3f2e-6c1d-5b9a-9e2f-0123456789ab", "title": "Paquete de Marta Ruiz perdido", "status": "open", "category": "lost_parcel",
+            "origin": "customer", "branch": "zaragoza_warehouse", "created_at": "2026-11-01T10:00:00Z", "updated_at": "2026-11-01T10:00:00Z"}]})
+
+
+def test_customers_cannot_use_internal_tools_over_the_websocket_and_the_role_is_read_every_turn(api, monkeypatch):
+    mcp = TicketsMcp()
+    agent = KnowledgeAgent(retrieve_fn=lambda q, *, k, min_score: [], generate_fn=generate, mcp=mcp,
+                           checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"))
+    monkeypatch.setattr("routes.agent.get_agent", lambda: agent)
+
+    def ask(chat, turn):
+        chat.send("user_message", text="¿Qué tickets abiertos hay?")
+        chat.until("generation_completed", turn)
+        return chat.text()
+
+    with api.ws(api.session()["session_id"]) as chat:
+        assert "Marta" not in ask(chat, 1) and mcp.calls == []             # cliente: la tool ni se invoca
+        promote(api.app, "ana@example.com")
+        assert "Marta" in ask(chat, 2) and mcp.calls                       # personal
+        promote(api.app, "ana@example.com", "user")
+        calls = len(mcp.calls)
+        ask(chat, 3)
+        assert len(mcp.calls) == calls                                     # se lo quitan con el chat abierto
+
+
+def test_changing_the_password_closes_the_open_socket(api):
+    with api.ws(api.session()["session_id"]) as chat:
+        chat.until("session_snapshot")
+        assert httpx.post(f"{api.base}/auth/change-password", headers={"Authorization": f"Bearer {api.token}"}, json={
+            "current_password": "correct-horse-battery", "new_password": "otra-Horse-battery-9"}).status_code == 200
+        assert chat.close_code() == 4401

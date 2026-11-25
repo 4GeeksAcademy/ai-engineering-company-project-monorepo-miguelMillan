@@ -18,9 +18,12 @@ from mcpauth.utils import fetch_server_config
 from mcps.trackflow_mcp.config import Settings
 from mcps.trackflow_mcp.dev.local_oidc import CLIENT_SECRET, free_port, serve, start_local_oidc
 from mcps.trackflow_mcp.server import build_app
+from services.agent.guardrails import SessionContext
 from services.agent.graph import KnowledgeAgent, sqlite_checkpointer
 from services.agent.mcp_client import OAuthClientCredentials, TrackflowMcpTools
 from services.agent.tracing import TraceStore, executed_nodes
+
+from conftest import promote
 
 TEST_SECRET = "test-secret-key-with-at-least-32-bytes"  # mismo valor que tests/conftest.py del API
 
@@ -34,11 +37,13 @@ def stack(tmp_path, monkeypatch):
     from main import create_app
 
     api_port = free_port()
-    api_server, api_thread = serve(create_app(tmp_path / "incidents.json"), api_port)
+    app = create_app(tmp_path / "incidents.json")
+    api_server, api_thread = serve(app, api_port)
     api = f"http://127.0.0.1:{api_port}"
     assert httpx.post(f"{api}/users", json={"email": SERVICE_EMAIL, "password": SERVICE_PASSWORD}).status_code == 201
     user_token = httpx.post(f"{api}/auth/login", json={"email": SERVICE_EMAIL, "password": SERVICE_PASSWORD}).json()["access_token"]
     headers = {"Authorization": f"Bearer {user_token}"}
+    promote(app, SERVICE_EMAIL)            # prepara los datos como personal…
     ticket = httpx.post(f"{api}/api/incidents", headers=headers, json={
         "title": "Paquete extraviado en Zaragoza", "description": "El transportista no lo localiza.",
         "category": "lost_parcel", "origin": "customer", "branch": "zaragoza_office"}).json()
@@ -48,6 +53,7 @@ def stack(tmp_path, monkeypatch):
     assert httpx.post(f"{api}/inventory/orders/inbound", headers=headers, json={
         "sku_id": product["id"], "quantity": 9, "reference": "ALB-001", "warehouse": "LA"}).status_code == 201
 
+    promote(app, SERVICE_EMAIL, "service")  # …y el servidor MCP trabaja con el mínimo privilegio
     provider, idp = start_local_oidc()
     mcp_port = free_port()
     settings = Settings(port=mcp_port, resource_url=f"http://127.0.0.1:{mcp_port}/mcp", oidc_issuer=provider.issuer,
@@ -106,7 +112,7 @@ def test_agent_reads_real_ticket_status_as_mcp_client(stack, tmp_path):
     agent = KnowledgeAgent(retrieve_fn=lambda *a, **k: [], generate_fn=lambda q, c: "", mcp=mcp,
                            checkpointer=sqlite_checkpointer(tmp_path / "cp.sqlite"), traces=TraceStore(tmp_path / "traces.sqlite"))
     ticket_id = stack["ticket"]["id"]
-    result = agent.run(f"¿En qué estado está el ticket {ticket_id}?")
+    result = agent.run(f"¿En qué estado está el ticket {ticket_id}?", session=SessionContext(staff=True))
 
     assert result.sources == ["incidents"]
     assert executed_nodes(agent.traces.get_trace(result.run_id)) == ["input_guard", "resolve_pending_memory", "receive_question", "recall_memory", "plan_sources", "mcp_incidents", "compose_answer", "propose_memory", "output_guard"]

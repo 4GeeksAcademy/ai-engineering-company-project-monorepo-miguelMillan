@@ -9,6 +9,7 @@ from pathlib import Path
 import fakeredis
 import pytest
 
+from services.agent.guardrails import SessionContext
 from services.agent.graph import KnowledgeAgent, sqlite_checkpointer
 from services.agent.memory import (
     MemoryProposal,
@@ -211,11 +212,19 @@ class FakeLLM:
         return self.proposal
 
 
+class StaffAgent(KnowledgeAgent):
+    """Estas pruebas no miran la autorización (tests/security): sin sesión explícita, pregunta el personal."""
+
+    def _start(self, question, run_id, session_id, user, session):
+        return super()._start(question, run_id, session_id, user, session or SessionContext(user=user, staff=True))
+
+
+
 def agent_for(llm, store, chunks=(CHUNK,), incidents=None):
     def incidents_fn(query, *, mcp=None):
         return incidents or IncidentToolResult(ok=True, mode="list", query=query, incidents=[], total=3)
 
-    return KnowledgeAgent(retrieve_fn=lambda q, *, k, min_score: list(chunks), generate_fn=llm.generate,
+    return StaffAgent(retrieve_fn=lambda q, *, k, min_score: list(chunks), generate_fn=llm.generate,
                           memory_generate_fn=llm.generate_with_memory, reflect_fn=llm.reflect, incidents_fn=incidents_fn,
                           memory_store=store, checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"))
 

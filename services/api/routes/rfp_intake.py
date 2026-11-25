@@ -14,6 +14,7 @@ SOLO esa rama (``rfp_approval.resume``). ``GET /tickets/{id}/final-document`` y 
 documento final y la traza de agentes.
 """
 
+import json
 import logging
 import os
 import sys
@@ -26,7 +27,8 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
-from security import get_current_user
+from security import require_staff
+from security_log import security_event
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 if str(REPOSITORY_ROOT) not in sys.path:
@@ -41,6 +43,16 @@ from mock_data.pipelines.rfp_intake.approval_graph import APPROVAL_ENTRY_STATUSE
 logger = logging.getLogger("trackflow.rfp_intake")
 router = APIRouter(prefix="/rfp-intake", tags=["rfp intake"])
 MAX_PDF_BYTES = 10 * 1024 * 1024
+
+
+def approver_email(name: str) -> str | None:
+    """Cuenta del responsable (``RFP_APPROVERS``: JSON ``{"nombre": "email"}``). Sin mapeo, nadie decide: deny by default."""
+    try:
+        email = json.loads(os.environ.get("RFP_APPROVERS") or "{}").get(name)
+    except (json.JSONDecodeError, AttributeError):
+        logger.error("RFP_APPROVERS no es un objeto JSON; ninguna decisión está autorizada")
+        return None
+    return email.strip().lower() if isinstance(email, str) and email.strip() else None
 
 
 def rfp_raw_dir() -> Path:
@@ -76,7 +88,7 @@ def _user_label(user) -> str:
 
 
 @router.post("/tickets", status_code=202)
-async def upload_rfp(request: Request, file: UploadFile = File(...), user=Depends(get_current_user)):
+async def upload_rfp(request: Request, file: UploadFile = File(...), user=Depends(require_staff)):
     """Crea un ticket por PDF y responde enseguida; el análisis corre en el worker de Celery."""
     name = (file.filename or "").strip()
     content = await file.read(MAX_PDF_BYTES + 1)
@@ -118,14 +130,14 @@ def _summary(repo: RfpRepository, ticket) -> dict:
 
 @router.get("/tickets")
 def list_rfp_tickets(request: Request, ticket_id: list[uuid.UUID] | None = Query(default=None, max_length=50),
-                     _user=Depends(get_current_user)):
+                     _user=Depends(require_staff)):
     """Con ``ticket_id`` (repetible) devuelve solo esos: la UI refresca lo que está en curso sin pedir toda la lista."""
     repo = _repo(request)
     return {"tickets": [_summary(repo, t) for t in (repo.get_tickets(ticket_id) if ticket_id else repo.list_tickets())]}
 
 
 @router.get("/tickets/{ticket_id}")
-def get_rfp_ticket(ticket_id: uuid.UUID, request: Request, _user=Depends(get_current_user)):
+def get_rfp_ticket(ticket_id: uuid.UUID, request: Request, _user=Depends(require_staff)):
     repo = _repo(request)
     ticket = repo.get_ticket(ticket_id)
     if ticket is None:
@@ -165,7 +177,7 @@ def get_rfp_ticket(ticket_id: uuid.UUID, request: Request, _user=Depends(get_cur
 
 @router.post("/tickets/{ticket_id}/reprocess", status_code=202)
 async def reprocess_rfp_ticket(ticket_id: uuid.UUID, request: Request, force_accept: bool = False,
-                               _user=Depends(get_current_user)):
+                               _user=Depends(require_staff)):
     """Re-ejecuta el pipeline (tras un fallo técnico, o forzando la aceptación de un descarte que Ventas revisó)."""
     repo = _repo(request)
     ticket = repo.get_ticket(ticket_id)
@@ -186,7 +198,7 @@ def _enqueue_generation(ticket_id: str) -> None:
 
 
 @router.post("/tickets/{ticket_id}/generate", status_code=202)
-async def generate_rfp_response(ticket_id: uuid.UUID, request: Request, _user=Depends(get_current_user)):
+async def generate_rfp_response(ticket_id: uuid.UUID, request: Request, _user=Depends(require_staff)):
     """(Re)genera y evalúa las secciones (Parte 2) de un ticket que la Parte 1 dejó listo."""
     repo = _repo(request)
     ticket = repo.get_ticket(ticket_id)
@@ -236,7 +248,7 @@ def _enqueue_approval_start(ticket_id: str) -> None:
 
 @router.post("/tickets/{ticket_id}/sections/{department_id}/decision", status_code=202)
 async def decide_section(ticket_id: uuid.UUID, department_id: str, body: DecisionIn, request: Request,
-                         user=Depends(get_current_user)):
+                         user=Depends(require_staff)):
     """El responsable del departamento aprueba, rechaza o pide cambios. Se valida AQUÍ (y otra vez en el grafo)
     antes de reanudar solo su rama."""
     repo = _repo(request)
@@ -246,6 +258,10 @@ async def decide_section(ticket_id: uuid.UUID, department_id: str, body: Decisio
         raise HTTPException(status_code=404, detail="Ticket o sección no encontrados.")
     if section.approval_status != "esperando_aprobación" or not section.approval_request:
         raise HTTPException(status_code=409, detail="Esta sección no está esperando una decisión.")
+    # ``approver`` llega en el cuerpo: quién es de verdad lo dice la cuenta autenticada, no lo que escriba.
+    if approver_email(section.approval_request["approver"]) != str(user.email).lower():
+        security_event("rfp_decision_denied", request, email=str(user.email), department=department_id)
+        raise HTTPException(status_code=403, detail=f"Solo la cuenta de {section.approval_request['approver']} puede decidir esta sección.")
     pending = {**section.approval_request,
                "section_input": section_input(repo, str(ticket_id), department_id, None).to_dict()}
     decision = {**body.model_dump(), "decided_by": _user_label(user)}
@@ -268,7 +284,7 @@ async def decide_section(ticket_id: uuid.UUID, department_id: str, body: Decisio
 
 
 @router.post("/tickets/{ticket_id}/approval/start", status_code=202)
-async def start_ticket_approval(ticket_id: uuid.UUID, request: Request, _user=Depends(get_current_user)):
+async def start_ticket_approval(ticket_id: uuid.UUID, request: Request, _user=Depends(require_staff)):
     """Arranca (o vuelve a arrancar tras un fallo o un bloqueo) el flujo de aprobación en un hilo nuevo."""
     repo = _repo(request)
     ticket = repo.get_ticket(ticket_id)
@@ -284,7 +300,7 @@ async def start_ticket_approval(ticket_id: uuid.UUID, request: Request, _user=De
 
 
 @router.get("/tickets/{ticket_id}/final-document")
-def get_final_document(ticket_id: uuid.UUID, request: Request, format: str = "json", _user=Depends(get_current_user)):
+def get_final_document(ticket_id: uuid.UUID, request: Request, format: str = "json", _user=Depends(require_staff)):
     repo = _repo(request)
     document = repo.get_final_document(ticket_id)
     if document is None:
@@ -298,7 +314,7 @@ def get_final_document(ticket_id: uuid.UUID, request: Request, format: str = "js
 
 
 @router.get("/tickets/{ticket_id}/trace")
-def get_trace(ticket_id: uuid.UUID, request: Request, _user=Depends(get_current_user)):
+def get_trace(ticket_id: uuid.UUID, request: Request, _user=Depends(require_staff)):
     repo = _repo(request)
     if repo.get_ticket(ticket_id) is None:
         raise HTTPException(status_code=404, detail="Ticket RFP no encontrado.")

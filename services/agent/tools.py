@@ -40,7 +40,7 @@ IncidentCategory = Literal[
 ]
 IncidentOrigin = Literal["customer", "branch", "internal"]
 IncidentBranch = Literal["central", "la_warehouse", "la_office", "zaragoza_warehouse", "zaragoza_office"]
-ToolErrorType = Literal["timeout", "unavailable", "not_found", "unauthorized", "invalid_query", "bad_response"]
+ToolErrorType = Literal["timeout", "unavailable", "not_found", "unauthorized", "invalid_query", "bad_response", "forbidden"]
 
 STATUS_LABELS = {"open": "Abierta", "in_progress": "En curso", "resolved": "Resuelta", "discarded": "Descartada"}
 CATEGORY_LABELS = {
@@ -120,6 +120,7 @@ class InventoryItem(BaseModel):
     sku: str
     name: str
     client_name: str
+    client_id: str | None = None
     warehouse: Literal["LA", "ZGZ"]
     current_stock: int
     minimum_stock: int | None = None
@@ -209,8 +210,12 @@ def _select_products(products: list[InventoryItem], query: InventoryQuery) -> li
     return [p for score, p in scored if best and score == best]
 
 
-def lookup_inventory(query: InventoryQuery, *, mcp: McpCaller | None = None) -> InventoryToolResult:
-    """Consulta el stock actual de un producto (por SKU o por nombre) con la tool MCP de inventario."""
+def lookup_inventory(query: InventoryQuery, *, mcp: McpCaller | None = None,
+                     client_ids: list[str] | None = None) -> InventoryToolResult:
+    """Consulta el stock actual de un producto (por SKU o por nombre) con la tool MCP de inventario.
+
+    ``client_ids`` limita el resultado a esas marcas (``None`` = sin límite, solo personal). Lo ajeno se descarta antes
+    de seleccionar y se responde igual que un producto inexistente."""
     if not query.sku and not query.name_terms:
         return InventoryToolResult(ok=False, query=query, error_type="invalid_query")
     tool = "inventory_query_products"
@@ -224,6 +229,8 @@ def lookup_inventory(query: InventoryQuery, *, mcp: McpCaller | None = None) -> 
         products = [InventoryItem.model_validate(p) for p in result.data["products"]]
     except (KeyError, TypeError, ValueError):
         return InventoryToolResult(ok=False, query=query, error_type="bad_response", mcp_tool=tool)
+    if client_ids is not None:
+        products = [p for p in products if p.client_id in client_ids]
     items = _select_products(products, query)
     if not items:
         return InventoryToolResult(ok=False, query=query, error_type="not_found", mcp_tool=tool)

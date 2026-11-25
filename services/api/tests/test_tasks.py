@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 
-def test_submit_incident_csv_returns_accepted_task(authenticated_client, monkeypatch, tmp_path):
+def test_submit_incident_csv_returns_accepted_task(staff_client, monkeypatch, tmp_path):
     task_id = str(uuid4())
     monkeypatch.setenv("TASK_INPUT_DIR", str(tmp_path))
 
@@ -15,7 +15,7 @@ def test_submit_incident_csv_returns_accepted_task(authenticated_client, monkeyp
         return FakeTask()
 
     monkeypatch.setattr("routes.tasks.analyze_incident_csv.apply_async", fake_apply_async)
-    response = authenticated_client.post(
+    response = staff_client.post(
         "/api/incidents/analyze",
         headers={"x-task-id": task_id},
         files={"file": ("incidents.csv", "incident_id,country\n1,US\n", "text/csv")},
@@ -38,8 +38,8 @@ def test_task_input_is_loaded_only_by_reference(monkeypatch, tmp_path):
     assert not (tmp_path / f"{task_id}.csv").exists()
 
 
-def test_submit_incident_csv_validates_extension(authenticated_client):
-    response = authenticated_client.post(
+def test_submit_incident_csv_validates_extension(staff_client):
+    response = staff_client.post(
         "/api/incidents/analyze",
         headers={"x-task-id": str(uuid4())},
         files={"file": ("incidents.txt", "not a csv", "text/plain")},
@@ -56,7 +56,7 @@ def test_gateway_enqueue_adapter_requires_internal_token(api_client, monkeypatch
     assert response.status_code == 401
 
 
-def test_task_status_returns_result(authenticated_client, monkeypatch):
+def test_task_status_returns_result(staff_client, monkeypatch):
     report = {"totals": {"total_records": 1}}
 
     class SuccessfulTask:
@@ -70,13 +70,13 @@ def test_task_status_returns_result(authenticated_client, monkeypatch):
             return False
 
     monkeypatch.setattr("routes.tasks.AsyncResult", lambda *args, **kwargs: SuccessfulTask())
-    response = authenticated_client.get(f"/tasks/{uuid4()}")
+    response = staff_client.get(f"/tasks/{uuid4()}")
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert response.json()["result"] == report
 
 
-def test_task_status_reports_lifecycle_states(authenticated_client, monkeypatch):
+def test_task_status_reports_lifecycle_states(staff_client, monkeypatch):
     for celery_state in ("PENDING", "STARTED", "RETRY", "FAILURE", "REVOKED"):
         class TaskState:
             state = celery_state
@@ -89,7 +89,7 @@ def test_task_status_reports_lifecycle_states(authenticated_client, monkeypatch)
                 return celery_state in {"FAILURE", "REVOKED"}
 
         monkeypatch.setattr("routes.tasks.AsyncResult", lambda *args, **kwargs: TaskState())
-        response = authenticated_client.get(f"/tasks/{uuid4()}")
+        response = staff_client.get(f"/tasks/{uuid4()}")
         assert response.status_code == 200
         expected_state = "failure" if celery_state in {"FAILURE", "REVOKED"} else celery_state.lower()
         assert response.json()["status"] == expected_state
@@ -200,17 +200,17 @@ def test_terminal_failure_is_recorded_in_dead_letter_table(monkeypatch):
     assert captured["disposed"] is True
 
 
-def test_export_requires_successful_task(authenticated_client, monkeypatch):
+def test_export_requires_successful_task(staff_client, monkeypatch):
     class PendingTask:
         def successful(self):
             return False
 
     monkeypatch.setattr("routes.tasks.AsyncResult", lambda *args, **kwargs: PendingTask())
-    response = authenticated_client.get(f"/api/incidents/results/export?task_id={uuid4()}")
+    response = staff_client.get(f"/api/incidents/results/export?task_id={uuid4()}")
     assert response.status_code == 409
 
 
-def test_export_returns_csv_for_successful_task(authenticated_client, monkeypatch):
+def test_export_returns_csv_for_successful_task(staff_client, monkeypatch):
     class SuccessfulTask:
         result = {"results_csv": "metric,value\ntotal_records,1\n"}
 
@@ -218,7 +218,7 @@ def test_export_returns_csv_for_successful_task(authenticated_client, monkeypatc
             return True
 
     monkeypatch.setattr("routes.tasks.AsyncResult", lambda *args, **kwargs: SuccessfulTask())
-    response = authenticated_client.get(f"/api/incidents/results/export?task_id={uuid4()}")
+    response = staff_client.get(f"/api/incidents/results/export?task_id={uuid4()}")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
     assert "total_records,1" in response.text

@@ -34,8 +34,16 @@ def streaming_model(*tokens, on_token=None):
     return generate
 
 
+class StaffAgent(KnowledgeAgent):
+    """Estas pruebas no miran la autorización (tests/security): sin sesión explícita, pregunta el personal."""
+
+    def _start(self, question, run_id, session_id, user, session):
+        return super()._start(question, run_id, session_id, user, session or SessionContext(user=user, staff=True))
+
+
+
 def build(generate, **kwargs):
-    return KnowledgeAgent(retrieve_fn=lambda q, *, k, min_score: [dict(CHUNK)], generate_fn=generate,
+    return StaffAgent(retrieve_fn=lambda q, *, k, min_score: [dict(CHUNK)], generate_fn=generate,
                           checkpointer=sqlite_checkpointer(":memory:"), traces=TraceStore(":memory:"), **kwargs)
 
 

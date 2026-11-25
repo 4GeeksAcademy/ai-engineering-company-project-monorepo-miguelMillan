@@ -2,11 +2,19 @@ import http from 'node:http'
 import { randomUUID } from 'node:crypto'
 
 const port = Number(process.env.PORT ?? 8080)
+// Solo los orígenes de las UI de TrackFlow (nunca '*'): la misma variable que usa FastAPI.
+const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:5174,http://127.0.0.1:5174').split(',').map((o) => o.trim())
 const maxUploadBytes = 10 * 1024 * 1024
+
+function corsHeaders(req) {
+  const origin = req.headers.origin
+  return origin && corsOrigins.includes(origin) ? { 'access-control-allow-origin': origin, vary: 'Origin' } : {}
+}
 
 function sendJson(res, statusCode, body) {
   res.writeHead(statusCode, {
-    'access-control-allow-origin': '*',
+    ...corsHeaders(res.req),
+    'x-content-type-options': 'nosniff',
     'content-type': 'application/json; charset=utf-8',
   })
   res.end(JSON.stringify(body))
@@ -40,7 +48,7 @@ function parseMultipart(req, body) {
 const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
-      'access-control-allow-origin': '*',
+      ...corsHeaders(req),
       'access-control-allow-methods': 'GET, POST, PATCH, DELETE, OPTIONS',
       'access-control-allow-headers': 'content-type, authorization',
     })
@@ -55,6 +63,11 @@ const server = http.createServer(async (req, res) => {
   let bufferedBody
   if (/^\/suppliers(?:\/|\?|$)/.test(req.url) || incidentManagement || taskPath || incidentAnalysis) {
     if (incidentAnalysis && req.method === 'POST') {
+      if (!/^bearer \S/i.test(req.headers.authorization ?? '')) {
+        // Antes de leer 10 MB de alguien sin sesión. Quién es y si puede lo decide el API (require_staff).
+        sendJson(res, 401, { detail: 'Inicia sesión para analizar incidencias.' })
+        return
+      }
       try {
         bufferedBody = await readRequestBody(req)
         const form = await parseMultipart(req, bufferedBody)
@@ -91,7 +104,7 @@ const server = http.createServer(async (req, res) => {
     }, (response) => {
       res.writeHead(response.statusCode, {
         ...response.headers,
-        'access-control-allow-origin': '*',
+        ...corsHeaders(req),
       })
       response.pipe(res)
     })

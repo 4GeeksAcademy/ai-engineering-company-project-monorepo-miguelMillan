@@ -11,6 +11,11 @@ export class AuthRequestError extends Error {
   }
 }
 
+/** Roles del personal de TrackFlow (los mismos que exige el API). */
+export function isStaffRole(role: string): boolean {
+  return role === 'admin' || role === 'manager'
+}
+
 const publicRequests = new Set(['/auth/login', '/auth/forgot-password', '/auth/reset-password'])
 
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
