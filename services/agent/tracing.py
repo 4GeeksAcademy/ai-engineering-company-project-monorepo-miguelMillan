@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -73,8 +73,9 @@ class TraceStore:
         with self._lock, self._connection:
             self._connection.executescript(SCHEMA)
             columns = {row[1] for row in self._connection.execute("PRAGMA table_info(agent_runs)")}
-            if "sources_used" not in columns:  # migración de traces de la Parte 1
-                self._connection.execute("ALTER TABLE agent_runs ADD COLUMN sources_used TEXT")
+            for column in ("sources_used", "actor", "session_id"):  # traces de versiones anteriores
+                if column not in columns:
+                    self._connection.execute(f"ALTER TABLE agent_runs ADD COLUMN {column} TEXT")
         self._next_seq: dict[str, int] = {}
 
     # ------------------------------------------------------------------ guardrails
@@ -111,11 +112,12 @@ class TraceStore:
                 "by_failure_type": {r["t"]: r["n"] for r in by_type},
                 "by_guard": [dict(r) for r in rows]}
 
-    def start_run(self, run_id: str, question: str) -> None:
+    def start_run(self, run_id: str, question: str, *, actor: str | None = None, session_id: str | None = None) -> None:
+        """``actor``: rol y referencia seudónima de quien pregunta (nunca su email)."""
         with self._lock, self._connection:
             self._connection.execute(
-                "INSERT INTO agent_runs (run_id, question, status, started_at) VALUES (?, ?, 'running', ?)",
-                (run_id, question, _now()),
+                "INSERT INTO agent_runs (run_id, question, status, started_at, actor, session_id) VALUES (?, ?, 'running', ?, ?, ?)",
+                (run_id, question, _now(), actor, session_id),
             )
             self._next_seq[run_id] = 0
 
@@ -156,6 +158,24 @@ class TraceStore:
             **run,
             "steps": [{**dict(step), "output": json.loads(step["output"])} for step in steps],
         }
+
+    def purge(self, older_than_days: int, *, dry_run: bool = False) -> list[str]:
+        """Borra corridas, pasos y eventos con más de N días (minimización y derecho de supresión: RGPD, CCPA/CPRA)."""
+        limit = (datetime.now(timezone.utc) - timedelta(days=older_than_days)).isoformat(timespec="milliseconds")
+        with self._lock, self._connection:
+            expired = [r["run_id"] for r in self._connection.execute("SELECT run_id FROM agent_runs WHERE started_at < ?", (limit,))]
+            if dry_run:
+                return expired
+            self._connection.execute(
+                "DELETE FROM agent_trace_steps WHERE run_id IN (SELECT run_id FROM agent_runs WHERE started_at < ?)", (limit,))
+            self._connection.execute("DELETE FROM guardrail_events WHERE ts < ?", (limit,))
+            self._connection.execute("DELETE FROM agent_runs WHERE started_at < ?", (limit,))
+        return expired
+
+    def guardrail_events(self, run_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            return [dict(r) for r in self._connection.execute(
+                "SELECT ts, guard, action, failure_type, code, detail FROM guardrail_events WHERE run_id = ? ORDER BY id", (run_id,))]
 
     def list_runs(self, limit: int = 20) -> list[dict[str, Any]]:
         with self._lock:

@@ -103,6 +103,7 @@ from services.agent.streaming import (  # noqa: E402
     abort_if_cancelled,
     generation_control,
 )
+from services.agent.action_log import actor_label, log_actions  # noqa: E402
 from services.agent.tracing import TraceStore, _now  # noqa: E402
 
 logger = logging.getLogger("trackflow.agent")
@@ -185,6 +186,9 @@ def make_input_guard_node(guard_log: GuardLog, clock: Callable[[], Any] | None =
         kwargs = {"now": clock} if clock else {}
         decision = check_input(state["question"], SessionContext.from_state(state.get("session")), **kwargs)
         update: dict[str, Any] = {"guard": decision.to_state()}
+        if decision.sanitized:
+            guard_log(state, config, guard="input_sanitizer", action="sanitize", failure_type="seguridad",
+                      code="TEXTO_INVISIBLE", detail=", ".join(decision.sanitized))
         if decision.rewritten_question:
             update["question"] = decision.rewritten_question
         if decision.action != "allow":
@@ -961,8 +965,9 @@ class KnowledgeAgent:
     def _start(self, question: str, run_id: str | None, session_id: str | None, user: str | None,
                session: SessionContext | None) -> tuple[str, dict[str, Any], dict[str, Any]]:
         run_id = run_id or str(uuid.uuid4())
-        self.traces.start_run(run_id, question)
-        initial: dict[str, Any] = {"question": question, "session": (session or SessionContext(user=user)).to_state()}
+        who = session or SessionContext(user=user)
+        self.traces.start_run(run_id, question, actor=actor_label(who), session_id=session_id)
+        initial: dict[str, Any] = {"question": question, "session": who.to_state()}
         if session_id:
             initial["session_id"] = session_id
         return run_id, initial, {"configurable": {"thread_id": run_id, "user": user}}
@@ -972,6 +977,7 @@ class KnowledgeAgent:
         failed = next((s["name"] for s in reversed(trace["steps"]) if s["status"] == "error"), None)
         self.traces.finish_run(run_id, status="failed", final_node=failed, error_type=type(error).__name__,
                                sources=sources_used(trace))
+        log_actions(self.traces, run_id)
         return failed
 
     def _result(self, run_id: str, state: dict[str, Any]) -> AgentResult:
@@ -979,6 +985,7 @@ class KnowledgeAgent:
         final_node = answering_node(trace)
         sources = sources_used(trace)
         self.traces.finish_run(run_id, status="completed", final_node=final_node, sources=sources)
+        log_actions(self.traces, run_id)
         return AgentResult(run_id=run_id, answer=state["answer"], final_node=final_node, error=state.get("error"),
                            context_count=len(state.get("context") or []), sources=sources,
                            memory_proposal=state.get("memory_proposal"), memory_resolution=state.get("memory_resolution"),

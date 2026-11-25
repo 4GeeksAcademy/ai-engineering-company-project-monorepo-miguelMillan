@@ -29,6 +29,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from services.agent.tool_policy import ToolCallRejected, validate_tool_call
 from services.agent.mcp_client import McpCallResult, ReadOnlyViolation, TrackflowMcpTools  # noqa: F401 (reexport)
 
 MAX_LISTED_INCIDENTS = 50
@@ -168,6 +169,14 @@ def default_mcp() -> TrackflowMcpTools:
     return _default_mcp
 
 
+def _invoke(mcp: McpCaller, tool: str, arguments: dict) -> McpCallResult:
+    """Única salida hacia MCP desde las tools del agente: primero se valida la llamada."""
+    try:
+        return mcp.call(tool, validate_tool_call(tool, arguments))
+    except ToolCallRejected as error:
+        return McpCallResult(ok=False, error_code="VALIDATION_ERROR", error_message="; ".join(error.reasons))
+
+
 def lookup_incidents(query: IncidentQuery, *, mcp: McpCaller | None = None) -> IncidentToolResult:
     """Consulta un ticket por id o lista tickets filtrados, con las tools MCP del Incidents Manager."""
     mode: Literal["detail", "list"] = "detail" if (query.ticket_id or query.raw_ticket_reference) else "list"
@@ -180,13 +189,15 @@ def lookup_incidents(query: IncidentQuery, *, mcp: McpCaller | None = None) -> I
         tool = "incidents_list_tickets"
         arguments = {**{k: v for k, v in query.model_dump(include={"status", "category", "origin", "branch"}).items() if v},
                      "limit": MAX_LISTED_INCIDENTS}
-    result = mcp.call(tool, arguments)
+    result = _invoke(mcp, tool, arguments)
     if not result.ok:
         return IncidentToolResult(ok=False, mode=mode, query=query, error_type=_error_type(result),
                                   mcp_tool=tool, mcp_error_code=result.error_code)
     try:
         if mode == "detail":
             records, total = [IncidentRecord.model_validate(result.data)], 1
+            if records[0].id != query.ticket_id:  # la tool devolvió otro ticket: no se muestra
+                raise ValueError("el ticket devuelto no es el pedido")
         else:
             records = [IncidentRecord.model_validate(row) for row in result.data["incidents"]]
             total = int(result.data["total"])
@@ -221,7 +232,7 @@ def lookup_inventory(query: InventoryQuery, *, mcp: McpCaller | None = None,
     tool = "inventory_query_products"
     arguments = {"operation": "list", **({"sku": query.sku} if query.sku else {}),
                  **({"warehouse": query.warehouse} if query.warehouse else {})}
-    result = (mcp or default_mcp()).call(tool, arguments)
+    result = _invoke(mcp or default_mcp(), tool, arguments)
     if not result.ok:
         return InventoryToolResult(ok=False, query=query, error_type=_error_type(result), mcp_tool=tool,
                                    mcp_error_code=result.error_code)

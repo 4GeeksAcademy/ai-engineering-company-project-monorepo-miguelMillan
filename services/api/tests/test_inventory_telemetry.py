@@ -66,7 +66,7 @@ def test_threshold_event_is_emitted_once_when_stock_crosses_below_minimum(invent
         json={
             "sku_id": product["id"],
             "quantity": 3,
-            "exit_type": "dispatch",
+            "exit_type": "dispatch", "declared_value": 50,
             "tracking_number": "TRACK-1",
             "warehouse": "LA",
         },
@@ -90,7 +90,7 @@ def test_threshold_event_is_emitted_once_when_stock_crosses_below_minimum(invent
         json={
             "sku_id": product["id"],
             "quantity": 1,
-            "exit_type": "dispatch",
+            "exit_type": "dispatch", "declared_value": 50,
             "tracking_number": "TRACK-2",
             "warehouse": "LA",
         },

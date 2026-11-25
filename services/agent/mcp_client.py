@@ -34,6 +34,8 @@ from typing import Any
 import httpx
 
 TOOL_TIMEOUT_SECONDS = 8.0
+from services.agent.tool_policy import ToolCallRejected, validate_tool_call
+
 DEFAULT_MCP_SERVER_URL = "http://127.0.0.1:8090/mcp"
 DEFAULT_OIDC_ISSUER = "http://localhost:8180/realms/trackflow"
 AGENT_ALLOWED_TOOLS = frozenset({"incidents_get_ticket", "incidents_list_tickets", "inventory_query_products"})
@@ -160,6 +162,10 @@ class TrackflowMcpTools:
         """Invoca una tool de lectura del servidor MCP. Nunca lanza por fallos del servidor o la red."""
         if name not in AGENT_ALLOWED_TOOLS:
             raise ReadOnlyViolation(f"El agente solo puede usar tools de lectura; se bloqueó '{name}'.")
+        try:
+            arguments = validate_tool_call(name, arguments)
+        except ToolCallRejected as error:
+            return McpCallResult(ok=False, error_code="VALIDATION_ERROR", error_message="; ".join(error.reasons))
         future = asyncio.run_coroutine_threadsafe(asyncio.wait_for(self._call(name, arguments), self.timeout), self._loop)
         try:
             return future.result(self.timeout + 1)

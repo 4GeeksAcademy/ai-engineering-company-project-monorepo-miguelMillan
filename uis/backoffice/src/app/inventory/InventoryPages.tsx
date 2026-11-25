@@ -219,6 +219,7 @@ function OutboundOrderPage() {
   const [quantity, setQuantity] = useState('')
   const [exitType, setExitType] = useState<StockExitType>('dispatch')
   const [trackingNumber, setTrackingNumber] = useState('')
+  const [declaredValue, setDeclaredValue] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -237,16 +238,22 @@ function OutboundOrderPage() {
       exit_type: exitType,
       tracking_number: exitType === 'dispatch' ? trackingNumber.trim() : null,
       warehouse: selectedProduct.warehouse,
+      ...(exitType === 'dispatch' ? { declared_value: Number(declaredValue) } : {}),
     }
     try {
-      const created = await inventoryRequest<{ id: number; telemetry_events: Array<{ event_type: string; properties: Record<string, unknown> }> }>('/orders/outbound', { method: 'POST', body: JSON.stringify(body) })
-      const eventType = exitType === 'dispatch' ? 'outbound_order_created' : 'inventory_stock_loss_recorded'
-      track(eventType, { warehouse: warehouseTelemetry[selectedProduct.warehouse], client_id: selectedProduct.client_id, product_id: selectedProduct.sku, product_category: selectedProduct.category, quantity: body.quantity, order_id: created.id })
-      created.telemetry_events.forEach((telemetryEvent) => track(telemetryEvent.event_type, telemetryEvent.properties))
+      const created = await inventoryRequest<{ id: number; telemetry_events: Array<{ event_type: string; properties: Record<string, unknown> }> } | { status: 'pending_confirmation'; summary: string }>('/orders/outbound', { method: 'POST', body: JSON.stringify(body) })
       setSkuId('')
       setQuantity('')
       setExitType('dispatch')
       setTrackingNumber('')
+      setDeclaredValue('')
+      if ('status' in created) {
+        setNotice(`Pendiente: ${created.summary}. No ha salido del almacén: otra persona debe confirmarlo en Operaciones.`)
+        return
+      }
+      const eventType = exitType === 'dispatch' ? 'outbound_order_created' : 'inventory_stock_loss_recorded'
+      track(eventType, { warehouse: warehouseTelemetry[selectedProduct.warehouse], client_id: selectedProduct.client_id, product_id: selectedProduct.sku, product_category: selectedProduct.category, quantity: body.quantity, order_id: created.id })
+      created.telemetry_events.forEach((telemetryEvent) => track(telemetryEvent.event_type, telemetryEvent.properties))
       setNotice('Salida de stock registrada correctamente.')
     } catch (cause) {
       setError(messageFrom(cause))
@@ -270,6 +277,7 @@ function OutboundOrderPage() {
         </div>
         <div><label htmlFor="exit-type" className="mb-1 block text-sm font-semibold">Tipo de salida</label><select id="exit-type" value={exitType} onChange={(event) => { const next = event.target.value as StockExitType; setExitType(next); if (next === 'loss') setTrackingNumber(''); setError('') }} className={controlClass}><option value="dispatch">Despacho</option><option value="loss">Pérdida</option></select></div>
         {exitType === 'dispatch' && <div><label htmlFor="tracking-number" className="mb-1 block text-sm font-semibold">Número de seguimiento</label><input id="tracking-number" type="text" required value={trackingNumber} onChange={(event) => setTrackingNumber(event.target.value)} className={controlClass} /></div>}
+        {exitType === 'dispatch' && <div><label htmlFor="declared-value" className="mb-1 block text-sm font-semibold">Valor de la mercancía{selectedProduct ? ` (${selectedProduct.warehouse === 'LA' ? 'USD' : 'EUR'})` : ''}</label><input id="declared-value" type="number" min="0" step="0.01" required value={declaredValue} onChange={(event) => setDeclaredValue(event.target.value)} className={controlClass} /></div>}
         <button type="submit" disabled={submitting || loading || Boolean(productsError) || !products.length} className="min-h-11 rounded-md bg-emerald-800 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">{submitting ? 'Registrando...' : 'Registrar salida'}</button>
       </form>
     </section>

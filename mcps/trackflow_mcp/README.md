@@ -95,6 +95,7 @@ Clientes OAuth de desarrollo (`client_credentials`, creados por [`dev/keycloak_s
 | `VALIDATION_ERROR` | Argumentos inválidos (`details.errors[]` con `field` y `message`) | Corregir y reintentar |
 | `NOT_FOUND` | El ticket o el producto no existe | — |
 | `INVALID_STATUS_TRANSITION` | El ciclo de vida no permite el cambio (`current_status`, `allowed`) | Elegir uno de `allowed` |
+| `CONFIRMATION_REQUIRED` | Cerrar un ticket es definitivo: queda pendiente de una persona (`details.action_id`) |
 | `BACKEND_TIMEOUT` | El backend no respondió en `MCP_BACKEND_TIMEOUT_SECONDS` (5 s) | Reintentar más tarde; no se asumió ningún resultado |
 | `BACKEND_UNAVAILABLE` | Backend caído o error 5xx | Reintentar más tarde |
 | `BACKEND_AUTH_FAILED` | La cuenta de servicio del servidor MCP no es válida | Revisar la configuración del servidor |

@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import Any
 
 from mock_data.pipelines.rag import NO_CONTEXT_ANSWER
+from mock_data.process.model_budget import max_output_tokens
 from mock_data.process.rag import _openai_client, load_generation_settings
 from services.agent.guardrails import PROMPT_CANARY, sanitize_external, wrap_external, wrap_user_message
 from services.agent.streaming import complete_text
@@ -114,7 +115,7 @@ def generate_cx_answer(question: str, context: list[dict[str, Any]], memories: l
     # 30 s del cliente por defecto; reintentar no ayuda, así que se da margen y no se reintenta.
     client = _openai_client(settings.api_url, settings.api_key).with_options(timeout=GENERATION_TIMEOUT_SECONDS, max_retries=0)
     answer = complete_text(
-        client, model=settings.model, temperature=0,
+        client, model=settings.model, temperature=0, max_tokens=max_output_tokens(),
         messages=[{"role": "system", "content": CX_SYSTEM_PROMPT},
                   {"role": "user", "content": build_user_message(question, context, memories, session_note)}],
     ).strip()

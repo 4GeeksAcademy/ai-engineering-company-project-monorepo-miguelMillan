@@ -23,15 +23,17 @@ Cada bloqueo o redirección se registra con su tipo de fallo (``estructural`` | 
 from __future__ import annotations
 
 import json
-import logging
 import re
-import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, Literal
 from zoneinfo import ZoneInfo
 
-logger = logging.getLogger("trackflow.agent.guardrails")
+from mock_data.process.prompt_safety import canonical_input, fold, neutralize, unspace
+
+from services.agent.json_logging import json_logger
+
+logger = json_logger("trackflow.agent.guardrails")
 
 FailureType = Literal["estructural", "contenido", "seguridad"]
 Action = Literal["allow", "block", "redirect"]
@@ -49,8 +51,7 @@ MAX_INPUT_CHARS = 4000
 MAX_OUTPUT_CHARS = 6000
 
 
-def normalize(text: str) -> str:
-    return "".join(c for c in unicodedata.normalize("NFD", (text or "").lower()) if unicodedata.category(c) != "Mn")
+normalize = fold  # minúsculas, sin tildes y sin letras de otros alfabetos que imitan a las latinas
 
 
 # ============================================================================
@@ -91,6 +92,7 @@ class GuardDecision:
     rewritten_question: str | None = None
     notice: str | None = None        # aviso que se antepone a la respuesta final
     country_lock: str | None = None
+    sanitized: list[str] | None = None   # qué se quitó del mensaje antes de inspeccionarlo
 
     def to_state(self) -> dict[str, Any]:
         return {k: v for k, v in self.__dict__.items() if v is not None}
@@ -218,32 +220,41 @@ def order_references(message: str) -> list[str]:
 # ============================================================================
 def check_input(message: str, session: SessionContext | None = None,
                 now: Callable[[], datetime] = lambda: datetime.now(timezone.utc)) -> GuardDecision:
-    session = session or SessionContext()
-    raw = message or ""
+    """Inspecciona la forma canónica del mensaje; si difiere de lo escrito, esa forma es la que sigue adelante."""
+    clean, findings = canonical_input(message)
+    decision = _check_clean_input(message or "", clean, session or SessionContext(), now)
+    if clean != (message or "") and decision.action != "block" and decision.rewritten_question is None:
+        decision.rewritten_question = clean
+    decision.sanitized = findings or None
+    return decision
+
+
+def _check_clean_input(original: str, raw: str, session: SessionContext, now: Callable[[], datetime]) -> GuardDecision:
     norm = normalize(raw)
+    spaced = unspace(norm)  # «i g n o r a» también cuenta
 
     # --- estructural
-    if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", raw):
+    if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", original):
         return GuardDecision("block", "input_structure", "estructural", "CARACTERES_DE_CONTROL",
                              "el mensaje contiene caracteres de control", f"No he podido procesar ese mensaje. {REDIRECT}")
-    if len(raw) > MAX_INPUT_CHARS:
+    if len(original) > MAX_INPUT_CHARS or len(raw) > MAX_INPUT_CHARS:
         return GuardDecision("block", "input_structure", "estructural", "MENSAJE_DEMASIADO_LARGO",
                              f"más de {MAX_INPUT_CHARS} caracteres", f"El mensaje es demasiado largo. {REDIRECT}")
 
     # --- seguridad: cambio de instrucciones / rol / extracción del prompt / delimitadores
-    if DELIMITER_INJECTION.search(norm):
+    if DELIMITER_INJECTION.search(norm) or DELIMITER_INJECTION.search(spaced):
         return _instruction_change("INYECCION_DE_DELIMITADORES", "intenta abrir o cerrar bloques del sistema")
-    if PROMPT_EXTRACTION.search(norm):
+    if PROMPT_EXTRACTION.search(norm) or PROMPT_EXTRACTION.search(spaced):
         return _instruction_change("EXTRACCION_DE_PROMPT", "pide revelar las instrucciones del sistema")
     for index, pattern in enumerate(INSTRUCTION_OVERRIDE):
-        if pattern.search(norm):
+        if pattern.search(norm) or pattern.search(spaced):
             code = ["IGNORAR_INSTRUCCIONES", "CAMBIO_DE_ROL", "MODO_SIN_REGLAS", "OLVIDAR_TRACKFLOW", "NUEVAS_INSTRUCCIONES"][index]
             personal = " También es una tarea personal fuera de mi propósito." if PERSONAL_USE.search(norm) else ""
             return _instruction_change(code, "intenta cambiar las instrucciones o el rol del agente", extra=personal)
 
     # --- seguridad: datos que nunca se revelan
     for code, pattern in SENSITIVE_REQUEST:
-        if pattern.search(norm):
+        if pattern.search(norm) or pattern.search(spaced):
             texts = {
                 "TARIFA_CARRIER": "las tarifas o condiciones negociadas con los carriers (UPS, FedEx, DHL, MRW, SEUR)",
                 "TERMINOS_COMERCIALES_B2B": "los términos comerciales entre TrackFlow y sus clientes",
@@ -360,32 +371,12 @@ def _small_talk(norm: str, now: Callable[[], datetime]) -> GuardDecision | None:
 # ============================================================================
 # Aislamiento del contenido externo (tools MCP y documentos RAG)
 # ============================================================================
-EMBEDDED_INSTRUCTION = re.compile(
-    r"((ignora|ignore|olvida|forget|disregard)[^.\n]{0,60}(instrucciones|instructions|reglas|rules|prompt)|"
-    r"(you are now|ahora eres|act as|actua como)[^.\n]{0,60}|"
-    r"(system prompt|prompt del sistema)[^.\n]{0,40}|"
-    r"(responde|answer|reply)[^.\n]{0,20}(siempre|always|solo|only)[^.\n]{0,60}|"
-    r"<\s*/?\s*(system|sistema|instructions|assistant)\s*>|\[\s*/?\s*(system|inst)\s*\]|<\|im_(start|end)\|>)",
-    re.IGNORECASE)
-
-
 def sanitize_external(text: str) -> tuple[str, list[str]]:
     """Neutraliza instrucciones y delimitadores incrustados en texto de una tool o de un documento RAG."""
-    findings: list[str] = []
-    clean = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", " ", text or "")
-    for marker in ("<<", ">>"):
-        if marker in clean:
-            findings.append("delimitador_interno")
-            clean = clean.replace(marker, "«" if marker == "<<" else "»")
+    clean, findings = neutralize(text)
     if PROMPT_CANARY in clean:
         findings.append("canary")
         clean = clean.replace(PROMPT_CANARY, "[eliminado]")
-
-    def _neutralize(match: re.Match) -> str:
-        findings.append("instruccion_incrustada")
-        return "[instrucción eliminada: contenido externo]"
-
-    clean = EMBEDDED_INSTRUCTION.sub(_neutralize, clean)
     return clean, findings
 
 
@@ -468,4 +459,5 @@ def _overlaps_prompt(norm_answer: str, system_prompt: str) -> bool:
 # Observabilidad
 # ============================================================================
 def log_event(event: dict[str, Any]) -> None:
-    logger.info(json.dumps({"event": "guardrail", **event}, ensure_ascii=False, default=str))
+    # ``detail`` puede citar un pedido: se queda en el trace, que solo ve el personal.
+    logger.info(json.dumps({"event": "guardrail", **{k: v for k, v in event.items() if k != "detail"}}, ensure_ascii=False, default=str))

@@ -6,7 +6,7 @@ cd /opt/trackflow/app
 SERVICES=" interfaces backend mcp redis qdrant celery-worker flower "
 compose() { docker compose --project-directory /opt/trackflow/app --env-file /etc/trackflow/trackflow.env "$@"; }
 service() { [[ $# -eq 1 && "$1" =~ ^[a-z-]+$ && "$SERVICES" == *" $1 "* ]] || { echo "servicio no permitido" >&2; exit 2; }; }
-usage() { echo "uso: trackflow-ctl status | up | logs <servicio> | restart <servicio> | accounts <list|set-role|set-clients> …" >&2; exit 2; }
+usage() { echo "uso: trackflow-ctl status | up | logs <servicio> | restart <servicio> | ai-stop | ai-start | accounts <list|set-role|set-clients> …" >&2; exit 2; }
 
 action="${1:-}"; shift || true
 logger -t trackflow-ctl "usuario=${SUDO_USER:-root} accion=${action//[^a-z-]/_} args=${*//[^A-Za-z0-9@._ -]/_}" 2>/dev/null || true
@@ -15,6 +15,9 @@ case "$action" in
   up)      [[ $# -eq 0 ]] || usage; compose up -d ;;
   logs)    service "$@"; compose logs --no-color --tail 500 "$1" ;;
   restart) service "$@"; compose restart "$1" ;;
+  # Parada de emergencia de la IA: corta toda llamada a modelos sin reiniciar (docs/security/incident-response.md).
+  ai-stop)  [[ $# -eq 0 ]] || usage; compose exec -T backend touch /var/lib/trackflow/AI_STOP ;;
+  ai-start) [[ $# -eq 0 ]] || usage; compose exec -T backend rm -f /var/lib/trackflow/AI_STOP ;;
   accounts) compose exec -T backend python accounts.py "$@" ;;
   *) usage ;;
 esac

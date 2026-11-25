@@ -8,6 +8,7 @@ producción: los clientes y su secreto son fijos y los tokens se firman en memor
 
 from __future__ import annotations
 
+import secrets
 import json
 import socket
 import threading
@@ -27,7 +28,7 @@ CLIENT_SCOPES = {
     "trackflow-inventory-viewer": "mcp:access inventory:read",
     "sin-acceso-mcp": "incidents:read",
 }
-CLIENT_SECRET = "secreto-de-prueba"
+CLIENT_SECRET = secrets.token_urlsafe(24)  # nuevo en cada proceso: ni siquiera en desarrollo hay uno fijo
 
 
 def free_port() -> int:

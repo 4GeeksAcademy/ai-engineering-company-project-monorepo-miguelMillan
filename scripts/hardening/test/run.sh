@@ -22,6 +22,8 @@ IP=$(docker inspect -f "{{(index .NetworkSettings.Networks \"$ID-wan\").IPAddres
 IP6=$(docker inspect -f "{{(index .NetworkSettings.Networks \"$ID-wan\").GlobalIPv6Address}}" "$ID-srv")
 CTN=$(docker inspect -f "{{(index .NetworkSettings.Networks \"$ID-lan\").IPAddress}}" "$ID-ctn")
 
+ROOT_PASSWORD=$(openssl rand -hex 12)   # nueva en cada ejecución
+srv "echo root:$ROOT_PASSWORD | chpasswd"
 srv "/usr/sbin/sshd; mkdir -p /opt/trackflow/app /etc/trackflow; echo 'SECRET_KEY=valor-secreto' > /etc/trackflow/trackflow.env; echo print > /opt/trackflow/app/main.py; chmod -R 777 /opt/trackflow
 for p in 80 443 5555 6333 8080 8081; do (cd /run && nohup python3 -m http.server --bind :: \$p >/dev/null 2>&1 &); done
 # Así publica Docker un puerto: DNAT en PREROUTING (no pasa por la cadena INPUT).
@@ -36,7 +38,7 @@ report() {
   echo "Puertos TCP abiertos por IPv6 (los 8 con servicio):"
   atk "nmap -6 -n -Pn -sT --max-retries 1 -p 22,80,443,5555,6333,6379,8080,8081 $IP6" | awk '/^[0-9]+\/tcp +open/ {print "  " $1}'
   echo "SSH:"
-  printf '  root con contraseña:            %s\n' "$(atk "sshpass -p toor $SSH root@$IP id -un 2>/dev/null || echo denegado" | tail -1)"
+  printf '  root con contraseña:            %s\n' "$(atk "sshpass -p $ROOT_PASSWORD $SSH root@$IP id -un 2>/dev/null || echo denegado" | tail -1)"
   printf '  root con clave autorizada:      %s\n' "$(atk "$SSH -i /keys/ops -o BatchMode=yes root@$IP id -un 2>/dev/null || echo denegado" | tail -1)"
   printf '  trackflow-ops con su clave:     %s\n' "$(atk "$SSH -i /keys/ops -o BatchMode=yes trackflow-ops@$IP id -un 2>/dev/null || echo denegado" | tail -1)"
   printf '  trackflow-ops con otra clave:   %s\n' "$(atk "$SSH -i /keys/otra -o IdentitiesOnly=yes -o BatchMode=yes trackflow-ops@$IP id -un 2>/dev/null || echo denegado" | tail -1)"

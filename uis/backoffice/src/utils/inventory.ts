@@ -34,6 +34,7 @@ export interface StockExitInput {
   exit_type: StockExitType
   tracking_number: string | null
   warehouse: Warehouse
+  declared_value?: number
 }
 
 export interface InventoryOrder {

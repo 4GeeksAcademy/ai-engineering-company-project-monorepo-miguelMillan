@@ -11,6 +11,14 @@ def promote(app, email, role="manager"):
         assert app.state.db.table("users").update({"role": role}, lambda d: d["email"] == email)
 
 
+def confirmed_delete(client, path, **kwargs):
+    """Borrar es irreversible: la primera petición devuelve el código que confirma la segunda."""
+    first = client.delete(path, **kwargs)
+    assert first.status_code == 428, first.text
+    headers = {**kwargs.pop("headers", {}), "X-Confirmation": first.json()["detail"]["confirmation"]}
+    return client.delete(path, headers=headers, **kwargs)
+
+
 @pytest.fixture(autouse=True)
 def _agent_memory_disabled_by_default(monkeypatch):
     # Ningún test usa el Redis de desarrollo para la memoria del agente.

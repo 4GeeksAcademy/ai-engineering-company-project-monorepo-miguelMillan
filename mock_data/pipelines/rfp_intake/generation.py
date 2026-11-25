@@ -265,7 +265,7 @@ class DepartmentGenerator:
             user = as_document(self.data_block(inp), "DATOS")
             if feedback:
                 user += ("\n\nTu borrador anterior NO pasó la evaluación. Corrige exactamente esto y conserva lo demás:\n"
-                         + feedback + "\n\n" + as_document(previous_narrative or "", "BORRADOR_ANTERIOR"))
+                         + as_document(feedback, "EVALUACION") + "\n\n" + as_document(previous_narrative or "", "BORRADOR_ANTERIOR"))
             try:
                 raw = llm_fn(self.system_prompt(inp), user)
                 narrative = _clean_narrative(raw.get("enfoque") or raw.get("texto") or "")

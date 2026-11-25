@@ -353,3 +353,16 @@ def test_changing_the_password_closes_the_open_socket(api):
         assert httpx.post(f"{api.base}/auth/change-password", headers={"Authorization": f"Bearer {api.token}"}, json={
             "current_password": "correct-horse-battery", "new_password": "otra-Horse-battery-9"}).status_code == 200
         assert chat.close_code() == 4401
+
+
+def test_messages_over_the_limit_never_reach_the_model_nor_cut_the_current_answer(api, monkeypatch):
+    monkeypatch.setenv("AI_REQUESTS_PER_MINUTE", "1")
+    with api.ws(api.session()["session_id"]) as chat:
+        chat.send("user_message", text="¿Cuál es el plazo estándar de entrega?")
+        chat.until("token_chunk")
+        chat.send("user_message", text="¿Y las devoluciones?")
+        limited = chat.until("error")
+        assert limited["code"] == "rate_limited" and limited["retry_after"] > 0
+        chat.until("generation_completed")
+        assert chat.text() == SLA and "generation_interrupted" not in chat.names()
+        assert sum(e["event"] == "user_message" for e in chat.events) == 1

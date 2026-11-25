@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
+from confirmations import require_confirmation
 from models import User, UserListItemResponse, UserRegister, UserRegistrationResponse, UserResponse, UserRole, UserUpdate
 from routes.auth import password_matches
 from security import get_current_user
@@ -115,6 +116,10 @@ def put_user(
 @router.delete("/{user_id}", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
 def remove_user(user_id: int, request: Request, current_user: User = Depends(get_current_user)):
     require_owner_or_admin(user_id, current_user)
+    with request.app.state.lock:
+        if get_user_by_id(request.app.state.db, user_id) is None:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    require_confirmation(request, "user_delete", str(user_id), f"Borrar la cuenta {user_id} y su perfil", current_user)
     if not delete_user(request.app.state.db, request.app.state.lock, user_id):
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
